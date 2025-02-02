@@ -1,0 +1,14 @@
+plugins {
+    id 'java'
+}
+
+group = 'me.cg360.spudengine'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+
+}
