@@ -1,14 +1,60 @@
+import org.gradle.internal.os.OperatingSystem
+
 plugins {
     id 'java'
 }
 
 group = 'me.cg360.spudengine'
-version = '1.0-SNAPSHOT'
+version = '0.1.0'
+
+switch (OperatingSystem.current()) {
+    case OperatingSystem.LINUX:
+        project.ext.lwjgl_natives = "natives-linux"
+        break
+    case OperatingSystem.WINDOWS:
+        project.ext.lwjgl_natives = "natives-windows"
+        break
+}
+
+// Set up environment, if not already setup.
+new File("/run/").mkdirs()
 
 repositories {
     mavenCentral()
 }
 
 dependencies {
+    implementation platform("org.lwjgl:lwjgl-bom:$lwjgl_version")
 
+    implementation "org.lwjgl:lwjgl"
+    implementation "org.lwjgl:lwjgl-assimp"
+    implementation "org.lwjgl:lwjgl-glfw"
+    implementation "org.lwjgl:lwjgl-openal"
+    implementation "org.lwjgl:lwjgl-rpmalloc"
+    implementation "org.lwjgl:lwjgl-shaderc"
+    implementation "org.lwjgl:lwjgl-stb"
+    implementation "org.lwjgl:lwjgl-tootle"
+    implementation "org.lwjgl:lwjgl-vma"
+    implementation "org.lwjgl:lwjgl-vulkan"
+
+    runtimeOnly "org.lwjgl:lwjgl::$lwjgl_natives"
+    runtimeOnly "org.lwjgl:lwjgl-assimp::$lwjgl_natives"
+    runtimeOnly "org.lwjgl:lwjgl-glfw::$lwjgl_natives"
+    runtimeOnly "org.lwjgl:lwjgl-openal::$lwjgl_natives"
+    runtimeOnly "org.lwjgl:lwjgl-rpmalloc::$lwjgl_natives"
+    runtimeOnly "org.lwjgl:lwjgl-shaderc::$lwjgl_natives"
+    runtimeOnly "org.lwjgl:lwjgl-stb::$lwjgl_natives"
+    runtimeOnly "org.lwjgl:lwjgl-tootle::$lwjgl_natives"
+    runtimeOnly "org.lwjgl:lwjgl-vma::$lwjgl_natives"
+
+    implementation "org.joml:joml:${joml_version}"
+    implementation "org.joml:joml-primitives:${joml_primitives_ersion}"
+
+    implementation "org.tinylog:tinylog-api:$tiny_log_version"
+    implementation "org.tinylog:tinylog-impl:$tiny_log_version"
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+    options.release.set(21)
 }

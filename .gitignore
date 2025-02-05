@@ -43,3 +43,7 @@ bin/
 
 ### Yeah none of this: ###
 **/gradle-wrapper.jar
+
+
+### SpudEngine specific ###
+/run/
