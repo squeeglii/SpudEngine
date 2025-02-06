@@ -23,6 +23,15 @@ public class EngineProperties {
     // Logic
     public static final int UPDATES_PER_SECOND = 30;
 
+    // Graphics
+    public static final String PREFERRED_DEVICE_NAME = null;
+    public static final int STARTING_WIDTH = 1600;
+    public static final int STARTING_HEIGHT = 900;
+    public static final int SWAP_CHAIN_IMAGES = 3;
+    public static final boolean VSYNC = true;
+
+
+    // -- End of properties --
     private static boolean isInitialized = false;
 
     public static void initialize(String[] launchArgs) {

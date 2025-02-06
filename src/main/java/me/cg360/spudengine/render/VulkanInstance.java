@@ -23,7 +23,8 @@ public class VulkanInstance {
 
     private static final String PORTABILITY_EXTENSION = "VK_KHR_portability_enumeration";
 
-    private VkInstance instance;
+    private final VkInstance instance;
+
     private long debugHandle;
     private VkDebugUtilsMessengerCreateInfoEXT debugUtils;
 

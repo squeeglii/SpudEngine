@@ -1,5 +1,6 @@
 package me.cg360.spudengine.render;
 
+import me.cg360.spudengine.EngineProperties;
 import me.cg360.spudengine.input.MouseInput;
 import org.lwjgl.glfw.*;
 import org.lwjgl.system.MemoryUtil;
@@ -23,9 +24,10 @@ public class Window {
         if(!GLFW.glfwInit()) throw new IllegalStateException("Unable to initialize GLFW");
         if(!GLFWVulkan.glfwVulkanSupported()) throw new IllegalStateException("Vulkan is unsupported.");
 
-        GLFWVidMode vidMode = GLFW.glfwGetVideoMode(GLFW.glfwGetPrimaryMonitor());
-        this.width = vidMode.width();
-        this.height = vidMode.height();
+        // monitor resolution?
+        // GLFWVidMode vidMode = GLFW.glfwGetVideoMode(GLFW.glfwGetPrimaryMonitor());
+        this.width = EngineProperties.STARTING_WIDTH;
+        this.height = EngineProperties.STARTING_HEIGHT;
 
         GLFW.glfwDefaultWindowHints();
         GLFW.glfwWindowHint(GLFW.GLFW_CLIENT_API, GLFW.GLFW_NO_API);
