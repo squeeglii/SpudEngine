@@ -1,7 +1,7 @@
 package me.cg360.spudengine.render;
 
 import me.cg360.spudengine.render.hardware.LogicalDevice;
-import me.cg360.spudengine.render.hardware.PhysicalDevice;
+import me.cg360.spudengine.util.VkHandleWrapper;
 import me.cg360.spudengine.util.VulkanUtil;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK11;
@@ -9,7 +9,7 @@ import org.lwjgl.vulkan.VkImageViewCreateInfo;
 
 import java.nio.LongBuffer;
 
-public class ImageView {
+public class ImageView implements VkHandleWrapper {
 
     private final LogicalDevice device;
     private final long imageViewHandle;
@@ -21,6 +21,7 @@ public class ImageView {
         this.device = graphicsDevice;
         this.aspectMask = builder.aspectMask;
         this.mipLevels = builder.mipLevels;
+
         try (MemoryStack stack = MemoryStack.stackPush()) {
             LongBuffer lp = stack.mallocLong(1);
             VkImageViewCreateInfo viewCreateInfo = VkImageViewCreateInfo.calloc(stack)
@@ -29,9 +30,9 @@ public class ImageView {
                     .viewType(builder.viewType)
                     .format(builder.format)
                     .subresourceRange(it -> it
-                            .aspectMask(aspectMask)
+                            .aspectMask(this.aspectMask)
                             .baseMipLevel(0)
-                            .levelCount(mipLevels)
+                            .levelCount(this.mipLevels)
                             .baseArrayLayer(builder.baseArrayLayer)
                             .layerCount(builder.layerCount));
 
@@ -47,7 +48,7 @@ public class ImageView {
         VK11.vkDestroyImageView(device.asVk(), this.imageViewHandle, null);
     }
 
-    public long getVkImageView() {
+    public long getHandle() {
         return this.imageViewHandle;
     }
 

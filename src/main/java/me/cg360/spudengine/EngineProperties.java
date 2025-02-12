@@ -2,6 +2,8 @@ package me.cg360.spudengine;
 
 import org.tinylog.Logger;
 
+import java.awt.*;
+
 /**
  * A mix of constants and values assigned at startup.
  * During runtime, you can assume these are constants.
@@ -19,6 +21,7 @@ public class EngineProperties {
 
     // Debugging
     public static final boolean USE_DEBUGGING = true;
+    public static final Color CLEAR_COLOUR = new Color(1.0f, 0.0f, 1.0f, 1.0f);
 
     // Logic
     public static final int UPDATES_PER_SECOND = 30;

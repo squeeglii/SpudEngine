@@ -231,7 +231,7 @@ public class VulkanInstance {
         return instanceExtensions;
     }
 
-    public VkInstance getVulkanInstance() {
+    public VkInstance asVk() {
         return this.instance;
     }
 }

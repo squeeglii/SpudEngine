@@ -134,7 +134,7 @@ public class PhysicalDevice {
             // Populate available devices
             List<PhysicalDevice> devices = new ArrayList<>(numDevices);
             for (int i = 0; i < numDevices; i++) {
-                VkPhysicalDevice vkPhysicalDevice = new VkPhysicalDevice(pPhysicalDevices.get(i), instance.getVulkanInstance());
+                VkPhysicalDevice vkPhysicalDevice = new VkPhysicalDevice(pPhysicalDevices.get(i), instance.asVk());
                 PhysicalDevice physicalDevice = new PhysicalDevice(vkPhysicalDevice);
                 String deviceName = physicalDevice.getDeviceName();
 
@@ -174,7 +174,7 @@ public class PhysicalDevice {
     protected static PointerBuffer getPhysicalDevices(VulkanInstance instance, MemoryStack stack) {
         // Get number of physical devices
         IntBuffer intBuffer = stack.mallocInt(1);
-        int errCodeCountDevices = VK11.vkEnumeratePhysicalDevices(instance.getVulkanInstance(), intBuffer, null);
+        int errCodeCountDevices = VK11.vkEnumeratePhysicalDevices(instance.asVk(), intBuffer, null);
         VulkanUtil.checkErrorCode(errCodeCountDevices, "Failed to get number of physical devices");
 
         int numDevices = intBuffer.get(0);
@@ -182,7 +182,7 @@ public class PhysicalDevice {
 
         // Populate physical devices list pointer
         PointerBuffer pPhysicalDevices = stack.mallocPointer(numDevices);
-        int errCodeGetDevices = VK11.vkEnumeratePhysicalDevices(instance.getVulkanInstance(), intBuffer, pPhysicalDevices);
+        int errCodeGetDevices = VK11.vkEnumeratePhysicalDevices(instance.asVk(), intBuffer, pPhysicalDevices);
         VulkanUtil.checkErrorCode(errCodeGetDevices, "Failed to get physical devices");
 
         return pPhysicalDevices;

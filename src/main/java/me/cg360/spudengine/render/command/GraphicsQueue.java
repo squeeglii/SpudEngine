@@ -1,4 +1,4 @@
-package me.cg360.spudengine.render.queue;
+package me.cg360.spudengine.render.command;
 
 import me.cg360.spudengine.render.hardware.LogicalDevice;
 import me.cg360.spudengine.render.hardware.PhysicalDevice;

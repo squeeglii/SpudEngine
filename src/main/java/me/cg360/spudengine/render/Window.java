@@ -2,11 +2,12 @@ package me.cg360.spudengine.render;
 
 import me.cg360.spudengine.EngineProperties;
 import me.cg360.spudengine.input.MouseInput;
+import me.cg360.spudengine.util.VkHandleWrapper;
 import org.lwjgl.glfw.*;
 import org.lwjgl.system.MemoryUtil;
 import org.tinylog.Logger;
 
-public class Window {
+public class Window implements VkHandleWrapper {
 
     private final MouseInput mouseInput;
 

@@ -1,5 +1,6 @@
 package me.cg360.spudengine.render.hardware;
 
+import me.cg360.spudengine.util.VkHandleWrapper;
 import org.lwjgl.glfw.GLFWVulkan;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.KHRSurface;
@@ -8,7 +9,7 @@ import org.tinylog.Logger;
 
 import java.nio.LongBuffer;
 
-public class Surface {
+public class Surface implements VkHandleWrapper {
 
     private final PhysicalDevice physicalDevice;
     private final long vkSurface;
@@ -32,7 +33,7 @@ public class Surface {
         KHRSurface.vkDestroySurfaceKHR(vkInstance, this.vkSurface, null);
     }
 
-    public long asVk() {
+    public long getHandle() {
         return this.vkSurface;
     }
 }

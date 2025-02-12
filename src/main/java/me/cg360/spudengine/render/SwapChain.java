@@ -1,19 +1,27 @@
 package me.cg360.spudengine.render;
 
+import me.cg360.spudengine.render.command.CommandQueue;
+import me.cg360.spudengine.render.command.PresentQueue;
 import me.cg360.spudengine.render.hardware.LogicalDevice;
 import me.cg360.spudengine.render.hardware.PhysicalDevice;
 import me.cg360.spudengine.render.hardware.Surface;
 import me.cg360.spudengine.render.hardware.SurfaceFormat;
+import me.cg360.spudengine.render.sync.Semaphore;
+import me.cg360.spudengine.render.sync.SyncSemaphores;
+import me.cg360.spudengine.util.VkHandleWrapper;
 import me.cg360.spudengine.util.VulkanUtil;
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.vulkan.*;
 import org.tinylog.Logger;
 
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
-public class SwapChain {
+public class SwapChain implements VkHandleWrapper {
 
     private final LogicalDevice logicalDevice;
     private final ImageView[] imageViews;
@@ -22,8 +30,11 @@ public class SwapChain {
 
     private final long swapchainHandle;
 
+    private final SyncSemaphores[] syncSemaphores; // SyncSemaphores?
+    private int currentFrame;
 
-    public SwapChain(LogicalDevice device, Surface surface, Window window, int requestedImages, boolean vsync) {
+
+    public SwapChain(LogicalDevice device, Surface surface, Window window, int requestedImages, boolean vsync, PresentQueue presentQueue, CommandQueue... concurrentQueues) {
         Logger.debug("Creating Vulkan SwapChain");
         this.logicalDevice = device;
 
@@ -35,7 +46,7 @@ public class SwapChain {
             VkSurfaceCapabilitiesKHR surfCapabilities = VkSurfaceCapabilitiesKHR.calloc(stack);
             int errCode = KHRSurface.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
                             device.getPhysicalDevice().asVk(),
-                            surface.asVk(),
+                            surface.getHandle(),
                             surfCapabilities);
             VulkanUtil.checkErrorCode(errCode, "Failed to get surface capabilities");
 
@@ -47,7 +58,7 @@ public class SwapChain {
             // Build SwapChain
             VkSwapchainCreateInfoKHR vkSwapchainCreateInfo = VkSwapchainCreateInfoKHR.calloc(stack)
                     .sType(KHRSwapchain.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR)
-                    .surface(surface.asVk())
+                    .surface(surface.getHandle())
                     .minImageCount(numImages)
                     .imageFormat(surfaceFormat.format())
                     .imageColorSpace(surfaceFormat.colourSpace())
@@ -62,6 +73,25 @@ public class SwapChain {
             if (vsync) vkSwapchainCreateInfo.presentMode(KHRSurface.VK_PRESENT_MODE_FIFO_KHR);
             else       vkSwapchainCreateInfo.presentMode(KHRSurface.VK_PRESENT_MODE_IMMEDIATE_KHR);
 
+            List<Integer> indices = new ArrayList<>();
+            for (CommandQueue queue : concurrentQueues) {
+                if (queue.getQueueFamilyIndex() == presentQueue.getQueueFamilyIndex())
+                    continue;
+
+                indices.add(queue.getQueueFamilyIndex());
+            }
+
+            if (!indices.isEmpty()) {
+                IntBuffer intBuffer = stack.mallocInt(indices.size() + 1);
+                indices.forEach(intBuffer::put);
+                intBuffer.put(presentQueue.getQueueFamilyIndex()).flip();
+                vkSwapchainCreateInfo.imageSharingMode(VK11.VK_SHARING_MODE_CONCURRENT)
+                        .queueFamilyIndexCount(intBuffer.capacity())
+                        .pQueueFamilyIndices(intBuffer);
+            } else {
+                vkSwapchainCreateInfo.imageSharingMode(VK11.VK_SHARING_MODE_EXCLUSIVE);
+            }
+
             LongBuffer lp = stack.mallocLong(1);
             int errCreate = KHRSwapchain.vkCreateSwapchainKHR(device.asVk(), vkSwapchainCreateInfo, null, lp);
             VulkanUtil.checkErrorCode(errCreate, "Failed to create swapchain");
@@ -69,19 +99,101 @@ public class SwapChain {
             this.swapchainHandle = lp.get(0);
 
             this.imageViews = createImageViews(stack, device, this.swapchainHandle, this.surfaceFormat.format());
+
+            this.syncSemaphores = new SyncSemaphores[numImages];
+            Arrays.setAll(this.syncSemaphores, i -> new SyncSemaphores(this.logicalDevice));
+            this.currentFrame = 0;
         }
+    }
+
+    public int acquireNextImage() {
+        int imageIndex;
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            IntBuffer ip = stack.mallocInt(1);
+            long acquisitionHandle = this.syncSemaphores[this.currentFrame].imgAcquisitionSemaphore().getHandle();
+            int err = KHRSwapchain.vkAcquireNextImageKHR(this.logicalDevice.asVk(), this.swapchainHandle, ~0L,
+                                                         acquisitionHandle, MemoryUtil.NULL, ip);
+
+            if (err == KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR) {
+                return -1;
+            } else if (err == KHRSwapchain.VK_SUBOPTIMAL_KHR) {
+                // Not optimal but swapchain can still be used
+                // continue.
+            } else if (err != VK11.VK_SUCCESS) {
+                throw new RuntimeException("Failed to acquire image: " + err);
+            }
+
+            imageIndex = ip.get(0);
+        }
+
+        return imageIndex;
+    }
+
+    /** @return has the window been resized? */
+    public boolean presentImage(CommandQueue presentQueue, int imageIndex) {
+        boolean resize = false;
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            LongBuffer semaphoreHandles = stack.longs(this.syncSemaphores[currentFrame].renderCompleteSemaphore().getHandle());
+            VkPresentInfoKHR present = VkPresentInfoKHR.calloc(stack)
+                    .sType(KHRSwapchain.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR)
+                    .pWaitSemaphores(semaphoreHandles)
+                    .swapchainCount(1)
+                    .pSwapchains(stack.longs(this.swapchainHandle))
+                    .pImageIndices(stack.ints(imageIndex));
+
+            int err = KHRSwapchain.vkQueuePresentKHR(presentQueue.asVk(), present);
+            if (err == KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR) {
+                resize = true;
+            } else if (err == KHRSwapchain.VK_SUBOPTIMAL_KHR) {
+                // Not optimal but swap chain can still be used
+            } else if (err != VK11.VK_SUCCESS) {
+                throw new RuntimeException("Failed to present KHR: " + err);
+            }
+        }
+
+        this.currentFrame = (this.currentFrame + 1) % this.imageViews.length;
+        return resize;
     }
 
     public void cleanup() {
         Logger.debug("Destroying Vulkan SwapChain");
         this.swapChainExtent.free();
 
-        Arrays.asList(this.imageViews)
-              .forEach(ImageView::cleanup);
+        Arrays.asList(this.imageViews).forEach(ImageView::cleanup);
+        Arrays.asList(this.syncSemaphores).forEach(SyncSemaphores::cleanup);
 
         KHRSwapchain.vkDestroySwapchainKHR(this.logicalDevice.asVk(), this.swapchainHandle, null);
+
+
     }
 
+    public long getHandle() {
+        return this.swapchainHandle;
+    }
+
+    public SurfaceFormat getSurfaceFormat() {
+        return this.surfaceFormat;
+    }
+
+    public ImageView[] getImageViews() {
+        return this.imageViews;
+    }
+
+    public LogicalDevice getDevice() {
+        return this.logicalDevice;
+    }
+
+    public VkExtent2D getSwapChainExtent() {
+        return this.swapChainExtent;
+    }
+
+    public SyncSemaphores[] getSyncSemaphores() {
+        return this.syncSemaphores;
+    }
+
+    public int getCurrentFrame() {
+        return this.currentFrame;
+    }
 
     private static int calcNumImages(VkSurfaceCapabilitiesKHR surfCapabilities, int requestedImages) {
         int maxImages = surfCapabilities.maxImageCount();
@@ -100,14 +212,14 @@ public class SwapChain {
         try (MemoryStack stack = MemoryStack.stackPush()) {
 
             IntBuffer ip = stack.mallocInt(1);
-            int errCountFormats = KHRSurface.vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice.asVk(), surface.asVk(), ip, null);
+            int errCountFormats = KHRSurface.vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice.asVk(), surface.getHandle(), ip, null);
             VulkanUtil.checkErrorCode(errCountFormats, "Failed to get the number of available surface formats");
 
             int numFormats = ip.get(0);
             if (numFormats <= 0) throw new RuntimeException("No surface formats retrieved");
 
             VkSurfaceFormatKHR.Buffer surfaceFormats = VkSurfaceFormatKHR.calloc(numFormats, stack);
-            int errGetFormats = KHRSurface.vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice.asVk(), surface.asVk(), ip, surfaceFormats);
+            int errGetFormats = KHRSurface.vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice.asVk(), surface.getHandle(), ip, surfaceFormats);
             VulkanUtil.checkErrorCode(errGetFormats, "Failed to get available surface formats");
 
             imageFormat = VK11.VK_FORMAT_B8G8R8A8_SRGB;
@@ -167,4 +279,7 @@ public class SwapChain {
 
         return result;
     }
+
+
+
 }
