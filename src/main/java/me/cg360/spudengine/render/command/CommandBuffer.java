@@ -36,9 +36,20 @@ public class CommandBuffer {
 
     }
 
+    public void record(Runnable runnable) {
+        this.beginRecording();
+        runnable.run();
+        this.endRecording();
+    }
+
+    public void record(SecondaryInheritance inheritanceInfo, Runnable runnable) {
+        this.beginRecording(inheritanceInfo);
+        runnable.run();
+        this.endRecording();
+    }
 
     public void beginRecording() {
-        beginRecording(null);
+        this.beginRecording(null);
     }
 
     public void beginRecording(SecondaryInheritance inheritanceInfo) {
@@ -69,14 +80,14 @@ public class CommandBuffer {
         }
     }
 
-    public void cleanup() {
-        Logger.trace("Destroying command buffer");
-        VK11.vkFreeCommandBuffers(this.commandPool.getDevice().asVk(), this.commandPool.getHandle(), this.commandBuffer);
-    }
-
     public void endRecording() {
         int errClear = VK11.vkEndCommandBuffer(this.commandBuffer);
         VulkanUtil.checkErrorCode(errClear, "Failed to end command buffer recording");
+    }
+
+    public void cleanup() {
+        Logger.trace("Destroying command buffer");
+        VK11.vkFreeCommandBuffers(this.commandPool.getDevice().asVk(), this.commandPool.getHandle(), this.commandBuffer);
     }
 
     public VkCommandBuffer asVk() {

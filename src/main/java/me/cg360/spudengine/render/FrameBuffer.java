@@ -9,12 +9,12 @@ import org.lwjgl.vulkan.VkFramebufferCreateInfo;
 
 import java.nio.LongBuffer;
 
-public class Framebuffer implements VkHandleWrapper {
+public class FrameBuffer implements VkHandleWrapper {
 
     private final LogicalDevice device;
     private final long framebufferHandle;
 
-    public Framebuffer(LogicalDevice device, int width, int height, LongBuffer pAttachments, long renderPass) {
+    public FrameBuffer(LogicalDevice device, int width, int height, LongBuffer pAttachments, long renderPass) {
         this.device = device;
         try (MemoryStack stack = MemoryStack.stackPush()) {
             VkFramebufferCreateInfo fci = VkFramebufferCreateInfo.calloc(stack)

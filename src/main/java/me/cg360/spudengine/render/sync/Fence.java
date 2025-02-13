@@ -35,8 +35,10 @@ public class Fence {
         VK11.vkWaitForFences(this.device.asVk(), this.fence, true, Long.MAX_VALUE);
     }
 
-    public void reset() {
+    /** @return this fence, chaining. */
+    public Fence reset() {
         VK11.vkResetFences(this.device.asVk(), this.fence);
+        return this;
     }
 
     public long getHandle() {

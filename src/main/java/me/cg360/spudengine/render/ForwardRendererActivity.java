@@ -15,7 +15,6 @@ import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 import org.tinylog.Logger;
 
 import java.awt.*;
-import java.nio.FloatBuffer;
 import java.nio.LongBuffer;
 import java.util.Arrays;
 
@@ -23,7 +22,7 @@ public class ForwardRendererActivity {
 
     private final CommandBuffer[] commandBuffers;
     private final Fence[] fences;
-    private final Framebuffer[] frameBuffers;
+    private final FrameBuffer[] frameBuffers;
     private final SwapChainRenderPass renderPass;
     private final SwapChain swapChain;
 
@@ -39,11 +38,11 @@ public class ForwardRendererActivity {
             this.renderPass = new SwapChainRenderPass(swapChain);
 
             LongBuffer pAttachments = stack.mallocLong(1);
-            this.frameBuffers = new Framebuffer[numImages];
+            this.frameBuffers = new FrameBuffer[numImages];
 
             for (int i = 0; i < numImages; i++) {
                 pAttachments.put(0, imageViews[i].getHandle());
-                this.frameBuffers[i] = new Framebuffer(device, swapChainExtent.width(), swapChainExtent.height(),
+                this.frameBuffers[i] = new FrameBuffer(device, swapChainExtent.width(), swapChainExtent.height(),
                         pAttachments, this.renderPass.getHandle());
             }
 
@@ -65,7 +64,7 @@ public class ForwardRendererActivity {
         currentFence.fenceWait();
     }
 
-    private void recordCommandBuffer(CommandBuffer commandBuffer, Framebuffer frameBuffer, int width, int height) {
+    private void recordCommandBuffer(CommandBuffer commandBuffer, FrameBuffer frameBuffer, int width, int height) {
         try (MemoryStack stack = MemoryStack.stackPush()) {
             VkClearValue.Buffer clearValues = VkClearValue.calloc(1, stack);
 
@@ -112,7 +111,7 @@ public class ForwardRendererActivity {
     }
 
     public void cleanup() {
-        Arrays.asList(this.frameBuffers).forEach(Framebuffer::cleanup);
+        Arrays.asList(this.frameBuffers).forEach(FrameBuffer::cleanup);
         this.renderPass.cleanup();
 
         Arrays.asList(this.commandBuffers).forEach(CommandBuffer::cleanup);

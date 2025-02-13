@@ -1,9 +1,7 @@
 package me.cg360.spudengine.util;
 
-import org.lwjgl.vulkan.EXTDebugUtils;
-import org.lwjgl.vulkan.VK11;
-import org.lwjgl.vulkan.VkDebugUtilsMessengerCallbackDataEXT;
-import org.lwjgl.vulkan.VkDebugUtilsMessengerCreateInfoEXT;
+import me.cg360.spudengine.render.hardware.PhysicalDevice;
+import org.lwjgl.vulkan.*;
 import org.tinylog.Logger;
 
 public class VulkanUtil {
@@ -15,6 +13,9 @@ public class VulkanUtil {
             EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
             EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 
+
+    public static final int FLOAT_BYTES = 4;
+    public static final int INT_BYTES = 4;
 
     /** */
     public static VkDebugUtilsMessengerCreateInfoEXT createDebugCallback() {
@@ -41,9 +42,28 @@ public class VulkanUtil {
                 });
     }
 
-    public static void checkErrorCode(int errorCode, String errMsg) {
+    public static void checkErrorCode(int errorCode, String errMsg, Object... vars) {
         if (errorCode != VK11.VK_SUCCESS)
-            throw new RuntimeException("VkError [%s]: %s".formatted(errorCode, errMsg));
+            throw new RuntimeException("VkError [%s]: %s".formatted(errorCode, errMsg.formatted(vars)));
+    }
+
+    public static int memoryTypeFromProperties(PhysicalDevice physDevice, int typeBits, int reqsMask) {
+        int result = -1;
+        VkMemoryType.Buffer memoryTypes = physDevice.getMemoryProperties().memoryTypes();
+
+        for (int i = 0; i < VK11.VK_MAX_MEMORY_TYPES; i++) {
+            if ((typeBits & 1) == 1 && (memoryTypes.get(i).propertyFlags() & reqsMask) == reqsMask) {
+                result = i;
+                break;
+            }
+
+            typeBits >>= 1;
+        }
+
+        if (result < 0)
+            throw new RuntimeException("Failed to find memoryType");
+
+        return result;
     }
 
 }
