@@ -1,5 +1,6 @@
-package me.cg360.spudengine.core.render;
+package me.cg360.spudengine.core.render.image;
 
+import me.cg360.spudengine.core.render.Window;
 import me.cg360.spudengine.core.render.command.CommandQueue;
 import me.cg360.spudengine.core.render.command.PresentQueue;
 import me.cg360.spudengine.core.render.hardware.LogicalDevice;

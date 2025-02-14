@@ -8,6 +8,9 @@ import me.cg360.spudengine.core.render.geometry.VertexFormats;
 import me.cg360.spudengine.core.render.geometry.model.BufferedMesh;
 import me.cg360.spudengine.core.render.geometry.model.BufferedModel;
 import me.cg360.spudengine.core.render.hardware.LogicalDevice;
+import me.cg360.spudengine.core.render.image.FrameBuffer;
+import me.cg360.spudengine.core.render.image.ImageView;
+import me.cg360.spudengine.core.render.image.SwapChain;
 import me.cg360.spudengine.core.render.pipeline.Pipeline;
 import me.cg360.spudengine.core.render.pipeline.PipelineCache;
 import me.cg360.spudengine.core.render.pipeline.shader.BinaryShaderFile;
@@ -163,7 +166,6 @@ public class ForwardRendererActivity {
             tickRateBuf.put(0, EngineProperties.UPDATES_PER_SECOND);
             VK11.vkCmdPushConstants(cmd, this.pipeline.getPipelineLayoutHandle(), VK11.VK_SHADER_STAGE_FRAGMENT_BIT, VulkanUtil.INT_BYTES, tickRateBuf);
 
-
             for (BufferedModel vulkanModel : models) {
                 for (BufferedMesh mesh : vulkanModel.getSubMeshes()) {
                     vertexBufferHandle.put(0, mesh.vertices().getHandle());
@@ -172,7 +174,6 @@ public class ForwardRendererActivity {
                     VK11.vkCmdDrawIndexed(cmd, mesh.numIndices(), 1, 0, 0, 0);
                 }
             }
-
 
             VK11.vkCmdEndRenderPass(cmd); // ------------------------------------------------------
             commandBuffer.endRecording();
@@ -194,7 +195,6 @@ public class ForwardRendererActivity {
                          stack.ints(VK11.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
                          stack.longs(syncSemaphores.renderCompleteSemaphore().getHandle()),
                          currentFence);
-
         }
     }
 

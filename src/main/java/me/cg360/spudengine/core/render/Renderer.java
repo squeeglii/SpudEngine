@@ -8,6 +8,7 @@ import me.cg360.spudengine.core.render.hardware.LogicalDevice;
 import me.cg360.spudengine.core.render.hardware.PhysicalDevice;
 import me.cg360.spudengine.core.render.hardware.Surface;
 import me.cg360.spudengine.core.render.command.GraphicsQueue;
+import me.cg360.spudengine.core.render.image.SwapChain;
 import me.cg360.spudengine.core.render.pipeline.PipelineCache;
 import me.cg360.spudengine.core.world.Scene;
 

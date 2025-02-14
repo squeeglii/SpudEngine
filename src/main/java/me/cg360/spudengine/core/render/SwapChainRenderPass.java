@@ -1,5 +1,6 @@
 package me.cg360.spudengine.core.render;
 
+import me.cg360.spudengine.core.render.image.SwapChain;
 import me.cg360.spudengine.core.util.VkHandleWrapper;
 import me.cg360.spudengine.core.util.VulkanUtil;
 import org.lwjgl.system.MemoryStack;

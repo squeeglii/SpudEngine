@@ -1,4 +1,4 @@
-package me.cg360.spudengine.core.render;
+package me.cg360.spudengine.core.render.image;
 
 import me.cg360.spudengine.core.render.hardware.LogicalDevice;
 import me.cg360.spudengine.core.util.VkHandleWrapper;

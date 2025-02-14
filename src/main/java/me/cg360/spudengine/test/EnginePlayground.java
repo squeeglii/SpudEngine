@@ -28,6 +28,7 @@ public class EnginePlayground extends GameHooks {
 
     @Override
     protected void init(Window window, Scene scene, Renderer renderer) {
+        Logger.info("\u001B[31mANSI Test.");
         List<Mesh> meshDataList = List.of(MESH_TRIANGLE_2D);
         List<Model> modelDataList = List.of(
                 new Model("triangle", meshDataList)
