@@ -23,13 +23,14 @@ public class EngineProperties {
 
     // Debugging
     public static final boolean USE_DEBUGGING = true;
-    public static final Color CLEAR_COLOUR = new Color(1.0f, 0.0f, 1.0f, 1.0f);
+    public static final Color CLEAR_COLOUR = new Color(0.05f, 0.05f, 0.05f, 0.00f);
 
     // Logic
-    public static final Entrypoint GAME = engine -> new EnginePlayground();
-    public static final int UPDATES_PER_SECOND = 30;
+    public static final Entrypoint GAME = EnginePlayground::new;
+    public static final int UPDATES_PER_SECOND = 30; // logic tick interval
 
     // Graphics
+    public static final boolean SHOULD_RECOMPILE_SHADERS = true;
     public static final String PREFERRED_DEVICE_NAME = null;
     public static final int STARTING_WIDTH = 1600;
     public static final int STARTING_HEIGHT = 900;

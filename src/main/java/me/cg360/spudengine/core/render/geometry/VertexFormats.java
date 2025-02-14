@@ -6,7 +6,7 @@ public class VertexFormats {
 
     public static final int DEFAULT_BINDING = 0;
 
-    public static final Supplier<VertexFormatDefinition> POINTS = () -> new VertexFormatDefinition(
+    public static final Supplier<VertexFormatDefinition> POSITION = () -> new VertexFormatDefinition(
             Attribute.VEC3F.withBinding(DEFAULT_BINDING)
     );
 

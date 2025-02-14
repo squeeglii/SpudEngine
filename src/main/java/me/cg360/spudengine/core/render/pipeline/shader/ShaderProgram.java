@@ -12,22 +12,23 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
 import java.nio.file.Files;
+import java.util.List;
 
 public class ShaderProgram {
 
     private final LogicalDevice device;
     private final Shader[] shaderModules;
 
-    public ShaderProgram(LogicalDevice device, BinaryShaderFile[] sources) {
+    public ShaderProgram(LogicalDevice device, List<BinaryShaderFile> sources) {
         try {
             this.device = device;
-            int numModules = sources != null ? sources.length : 0;
+            int numModules = sources != null ? sources.size() : 0;
             this.shaderModules = new Shader[numModules];
 
             for (int i = 0; i < numModules; i++) {
-                byte[] moduleContents = Files.readAllBytes(new File(sources[i].path()).toPath());
+                byte[] moduleContents = Files.readAllBytes(sources.get(i).getCompiledPath());
                 long moduleHandle = this.parse(moduleContents);
-                this.shaderModules[i] = new Shader(sources[i].stage(), moduleHandle);
+                this.shaderModules[i] = new Shader(sources.get(i).type().vulkan(), moduleHandle);
             }
 
         } catch (IOException err) {

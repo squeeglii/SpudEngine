@@ -1,5 +1,6 @@
 package me.cg360.spudengine.core.render.geometry.model;
 
+import me.cg360.spudengine.core.render.Renderer;
 import me.cg360.spudengine.core.render.buffer.BufferTransfer;
 import me.cg360.spudengine.core.render.buffer.GeneralBuffer;
 import me.cg360.spudengine.core.render.command.CommandBuffer;
@@ -12,21 +13,46 @@ import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.vulkan.VK11;
 import org.lwjgl.vulkan.VkBufferCopy;
+import org.tinylog.Logger;
 
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class ModelManager {
 
-    public static List<BufferedModel> transformModels(CommandPool pool, CommandQueue queue, Model... models) {
-        return ModelManager.transformModels(pool, queue, List.of(models));
+    private final Map<String, BufferedModel> bufferedModels;
+
+    public ModelManager() {
+        this.bufferedModels = new HashMap<>();
     }
 
-    public static List<BufferedModel> transformModels(CommandPool pool, CommandQueue queue, List<Model> models) {
-        // todo: track buffered instances?
+    public void cleanup() {
+        this.bufferedModels.values().forEach(BufferedModel::cleanup);
+        this.bufferedModels.clear();
+    }
 
+    /** @see ModelManager#transformModels(CommandPool, CommandQueue, List) */
+    public List<BufferedModel> transformModels(Renderer renderer, Model... models) {
+        return this.transformModels(renderer.getCommandPool(), renderer.getGraphicsQueue(), models);
+    }
+
+    /** @see ModelManager#transformModels(CommandPool, CommandQueue, List) */
+    public List<BufferedModel> transformModels(Renderer renderer, List<Model> models) {
+        return this.transformModels(renderer.getCommandPool(), renderer.getGraphicsQueue(), models);
+    }
+
+    /** @see ModelManager#transformModels(CommandPool, CommandQueue, List) */
+    public List<BufferedModel> transformModels(CommandPool pool, CommandQueue queue, Model... models) {
+        return this.transformModels(pool, queue, List.of(models));
+    }
+
+    /**
+     * A batch call that loads models from their data arrays
+     * into buffers.
+     */
+    public List<BufferedModel> transformModels(CommandPool pool, CommandQueue queue, List<Model> models) {
+        Logger.debug("Loading {} model(s)", models.size());
         List<BufferedModel> vulkanModelList = new ArrayList<>();
         List<GeneralBuffer> stagingBufferList = new ArrayList<>();
         LogicalDevice device = pool.getDevice();
@@ -66,8 +92,26 @@ public class ModelManager {
 
         stagingBufferList.forEach(GeneralBuffer::cleanup);
 
+        for(BufferedModel model: vulkanModelList) {
+            String modelId = model.getId();
+
+            if(this.bufferedModels.containsKey(modelId)) {
+                Logger.warn("Attempted to re-register model %s. Purging old model.", modelId);
+                this.bufferedModels.remove(modelId).cleanup();
+            }
+
+            this.bufferedModels.put(modelId, model);
+        }
+
+        Logger.debug("Loaded {} model(s)", this.bufferedModels.size());
         return vulkanModelList;
     }
+
+
+    public Collection<BufferedModel> getAllModels() {
+        return this.bufferedModels.values();
+    }
+
 
     private static BufferTransfer createVerticesBuffers(LogicalDevice device, Mesh mesh) {
         float[] positions = mesh.positions();

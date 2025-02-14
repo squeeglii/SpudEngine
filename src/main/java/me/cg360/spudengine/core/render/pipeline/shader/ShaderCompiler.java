@@ -5,29 +5,38 @@ import org.tinylog.Logger;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
+import java.nio.file.OpenOption;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 
 public class ShaderCompiler {
 
-    public static void compileShaderIfChanged(String glsShaderFile, int shaderType) {
+    public static boolean compileShaderIfChanged(BinaryShaderFile shaderFile) {
         byte[] compiledShader;
         try {
-            File glslFile = new File(glsShaderFile);
-            File spvFile = new File(glsShaderFile + ".spv");
+
+            File glslFile = new File(shaderFile.getSourcePath().toURI());
+            File spvFile = new File(shaderFile.getCompiledPath().toUri());
 
             if (!spvFile.exists() || glslFile.lastModified() > spvFile.lastModified()) {
                 Logger.info("Compiling shader [{}] to [{}]", glslFile.getPath(), spvFile.getPath());
                 String shaderCode = new String(Files.readAllBytes(glslFile.toPath()));
 
-                compiledShader = ShaderCompiler.compileShader(shaderCode, shaderType);
-                Files.write(spvFile.toPath(), compiledShader);
+                compiledShader = ShaderCompiler.compileShader(shaderCode, shaderFile.type().shaderc());
+                Path target = spvFile.toPath();
+                target.getParent().toFile().mkdirs();
+                Files.write(target, compiledShader, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                return true;
 
             } else {
                 Logger.debug("Shader [{}] already compiled. Loading compiled version: [{}]", glslFile.getPath(), spvFile.getPath());
+                return false;
             }
 
-        } catch (IOException err) {
+        } catch (IOException | URISyntaxException err) {
             throw new RuntimeException(err);
         }
     }

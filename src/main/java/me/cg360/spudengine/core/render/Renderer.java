@@ -2,12 +2,13 @@ package me.cg360.spudengine.core.render;
 
 import me.cg360.spudengine.core.EngineProperties;
 import me.cg360.spudengine.core.render.command.CommandPool;
-import me.cg360.spudengine.core.render.command.CommandQueue;
 import me.cg360.spudengine.core.render.command.PresentQueue;
+import me.cg360.spudengine.core.render.geometry.model.ModelManager;
 import me.cg360.spudengine.core.render.hardware.LogicalDevice;
 import me.cg360.spudengine.core.render.hardware.PhysicalDevice;
 import me.cg360.spudengine.core.render.hardware.Surface;
 import me.cg360.spudengine.core.render.command.GraphicsQueue;
+import me.cg360.spudengine.core.render.pipeline.PipelineCache;
 import me.cg360.spudengine.core.world.Scene;
 
 public class Renderer {
@@ -16,14 +17,16 @@ public class Renderer {
 
     private final LogicalDevice graphicsDevice;
     private final Surface surface;
-    private final GraphicsQueue graphicsQueue;
-
     private final SwapChain swapChain;
 
-
-    private final CommandPool commandPool;
-    private final PresentQueue presentQueue;
     private final ForwardRendererActivity forwardRenderActivity;
+    private final CommandPool commandPool;
+    private final GraphicsQueue graphicsQueue;
+    private final PresentQueue presentQueue;
+
+    private final PipelineCache pipelineCache;
+
+    private final ModelManager modelManager;
 
     public Renderer(Window window, Scene scene) {
         this.vulkanInstance = new VulkanInstance(EngineProperties.USE_DEBUGGING);
@@ -36,18 +39,22 @@ public class Renderer {
 
         this.swapChain = new SwapChain(this.graphicsDevice, this.surface, window,
                                        EngineProperties.SWAP_CHAIN_IMAGES, EngineProperties.VSYNC,
-                                       this.presentQueue, new CommandQueue[]{ this.graphicsQueue });
+                                       this.presentQueue, this.graphicsQueue);
 
         this.commandPool = new CommandPool(this.graphicsDevice, this.graphicsQueue.getQueueFamilyIndex());
-        this.forwardRenderActivity = new ForwardRendererActivity(this.swapChain, this.commandPool);
+        this.pipelineCache = new PipelineCache(this.graphicsDevice);
+        this.forwardRenderActivity = new ForwardRendererActivity(this.swapChain, this.commandPool, this.pipelineCache);
+
+        this.modelManager = new ModelManager();
     }
 
-    public void render(Window window, Scene scene) {
+    public void render(Window window, Scene scene, float time) {
         this.forwardRenderActivity.waitForFence();
 
         int imageIndex = this.swapChain.acquireNextImage();
         if (imageIndex < 0 ) return;
 
+        this.forwardRenderActivity.record(this.modelManager.getAllModels(), time);
         this.forwardRenderActivity.submit(this.graphicsQueue);
 
         this.swapChain.presentImage(this.presentQueue, imageIndex);
@@ -59,8 +66,11 @@ public class Renderer {
         this.graphicsQueue.waitIdle();
         this.graphicsDevice.waitIdle();
 
+        this.modelManager.cleanup();
+
         this.swapChain.cleanup();
 
+        this.pipelineCache.cleanup();
         this.forwardRenderActivity.cleanup();
         this.commandPool.cleanup();
 
@@ -70,4 +80,15 @@ public class Renderer {
         this.vulkanInstance.cleanup();
     }
 
+    public CommandPool getCommandPool() {
+        return this.commandPool;
+    }
+
+    public GraphicsQueue getGraphicsQueue() {
+        return this.graphicsQueue;
+    }
+
+    public ModelManager getModelManager() {
+        return this.modelManager;
+    }
 }

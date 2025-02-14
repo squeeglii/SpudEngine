@@ -34,10 +34,12 @@ public class SpudEngine {
         this.init(this.window, this.scene, this.renderer);
 
         this.isRunning = true;
+        this.ticksAlive = 0;
         this.enterMainLoop();
     }
 
     public void stop() {
+        Logger.info("Stop triggered...");
         this.isRunning = false;
     }
 
@@ -66,9 +68,12 @@ public class SpudEngine {
                 updateDelta--;
             }
 
-            this.renderer.render(this.window, this.scene);
+            this.renderer.render(this.window, this.scene, (float) (updateDelta + this.ticksAlive));
             prevInstant = now;
         }
+
+        // Wrap up fully.
+        this.isRunning = false;
 
         Logger.info("Cleaning up program.");
         this.cleanup();
@@ -80,7 +85,7 @@ public class SpudEngine {
 
         // logic!
 
-        Logger.info("Completed engine initialisation (init)");
+        Logger.info("Completed engine initialisation (pre-init)");
     }
 
     private void init(Window window, Scene scene, Renderer renderer) {
@@ -103,7 +108,6 @@ public class SpudEngine {
 
     private void cleanup() {
         // Cleanup logic
-
         this.renderer.cleanup();
         this.window.cleanup();
     }
@@ -111,6 +115,10 @@ public class SpudEngine {
     // Engine State:
     public boolean isRunning() {
         return this.isRunning;
+    }
+
+    public long getTicksAlive() {
+        return this.ticksAlive;
     }
 
     public static SpudEngine getMainInstance() {

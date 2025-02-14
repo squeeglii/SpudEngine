@@ -85,6 +85,10 @@ public class CommandBuffer {
         VulkanUtil.checkErrorCode(errClear, "Failed to end command buffer recording");
     }
 
+    public void reset() {
+        VK11.vkResetCommandBuffer(this.commandBuffer, VK11.VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
+    }
+
     public void cleanup() {
         Logger.trace("Destroying command buffer");
         VK11.vkFreeCommandBuffers(this.commandPool.getDevice().asVk(), this.commandPool.getHandle(), this.commandBuffer);

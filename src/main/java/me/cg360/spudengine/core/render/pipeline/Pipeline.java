@@ -78,8 +78,18 @@ public class Pipeline implements VkHandleWrapper {
                                     VK11.VK_DYNAMIC_STATE_SCISSOR
                             ));
 
+
+            VkPushConstantRange.Buffer pushConstantRange = null;
+            if (builder.getPushConstantSize() > 0) {
+                pushConstantRange = VkPushConstantRange.calloc(1, stack)
+                        .stageFlags(VK11.VK_SHADER_STAGE_FRAGMENT_BIT)
+                        .offset(0)
+                        .size(builder.getPushConstantSize());
+            }
+
             VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = VkPipelineLayoutCreateInfo.calloc(stack)
-                            .sType(VK11.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO);
+                            .sType(VK11.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
+                            .pPushConstantRanges(pushConstantRange);
 
             int errCreateLayout = VK11.vkCreatePipelineLayout(this.device.asVk(), pPipelineLayoutCreateInfo, null, lp);
             VulkanUtil.checkErrorCode(errCreateLayout, "Failed to create pipeline layout");
@@ -137,6 +147,8 @@ public class Pipeline implements VkHandleWrapper {
         private int cullMode = VK11.VK_CULL_MODE_NONE;
         private boolean useWireframe = false;
 
+        private int pushConstantSize = 2*VulkanUtil.FLOAT_BYTES; //TODO: Limited to 128 bytes. Used to time uniform.
+
         public Builder(VertexFormatDefinition format) {
             this.vertexFormatDefinition = format;
         }
@@ -169,6 +181,10 @@ public class Pipeline implements VkHandleWrapper {
 
         public int getCullMode() {
             return this.cullMode;
+        }
+
+        public int getPushConstantSize() {
+            return this.pushConstantSize;
         }
     }
 

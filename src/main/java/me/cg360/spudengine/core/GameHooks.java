@@ -7,9 +7,11 @@ import me.cg360.spudengine.core.world.Scene;
 public abstract class GameHooks {
 
     private final String instanceNickname;
+    private final SpudEngine engineInstance;
 
-    public GameHooks(String nickname) {
+    public GameHooks(String nickname, SpudEngine engineInstance) {
         this.instanceNickname = nickname;
+        this.engineInstance = engineInstance;
     }
 
     protected abstract void init(Window window, Scene scene, Renderer renderer);
@@ -25,5 +27,9 @@ public abstract class GameHooks {
 
     public final String getInstanceNickname() {
         return this.instanceNickname;
+    }
+
+    public final SpudEngine getEngine() {
+        return this.engineInstance;
     }
 }
