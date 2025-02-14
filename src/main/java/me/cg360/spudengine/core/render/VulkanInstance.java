@@ -177,8 +177,8 @@ public class VulkanInstance {
                 VkLayerProperties props = propsBuf.get(i);
                 String layerName = props.layerNameString();
                 supportedLayers.add(layerName);
-                Logger.debug("Supported layer: [{}]", layerName);
             }
+            Logger.debug("Supported layers: {}", supportedLayers);
 
             // -- Select validation layer to use.
             List<String> layersToUse = new ArrayList<>();
@@ -215,7 +215,7 @@ public class VulkanInstance {
             IntBuffer numExtensionsBuf = stack.callocInt(1);
             VK11.vkEnumerateInstanceExtensionProperties((String) null, numExtensionsBuf, null);
             int numExtensions = numExtensionsBuf.get(0);
-            Logger.debug("Instance supports [{}] extensions", numExtensions);
+            Logger.debug("Vulkan Instance supports [{}] extensions", numExtensions);
 
             // Collect and list extensions.
             VkExtensionProperties.Buffer instanceExtensionsProps = VkExtensionProperties.calloc(numExtensions, stack);
@@ -224,8 +224,9 @@ public class VulkanInstance {
                 VkExtensionProperties props = instanceExtensionsProps.get(i);
                 String extensionName = props.extensionNameString();
                 instanceExtensions.add(extensionName);
-                Logger.debug("Supported instance extension: [{}]", extensionName);
             }
+
+            Logger.debug("Supported vulkan instance extensions: {}", instanceExtensions);
         }
 
         return instanceExtensions;

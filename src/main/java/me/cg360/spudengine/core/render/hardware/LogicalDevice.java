@@ -38,7 +38,9 @@ public class LogicalDevice {
 
             requiredExtensions.flip();
 
-            VkPhysicalDeviceFeatures features = VkPhysicalDeviceFeatures.calloc(stack);
+            // Enable device features
+            VkPhysicalDeviceFeatures features = VkPhysicalDeviceFeatures.calloc(stack)
+                    .fillModeNonSolid(true);
 
             // Enable all the queue families
             VkQueueFamilyProperties.Buffer queuePropsBuff = physicalDevice.getQueueFamilyProperties();
@@ -85,7 +87,7 @@ public class LogicalDevice {
             IntBuffer numExtensionsBuf = stack.callocInt(1);
             VK11.vkEnumerateDeviceExtensionProperties(this.physicalDevice.asVk(), (String) null, numExtensionsBuf, null);
             int numExtensions = numExtensionsBuf.get(0);
-            Logger.debug("Device supports [{}] extensions", numExtensions);
+            Logger.debug("Logical device supports [{}] extensions", numExtensions);
 
             VkExtensionProperties.Buffer propsBuff = VkExtensionProperties.calloc(numExtensions, stack);
             VK11.vkEnumerateDeviceExtensionProperties(this.physicalDevice.asVk(), (String) null, numExtensionsBuf, propsBuff);
@@ -93,8 +95,9 @@ public class LogicalDevice {
                 VkExtensionProperties props = propsBuff.get(i);
                 String extensionName = props.extensionNameString();
                 deviceExtensions.add(extensionName);
-                Logger.debug("Supported device extension [{}]", extensionName);
             }
+
+            Logger.debug("Supported logical device extensions: {}", deviceExtensions);
         }
         return deviceExtensions;
     }

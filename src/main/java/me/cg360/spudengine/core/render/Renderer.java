@@ -29,6 +29,8 @@ public class Renderer {
 
     private final ModelManager modelManager;
 
+    public boolean useWireframe;
+
     public Renderer(Window window, Scene scene) {
         this.vulkanInstance = new VulkanInstance(EngineProperties.USE_DEBUGGING);
 
@@ -55,7 +57,7 @@ public class Renderer {
         int imageIndex = this.swapChain.acquireNextImage();
         if (imageIndex < 0 ) return;
 
-        this.forwardRenderActivity.record(this.modelManager.getAllModels(), time);
+        this.forwardRenderActivity.record(this, this.modelManager.getAllModels(), time);
         this.forwardRenderActivity.submit(this.graphicsQueue);
 
         this.swapChain.presentImage(this.presentQueue, imageIndex);

@@ -37,7 +37,6 @@ public class EngineProperties {
     public static final int SWAP_CHAIN_IMAGES = 3;
     public static final boolean VSYNC = true;
 
-
     // -- End of properties --
     private static boolean isInitialized = false;
 

@@ -7,6 +7,7 @@ import me.cg360.spudengine.core.render.Window;
 import me.cg360.spudengine.core.render.geometry.model.Mesh;
 import me.cg360.spudengine.core.render.geometry.model.Model;
 import me.cg360.spudengine.core.world.Scene;
+import org.lwjgl.glfw.GLFW;
 import org.tinylog.Logger;
 
 import java.util.List;
@@ -28,7 +29,7 @@ public class EnginePlayground extends GameHooks {
 
     @Override
     protected void init(Window window, Scene scene, Renderer renderer) {
-        Logger.info("\u001B[31mANSI Test.");
+        //Logger.info("\u001B[31mANSI Test.");
         List<Mesh> meshDataList = List.of(MESH_TRIANGLE_2D);
         List<Model> modelDataList = List.of(
                 new Model("triangle", meshDataList)
@@ -45,5 +46,11 @@ public class EnginePlayground extends GameHooks {
     @Override
     protected void input(Window window, Scene scene, long delta) {
 
+    }
+
+    @Override
+    protected void inputEvent(Window window, int key, int action, int modifiers) {
+        if(key == GLFW.GLFW_KEY_W && action == GLFW.GLFW_RELEASE)
+            this.getEngine().getRenderer().useWireframe = !this.getEngine().getRenderer().useWireframe;
     }
 }

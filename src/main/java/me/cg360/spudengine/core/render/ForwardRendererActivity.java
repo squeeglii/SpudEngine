@@ -41,6 +41,7 @@ public class ForwardRendererActivity {
     private final SwapChain swapChain;
 
     private final Pipeline pipeline;
+    private final Pipeline wireframePipeline;
     private final ShaderProgram shaderProgram;
 
     public ForwardRendererActivity(SwapChain swapChain, CommandPool commandPool, PipelineCache pipelineCache) {
@@ -70,13 +71,17 @@ public class ForwardRendererActivity {
 
             if (EngineProperties.SHOULD_RECOMPILE_SHADERS) {
                 long recompiles = shaders.stream().filter(ShaderCompiler::compileShaderIfChanged).count();
-                Logger.info("Recompiled {} shaders.", recompiles);
+                Logger.info("Recompiled {} shader(s).", recompiles);
             }
 
             this.shaderProgram = new ShaderProgram(device, shaders);
 
             Pipeline.Builder builder = Pipeline.builder(VertexFormats.POSITION.get());
             this.pipeline = builder.build(pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
+
+            builder.setWireFrameEnabled(true);
+            this.wireframePipeline = builder.build(pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
+
             builder.cleanup();
 
             this.commandBuffers = new CommandBuffer[numImages];
@@ -94,7 +99,7 @@ public class ForwardRendererActivity {
         currentFence.fenceWait();
     }
 
-    public void record(Collection<BufferedModel> models, float time) {
+    public void record(Renderer renderer, Collection<BufferedModel> models, float time) {
         try (MemoryStack stack = MemoryStack.stackPush()) {
             VkExtent2D swapChainExtent = this.swapChain.getSwapChainExtent();
             int width = swapChainExtent.width();
@@ -131,7 +136,8 @@ public class ForwardRendererActivity {
             VkCommandBuffer cmd = commandBuffer.asVk();
             VK11.vkCmdBeginRenderPass(cmd, renderPassBeginInfo, VK11.VK_SUBPASS_CONTENTS_INLINE); // ----
 
-            VK11.vkCmdBindPipeline(cmd, VK11.VK_PIPELINE_BIND_POINT_GRAPHICS, this.pipeline.getHandle());
+            long selectedPipeline = renderer.useWireframe ? this.wireframePipeline.getHandle() : this.pipeline.getHandle();
+            VK11.vkCmdBindPipeline(cmd, VK11.VK_PIPELINE_BIND_POINT_GRAPHICS, selectedPipeline);
 
             // Setup view
             VkViewport.Buffer viewport = VkViewport.calloc(1, stack)
@@ -200,6 +206,8 @@ public class ForwardRendererActivity {
 
     public void cleanup() {
         this.pipeline.cleanup();
+        this.wireframePipeline.cleanup();
+
         this.shaderProgram.cleanup();
 
         Arrays.asList(this.frameBuffers).forEach(FrameBuffer::cleanup);

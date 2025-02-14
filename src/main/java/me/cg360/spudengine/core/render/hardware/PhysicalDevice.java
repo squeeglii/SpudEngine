@@ -44,7 +44,9 @@ public class PhysicalDevice {
             this.queueFamilyProperties = VkQueueFamilyProperties.calloc(intBuffer.get(0));
             VK11.vkGetPhysicalDeviceQueueFamilyProperties(vkPhysicalDevice, intBuffer, this.queueFamilyProperties);
 
-            this.features = VkPhysicalDeviceFeatures.calloc();
+            // Enable device features.
+            this.features = VkPhysicalDeviceFeatures.calloc()
+                    .fillModeNonSolid(true);
             VK11.vkGetPhysicalDeviceFeatures(vkPhysicalDevice, this.features);
 
             // Get Memory information and properties

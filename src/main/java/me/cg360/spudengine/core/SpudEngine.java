@@ -20,7 +20,7 @@ public class SpudEngine {
     private boolean isRunning = false;
 
     public SpudEngine() {
-        this.window = new Window(EngineProperties.WINDOW_TITLE);
+        this.window = new Window(EngineProperties.WINDOW_TITLE, this::inputEvent);
         this.scene = new Scene(this.window);
         this.renderer = new Renderer(this.window, this.scene);
         this.gameInstance = null;
@@ -59,7 +59,7 @@ public class SpudEngine {
             long now = System.currentTimeMillis();
             updateDelta += (now - prevInstant) / updateTargetPeriod;
 
-            this.input(this.window, this.scene, now - prevInstant);
+            this.inputTick(this.window, this.scene, now - prevInstant);
 
             if(updateDelta >= 1) {
                 long delta = now - updateInstant;
@@ -101,8 +101,12 @@ public class SpudEngine {
         this.ticksAlive++;
     }
 
-    private void input(Window window, Scene scene, long delta) {
+    private void inputTick(Window window, Scene scene, long delta) {
         this.gameInstance.input(window, scene, delta);
+    }
+
+    private void inputEvent(long windowHandle, int key, int scanCode, int action, int modifiers) {
+        this.gameInstance.inputEvent(window, key, action, modifiers);
     }
 
 
@@ -110,6 +114,17 @@ public class SpudEngine {
         // Cleanup logic
         this.renderer.cleanup();
         this.window.cleanup();
+    }
+
+    // Engine Components:
+
+
+    public Renderer getRenderer() {
+        return this.renderer;
+    }
+
+    public Window getWindow() {
+        return this.window;
     }
 
     // Engine State:
