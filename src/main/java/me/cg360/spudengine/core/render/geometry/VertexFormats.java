@@ -6,8 +6,13 @@ public class VertexFormats {
 
     public static final int DEFAULT_BINDING = 0;
 
-    public static final Supplier<VertexFormatDefinition> POSITION = () -> new VertexFormatDefinition(
+    public static final VertexFormatSummary POSITION = new VertexFormatSummary(
             Attribute.VEC3F.withBinding(DEFAULT_BINDING)
+    );
+
+    public static final VertexFormatSummary POSITION_UV = new VertexFormatSummary(
+            Attribute.VEC3F.withBinding(DEFAULT_BINDING),
+            Attribute.VEC2F.withBinding(DEFAULT_BINDING)
     );
 
 }

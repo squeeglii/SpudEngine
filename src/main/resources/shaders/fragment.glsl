@@ -1,12 +1,7 @@
 #version 450
 
+layout(location = 0) in vec2 texCoords;
 layout(location = 0) out vec4 uFragColor;
-
-layout(push_constant) uniform constants
-{
-    float time;
-    int updateRate;
-} pushConstants;
 
 // https://gamedev.stackexchange.com/questions/59797/glsl-shader-change-hue-saturation-brightness
 vec3 hsv2rgb(vec3 c)
@@ -19,10 +14,5 @@ vec3 hsv2rgb(vec3 c)
 
 void main()
 {
-
-    float updateFrac = pushConstants.time / pushConstants.updateRate;
-
-    vec3 hsv = vec3(updateFrac / 10, 1, 1);
-
-    uFragColor = vec4(hsv2rgb(hsv), 1);
+    uFragColor = vec4(texCoords.x, texCoords.y, 0, 1);
 }

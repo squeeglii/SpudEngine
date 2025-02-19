@@ -1,5 +1,6 @@
 package me.cg360.spudengine.core.render.pipeline;
 
+import me.cg360.spudengine.core.render.geometry.Attribute;
 import me.cg360.spudengine.core.render.geometry.VertexFormatDefinition;
 import me.cg360.spudengine.core.render.hardware.LogicalDevice;
 import me.cg360.spudengine.core.render.pipeline.shader.Shader;
@@ -12,6 +13,7 @@ import org.tinylog.Logger;
 
 import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
+import java.util.Arrays;
 
 public class Pipeline implements VkHandleWrapper {
 
@@ -21,6 +23,8 @@ public class Pipeline implements VkHandleWrapper {
 
     private final long pipelineLayout;
     private final long pipeline;
+
+    private final int pushConstantStage;
 
     public Pipeline(PipelineCache pipelineCache, Builder builder) {
         Logger.debug("Creating pipeline");
@@ -71,6 +75,17 @@ public class Pipeline implements VkHandleWrapper {
                             .sType(VK11.VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO)
                             .pAttachments(blendAttachmentState);
 
+            VkPipelineDepthStencilStateCreateInfo vkDepthStencilState = null;
+            if (builder.isUsingDepth()){
+                vkDepthStencilState = VkPipelineDepthStencilStateCreateInfo.calloc(stack)
+                        .sType(VK11.VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO)
+                        .depthTestEnable(true)
+                        .depthWriteEnable(true)
+                        .depthCompareOp(VK11.VK_COMPARE_OP_LESS_OR_EQUAL)
+                        .depthBoundsTestEnable(false)
+                        .stencilTestEnable(false);
+            }
+
             VkPipelineDynamicStateCreateInfo vkDynamicStates = VkPipelineDynamicStateCreateInfo.calloc(stack)
                             .sType(VK11.VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO)
                             .pDynamicStates(stack.ints(
@@ -82,10 +97,11 @@ public class Pipeline implements VkHandleWrapper {
             VkPushConstantRange.Buffer pushConstantRange = null;
             if (builder.getPushConstantSize() > 0) {
                 pushConstantRange = VkPushConstantRange.calloc(1, stack)
-                        .stageFlags(VK11.VK_SHADER_STAGE_FRAGMENT_BIT)
+                        .stageFlags(builder.getPushConstantStage())
                         .offset(0)
                         .size(builder.getPushConstantSize());
-            }
+                this.pushConstantStage = builder.getPushConstantStage();
+            } else this.pushConstantStage = 0;
 
             VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = VkPipelineLayoutCreateInfo.calloc(stack)
                             .sType(VK11.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
@@ -108,6 +124,9 @@ public class Pipeline implements VkHandleWrapper {
                     .layout(this.pipelineLayout)
                     .renderPass(builder.renderPass);
 
+            if(vkDepthStencilState != null)
+                pipeline.pDepthStencilState(vkDepthStencilState);
+
             int errCreate = VK11.vkCreateGraphicsPipelines(this.device.asVk(), pipelineCache.getHandle(), pipeline, null, lp);
             VulkanUtil.checkErrorCode(errCreate, "Error creating graphics pipeline");
             this.pipeline = lp.get(0);
@@ -129,6 +148,13 @@ public class Pipeline implements VkHandleWrapper {
         return this.pipelineLayout;
     }
 
+    public int getPushConstantStage() {
+        return this.pushConstantStage;
+    }
+
+    public boolean isUsingPerVertexPushConstants() {
+        return (this.pushConstantStage & VK11.VK_SHADER_STAGE_VERTEX_BIT) > 0;
+    }
 
     public static Builder builder(VertexFormatDefinition vertexFormatDefinition) {
         return new Builder(vertexFormatDefinition);
@@ -144,10 +170,12 @@ public class Pipeline implements VkHandleWrapper {
         private VertexFormatDefinition vertexFormatDefinition;
 
         // Optional
+        private boolean useDepth = true;
         private int cullMode = VK11.VK_CULL_MODE_NONE;
         private boolean useWireframe = false;
 
-        private int pushConstantSize = 2*VulkanUtil.FLOAT_BYTES; //TODO: Limited to 128 bytes. Used to time uniform.
+        private int pushConstantStage = VK11.VK_SHADER_STAGE_VERTEX_BIT;
+        private int[] pushConstantLayout = null;
 
         public Builder(VertexFormatDefinition format) {
             this.vertexFormatDefinition = format;
@@ -166,14 +194,34 @@ public class Pipeline implements VkHandleWrapper {
         }
 
         // Setters
-        public void setWireFrameEnabled(boolean useWireframe) {
+        public Builder setUsingDepth(boolean useDepth) {
+            this.useDepth = useDepth;
+            return this;
+        }
+
+        public Builder setUsingWireframe(boolean useWireframe) {
             this.useWireframe = useWireframe;
+            return this;
         }
 
-        public void setCullMode(int cullMode) {
+        public Builder setCullMode(int cullMode) {
             this.cullMode = cullMode;
+            return this;
         }
 
+        public Builder setPushConstantStage(int pushConstantStage) {
+            this.pushConstantStage = pushConstantStage;
+            return this;
+        }
+
+        public Builder setPushConstantLayout(int... pushConstantElementSizes) {
+            this.pushConstantLayout = pushConstantElementSizes;
+            return this;
+        }
+
+        public boolean isUsingDepth() {
+            return this.useDepth;
+        }
 
         public boolean isUsingWireframe() {
             return this.useWireframe;
@@ -183,8 +231,15 @@ public class Pipeline implements VkHandleWrapper {
             return this.cullMode;
         }
 
+        public int getPushConstantStage() {
+            return this.pushConstantStage;
+        }
+
         public int getPushConstantSize() {
-            return this.pushConstantSize;
+            if(this.pushConstantLayout == null)
+                return 0;
+
+            return Arrays.stream(this.pushConstantLayout).sum();
         }
     }
 

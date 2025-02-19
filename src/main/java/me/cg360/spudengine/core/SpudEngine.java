@@ -91,6 +91,8 @@ public class SpudEngine {
     private void init(Window window, Scene scene, Renderer renderer) {
         Logger.info("Initialising logic... (init)");
 
+        renderer.getModelManager().createMissingModel(renderer);
+
         this.gameInstance.init(window, scene, renderer);
 
         Logger.info("Completed logic initialisation (init)");

@@ -8,11 +8,13 @@ import me.cg360.spudengine.core.render.geometry.VertexFormats;
 import me.cg360.spudengine.core.render.geometry.model.BufferedMesh;
 import me.cg360.spudengine.core.render.geometry.model.BufferedModel;
 import me.cg360.spudengine.core.render.hardware.LogicalDevice;
+import me.cg360.spudengine.core.render.image.Attachment;
 import me.cg360.spudengine.core.render.image.FrameBuffer;
 import me.cg360.spudengine.core.render.image.ImageView;
 import me.cg360.spudengine.core.render.image.SwapChain;
 import me.cg360.spudengine.core.render.pipeline.Pipeline;
 import me.cg360.spudengine.core.render.pipeline.PipelineCache;
+import me.cg360.spudengine.core.render.pipeline.pass.SwapChainRenderPass;
 import me.cg360.spudengine.core.render.pipeline.shader.BinaryShaderFile;
 import me.cg360.spudengine.core.render.pipeline.shader.ShaderCompiler;
 import me.cg360.spudengine.core.render.pipeline.shader.ShaderProgram;
@@ -20,13 +22,17 @@ import me.cg360.spudengine.core.render.pipeline.shader.ShaderType;
 import me.cg360.spudengine.core.render.sync.Fence;
 import me.cg360.spudengine.core.render.sync.SyncSemaphores;
 import me.cg360.spudengine.core.util.VulkanUtil;
+import me.cg360.spudengine.core.world.Projection;
+import me.cg360.spudengine.core.world.entity.RenderedEntity;
+import me.cg360.spudengine.core.world.Scene;
+import me.cg360.spudengine.core.world.entity.StaticModelEntity;
+import org.joml.Matrix4f;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.*;
 import org.tinylog.Logger;
 
 import java.awt.*;
-import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
+import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
 import java.util.Arrays;
 import java.util.Collection;
@@ -34,63 +40,104 @@ import java.util.List;
 
 public class ForwardRendererActivity {
 
+    private LogicalDevice device;
+
     private final CommandBuffer[] commandBuffers;
     private final Fence[] fences;
-    private final FrameBuffer[] frameBuffers;
     private final SwapChainRenderPass renderPass;
-    private final SwapChain swapChain;
 
+    private SwapChain swapChain;
+    private FrameBuffer[] frameBuffers;
+
+    private final PipelineCache pipelineCache;
     private final Pipeline pipeline;
     private final Pipeline wireframePipeline;
     private final ShaderProgram shaderProgram;
 
-    public ForwardRendererActivity(SwapChain swapChain, CommandPool commandPool, PipelineCache pipelineCache) {
-        this.swapChain = swapChain;
+    private Attachment[] depthAttachments;
 
+    private final Scene scene;
+
+    public ForwardRendererActivity(SwapChain swapChain, CommandPool commandPool, PipelineCache pipelineCache, Scene scene) {
+        this.swapChain = swapChain;
+        this.pipelineCache = pipelineCache;
+        this.device = swapChain.getDevice();
+
+        this.scene = scene;
+
+        int numImages = swapChain.getImageViews().length;
+        this.createDepthImages();
+        this.renderPass = new SwapChainRenderPass(swapChain, this.depthAttachments[0].getImage().getFormat());
+        this.createFrameBuffers();
+
+        List<BinaryShaderFile> shaders = List.of(
+                new BinaryShaderFile(ShaderType.VERTEX, "shaders/vertex"),
+                new BinaryShaderFile(ShaderType.FRAGMENT, "shaders/fragment")
+        );
+
+        if (EngineProperties.SHOULD_RECOMPILE_SHADERS) {
+            long recompiles = shaders.stream().filter(ShaderCompiler::compileShaderIfChanged).count();
+            Logger.info("Recompiled {} shader(s).", recompiles);
+        }
+
+        this.shaderProgram = new ShaderProgram(this.device, shaders);
+
+        Pipeline.Builder builder = Pipeline.builder(VertexFormats.POSITION_UV.getDefinition())
+                .setPushConstantLayout(  // see #applyPushConstants(...)
+                        //VulkanUtil.FLOAT_BYTES, // time
+                        //VulkanUtil.INT_BYTES // ticks per second.
+                        VulkanUtil.MAT4X4F, // proj
+                        VulkanUtil.MAT4X4F // transform
+                );
+        this.pipeline = builder.build(pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
+        this.wireframePipeline = builder.setUsingWireframe(true)
+                                        .build(pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
+
+        builder.cleanup();
+
+        this.commandBuffers = new CommandBuffer[numImages];
+        this.fences = new Fence[numImages];
+        for (int i = 0; i < numImages; i++) {
+            this.commandBuffers[i] = new CommandBuffer(commandPool, true, false);
+            this.fences[i] = new Fence(device, true);
+        }
+    }
+
+    private void createDepthImages() {
+        int numImages = this.swapChain.getImageViews().length;
+        VkExtent2D swapChainExtent = this.swapChain.getSwapChainExtent();
+
+        this.depthAttachments = new Attachment[numImages];
+        for (int i = 0; i < numImages; i++) {
+            this.depthAttachments[i] = new Attachment(this.device, swapChainExtent.width(), swapChainExtent.height(),
+                    VK11.VK_FORMAT_D32_SFLOAT, VK11.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+        }
+    }
+
+    private void createFrameBuffers() {
         try (MemoryStack stack = MemoryStack.stackPush()) {
-            LogicalDevice device = swapChain.getDevice();
-            VkExtent2D swapChainExtent = swapChain.getSwapChainExtent();
-            ImageView[] imageViews = swapChain.getImageViews();
+            VkExtent2D swapChainExtent = this.swapChain.getSwapChainExtent();
+            ImageView[] imageViews = this.swapChain.getImageViews();
             int numImages = imageViews.length;
 
-            this.renderPass = new SwapChainRenderPass(swapChain);
-
-            LongBuffer pAttachments = stack.mallocLong(1);
+            LongBuffer pAttachments = stack.mallocLong(2);
             this.frameBuffers = new FrameBuffer[numImages];
 
             for (int i = 0; i < numImages; i++) {
+                ImageView depthView = this.depthAttachments[i].getImageView();
                 pAttachments.put(0, imageViews[i].getHandle());
-                this.frameBuffers[i] = new FrameBuffer(device, swapChainExtent.width(), swapChainExtent.height(),
-                        pAttachments, this.renderPass.getHandle());
-            }
+                pAttachments.put(1, depthView.getHandle());
 
-            List<BinaryShaderFile> shaders = List.of(
-                    new BinaryShaderFile(ShaderType.VERTEX, "shaders/vertex"),
-                    new BinaryShaderFile(ShaderType.FRAGMENT, "shaders/fragment")
-            );
-
-            if (EngineProperties.SHOULD_RECOMPILE_SHADERS) {
-                long recompiles = shaders.stream().filter(ShaderCompiler::compileShaderIfChanged).count();
-                Logger.info("Recompiled {} shader(s).", recompiles);
-            }
-
-            this.shaderProgram = new ShaderProgram(device, shaders);
-
-            Pipeline.Builder builder = Pipeline.builder(VertexFormats.POSITION.get());
-            this.pipeline = builder.build(pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
-
-            builder.setWireFrameEnabled(true);
-            this.wireframePipeline = builder.build(pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
-
-            builder.cleanup();
-
-            this.commandBuffers = new CommandBuffer[numImages];
-            this.fences = new Fence[numImages];
-            for (int i = 0; i < numImages; i++) {
-                this.commandBuffers[i] = new CommandBuffer(commandPool, true, false);
-                this.fences[i] = new Fence(device, true);
+                this.frameBuffers[i] = new FrameBuffer(this.device, swapChainExtent.width(), swapChainExtent.height(),
+                                        pAttachments, this.renderPass.getHandle());
             }
         }
+    }
+
+    private void applyPushConstants(VkCommandBuffer cmd, long currentPipelineLayout, ByteBuffer buf, Matrix4f proj, Matrix4f transform) {
+        proj.get(buf);
+        transform.get(VulkanUtil.MAT4X4F, buf);
+        VK11.vkCmdPushConstants(cmd, currentPipelineLayout, VK11.VK_SHADER_STAGE_VERTEX_BIT, 0, buf);
     }
 
     public void waitForFence() {
@@ -114,7 +161,7 @@ public class ForwardRendererActivity {
             //fence.reset();
             commandBuffer.reset();
 
-            VkClearValue.Buffer clearValues = VkClearValue.calloc(1, stack);
+            VkClearValue.Buffer clearValues = VkClearValue.calloc(2, stack);
             Color c = EngineProperties.CLEAR_COLOUR;
             float[] components = new float[4];
             c.getComponents(components);
@@ -124,6 +171,7 @@ public class ForwardRendererActivity {
                     .float32(2, components[2])
                     .float32(3, components[3])
             );
+            clearValues.apply(1, v -> v.depthStencil().depth(1.0f));
 
             VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.calloc(stack)
                     .sType(VK11.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO)
@@ -136,8 +184,8 @@ public class ForwardRendererActivity {
             VkCommandBuffer cmd = commandBuffer.asVk();
             VK11.vkCmdBeginRenderPass(cmd, renderPassBeginInfo, VK11.VK_SUBPASS_CONTENTS_INLINE); // ----
 
-            long selectedPipeline = renderer.useWireframe ? this.wireframePipeline.getHandle() : this.pipeline.getHandle();
-            VK11.vkCmdBindPipeline(cmd, VK11.VK_PIPELINE_BIND_POINT_GRAPHICS, selectedPipeline);
+            Pipeline selectedPipeline = renderer.useWireframe ? this.wireframePipeline : this.pipeline;
+            VK11.vkCmdBindPipeline(cmd, VK11.VK_PIPELINE_BIND_POINT_GRAPHICS, selectedPipeline.getHandle());
 
             // Setup view
             VkViewport.Buffer viewport = VkViewport.calloc(1, stack)
@@ -163,21 +211,36 @@ public class ForwardRendererActivity {
             offsets.put(0, 0L);
             LongBuffer vertexBufferHandle = stack.mallocLong(1);
 
-            // Push time as a "push constant"
-            FloatBuffer timeBuf = stack.mallocFloat(1);
-            timeBuf.put(0, time);
-            VK11.vkCmdPushConstants(cmd, this.pipeline.getPipelineLayoutHandle(), VK11.VK_SHADER_STAGE_FRAGMENT_BIT, 0, timeBuf);
+            ByteBuffer pushConstants = stack.malloc(128);
 
-            IntBuffer tickRateBuf = stack.mallocInt(1);
-            tickRateBuf.put(0, EngineProperties.UPDATES_PER_SECOND);
-            VK11.vkCmdPushConstants(cmd, this.pipeline.getPipelineLayoutHandle(), VK11.VK_SHADER_STAGE_FRAGMENT_BIT, VulkanUtil.INT_BYTES, tickRateBuf);
+            // Push Constants & Rendering!
+            boolean perVertexConstants = selectedPipeline.isUsingPerVertexPushConstants();
+            //if(!perVertexConstants)
+            //    this.applyPushConstants(cmd, pushConstants);
+            // todo: ^ figure how to make this easier to adapt.
 
-            for (BufferedModel vulkanModel : models) {
-                for (BufferedMesh mesh : vulkanModel.getSubMeshes()) {
+            Projection proj = this.scene.getProjection();
+
+
+            for (String modelId: this.scene.getUsedModelIds()) {
+                BufferedModel model = renderer.getModelManager().getModel(modelId);
+                List<StaticModelEntity> entities = this.scene.getEntitiesWithModel(modelId);
+
+                //Logger.trace(entities);
+                //Logger.trace(model);
+
+                for (BufferedMesh mesh : model.getSubMeshes()) {
                     vertexBufferHandle.put(0, mesh.vertices().getHandle());
                     VK11.vkCmdBindVertexBuffers(cmd, 0, vertexBufferHandle, offsets);
                     VK11.vkCmdBindIndexBuffer(cmd, mesh.indices().getHandle(), 0, VK11.VK_INDEX_TYPE_UINT32);
-                    VK11.vkCmdDrawIndexed(cmd, mesh.numIndices(), 1, 0, 0, 0);
+
+                    for(RenderedEntity entity: entities) {
+                        if (perVertexConstants)
+                            this.applyPushConstants(cmd, selectedPipeline.getPipelineLayoutHandle(), pushConstants,
+                                                    proj.getProjectionMatrix(), entity.getTransform());
+
+                        VK11.vkCmdDrawIndexed(cmd, mesh.numIndices(), 1, 0, 0, 0);
+                    }
                 }
             }
 
@@ -204,6 +267,14 @@ public class ForwardRendererActivity {
         }
     }
 
+    public void resize(SwapChain swapChain) {
+        this.swapChain = swapChain;
+        Arrays.asList(this.frameBuffers).forEach(FrameBuffer::cleanup);
+        Arrays.asList(this.depthAttachments).forEach(Attachment::cleanup);
+        this.createDepthImages();
+        this.createFrameBuffers();
+    }
+
     public void cleanup() {
         this.pipeline.cleanup();
         this.wireframePipeline.cleanup();
@@ -211,6 +282,7 @@ public class ForwardRendererActivity {
         this.shaderProgram.cleanup();
 
         Arrays.asList(this.frameBuffers).forEach(FrameBuffer::cleanup);
+        Arrays.asList(this.depthAttachments).forEach(Attachment::cleanup);
         this.renderPass.cleanup();
 
         Arrays.asList(this.commandBuffers).forEach(CommandBuffer::cleanup);

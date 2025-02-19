@@ -18,7 +18,8 @@ public class Renderer {
 
     private final LogicalDevice graphicsDevice;
     private final Surface surface;
-    private final SwapChain swapChain;
+
+    private SwapChain swapChain;
 
     private final ForwardRendererActivity forwardRenderActivity;
     private final CommandPool commandPool;
@@ -46,21 +47,43 @@ public class Renderer {
 
         this.commandPool = new CommandPool(this.graphicsDevice, this.graphicsQueue.getQueueFamilyIndex());
         this.pipelineCache = new PipelineCache(this.graphicsDevice);
-        this.forwardRenderActivity = new ForwardRendererActivity(this.swapChain, this.commandPool, this.pipelineCache);
+        this.forwardRenderActivity = new ForwardRendererActivity(this.swapChain, this.commandPool, this.pipelineCache, scene);
 
         this.modelManager = new ModelManager();
     }
 
     public void render(Window window, Scene scene, float time) {
+        if (window.getWidth() <= 0 && window.getHeight() <= 0)
+            return;
+
         this.forwardRenderActivity.waitForFence();
 
-        int imageIndex = this.swapChain.acquireNextImage();
-        if (imageIndex < 0 ) return;
+        int imageIndex;
+        if (window.requiresSizeUpdate() || (imageIndex = this.swapChain.acquireNextImage()) < 0 ) {
+            window.setRequiresSizeUpdate(false);
+            this.onResize(window);
+            scene.getProjection().resize(window.getWidth(), window.getHeight());
+
+            imageIndex = this.swapChain.acquireNextImage();
+        }
 
         this.forwardRenderActivity.record(this, this.modelManager.getAllModels(), time);
         this.forwardRenderActivity.submit(this.graphicsQueue);
 
-        this.swapChain.presentImage(this.presentQueue, imageIndex);
+        if (this.swapChain.presentImage(this.presentQueue, imageIndex))
+            window.setRequiresSizeUpdate(true);
+    }
+
+    public void onResize(Window window) {
+        this.graphicsDevice.waitIdle();
+        this.graphicsQueue.waitIdle();
+        this.swapChain.cleanup();
+
+        this.swapChain = new SwapChain(this.graphicsDevice, this.surface, window,
+                EngineProperties.SWAP_CHAIN_IMAGES, EngineProperties.VSYNC,
+                this.presentQueue, this.graphicsQueue);
+
+        this.forwardRenderActivity.resize(this.swapChain);
     }
 
 

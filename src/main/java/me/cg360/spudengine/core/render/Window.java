@@ -76,7 +76,7 @@ public class Window implements VkHandleWrapper {
     }
 
 
-    public void setResized(boolean resized) {
+    public void setRequiresSizeUpdate(boolean resized) {
         this.hasBeenResized = resized;
     }
 
@@ -93,7 +93,7 @@ public class Window implements VkHandleWrapper {
         return this.mouseInput;
     }
 
-    public boolean hasBeenResized() {
+    public boolean requiresSizeUpdate() {
         return this.hasBeenResized;
     }
 

@@ -6,7 +6,9 @@ import org.lwjgl.vulkan.VK11;
 public enum ShaderType {
 
     VERTEX(Shaderc.shaderc_glsl_vertex_shader, VK11.VK_SHADER_STAGE_VERTEX_BIT),
-    FRAGMENT(Shaderc.shaderc_glsl_fragment_shader, VK11.VK_SHADER_STAGE_FRAGMENT_BIT),;
+    FRAGMENT(Shaderc.shaderc_glsl_fragment_shader, VK11.VK_SHADER_STAGE_FRAGMENT_BIT),
+    GEOMETRY(Shaderc.shaderc_glsl_geometry_shader, VK11.VK_SHADER_STAGE_GEOMETRY_BIT),
+    COMPUTE(Shaderc.shaderc_glsl_compute_shader, VK11.VK_SHADER_STAGE_COMPUTE_BIT);
 
     private int shaderc;
     private int vulkan;

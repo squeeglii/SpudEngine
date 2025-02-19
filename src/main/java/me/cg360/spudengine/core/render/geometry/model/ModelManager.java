@@ -6,6 +6,9 @@ import me.cg360.spudengine.core.render.buffer.GeneralBuffer;
 import me.cg360.spudengine.core.render.command.CommandBuffer;
 import me.cg360.spudengine.core.render.command.CommandPool;
 import me.cg360.spudengine.core.render.command.CommandQueue;
+import me.cg360.spudengine.core.render.geometry.ModelValidationException;
+import me.cg360.spudengine.core.render.geometry.VertexFormatSummary;
+import me.cg360.spudengine.core.render.geometry.VertexFormats;
 import me.cg360.spudengine.core.render.hardware.LogicalDevice;
 import me.cg360.spudengine.core.render.sync.Fence;
 import me.cg360.spudengine.core.util.VulkanUtil;
@@ -21,10 +24,19 @@ import java.util.*;
 
 public class ModelManager {
 
+    public static String ID_MISSING_MODEL = "missing";
+
+    private static final VertexFormatSummary BUFFER_FORMAT = VertexFormats.POSITION_UV;
+
     private final Map<String, BufferedModel> bufferedModels;
 
     public ModelManager() {
         this.bufferedModels = new HashMap<>();
+    }
+
+    public void createMissingModel(Renderer renderer) {
+        Model model = new Model(ID_MISSING_MODEL, Primitive.CUBE);
+        this.transformModels(renderer, model);
     }
 
     public void cleanup() {
@@ -61,11 +73,19 @@ public class ModelManager {
         // bulk action for all models. Efficiency!
         cmd.record(() -> {
             for (Model modelData : models) {
-                BufferedModel vulkanModel = new BufferedModel(modelData.getId());
+                Logger.trace("Buffering model: {}", modelData.getId());
+                BufferedModel vulkanModel = new BufferedModel(modelData.getId(), BUFFER_FORMAT);
                 vulkanModelList.add(vulkanModel);
 
                 // Transform meshes loading their data into GPU buffers
                 for (Mesh meshData : modelData.getSubMeshes()) {
+
+                    try {
+                        meshData.validate();
+                    } catch (ModelValidationException err) {
+                        Logger.error(err, "Error transforming model '%s'".formatted(modelData.getId()));
+                    }
+
                     BufferTransfer verticesBuffers = createVerticesBuffers(device, meshData);
                     BufferTransfer indicesBuffers = createIndicesBuffers(device, meshData);
                     stagingBufferList.add(verticesBuffers.src());
@@ -108,6 +128,21 @@ public class ModelManager {
     }
 
 
+    public BufferedModel getModel(String id) {
+        if (!this.bufferedModels.containsKey(id)) {
+            Logger.trace("Failed to find model {}", id);
+            Logger.trace("Available model pool: {}", this.bufferedModels);
+            BufferedModel fallback = this.bufferedModels.get(ID_MISSING_MODEL);
+            if (fallback == null)
+                throw new IllegalStateException("Fallback model required, but was not registered & buffered.");
+
+            return fallback;
+        }
+
+        return this.bufferedModels.get(id);
+    }
+
+
     public Collection<BufferedModel> getAllModels() {
         return this.bufferedModels.values();
     }
@@ -115,8 +150,11 @@ public class ModelManager {
 
     private static BufferTransfer createVerticesBuffers(LogicalDevice device, Mesh mesh) {
         float[] positions = mesh.positions();
-        int numPositions = positions.length;
-        int bufferSize = numPositions * VulkanUtil.FLOAT_BYTES;
+        float[] texCoords = mesh.textureCoordinates();
+
+        int vertexSize = BUFFER_FORMAT.getVertexSize();
+        int elementCount = mesh.vertexCount() * vertexSize;
+        int bufferSize = elementCount * VulkanUtil.FLOAT_BYTES;
 
         // use for transfer, set mappable, remove need for flushing
         int srcUse = VK11.VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
@@ -131,9 +169,18 @@ public class ModelManager {
 
         long mappedMemory = srcBuffer.map();
         FloatBuffer data = MemoryUtil.memFloatBuffer(mappedMemory, (int) srcBuffer.getRequestedSize());
-        data.put(positions);
-        srcBuffer.unmap();
+        for(int v = 0; v < mesh.vertexCount(); v++) {
+            int vPos = v * 3;
+            int tPos = v * 2;
 
+            data.put(positions[vPos  ]);
+            data.put(positions[vPos+1]);
+            data.put(positions[vPos+2]);    // adjusting this? Make sure it follows the BUFFER_FORMAT.
+            data.put(texCoords[tPos  ]);
+            data.put(texCoords[tPos+1]);
+        }
+
+        srcBuffer.unmap();
         return new BufferTransfer(srcBuffer, dstBuffer);
     }
 
