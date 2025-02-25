@@ -1,7 +1,6 @@
 package me.cg360.spudengine.core;
 
 import me.cg360.spudengine.test.EnginePlayground;
-import me.cg360.spudengine.wormholes.WormholeDemo;
 import org.tinylog.Logger;
 
 import java.awt.*;
@@ -39,6 +38,7 @@ public class EngineProperties {
     public static final float FOV = 70.0f;
     public static final float NEAR_PLANE = 1.0f;
     public static final float FAR_PLANE = 100.0f;
+    public static final int MAX_TEXTURES = 1024;
 
     // -- End of properties --
     private static boolean isInitialized = false;

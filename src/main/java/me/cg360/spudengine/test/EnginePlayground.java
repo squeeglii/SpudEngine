@@ -4,15 +4,14 @@ import me.cg360.spudengine.core.GameHooks;
 import me.cg360.spudengine.core.SpudEngine;
 import me.cg360.spudengine.core.render.Renderer;
 import me.cg360.spudengine.core.render.Window;
-import me.cg360.spudengine.core.render.geometry.model.Mesh;
-import me.cg360.spudengine.core.render.geometry.model.Model;
-import me.cg360.spudengine.core.render.geometry.model.ModelLoader;
+import me.cg360.spudengine.core.render.geometry.model.*;
+import me.cg360.spudengine.core.render.image.texture.Texture;
 import me.cg360.spudengine.core.world.entity.DummyEntity;
 import me.cg360.spudengine.core.world.Scene;
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 
-import java.util.List;
+import java.awt.*;
 
 public class EnginePlayground extends GameHooks {
 
@@ -38,13 +37,13 @@ public class EnginePlayground extends GameHooks {
             },
             new float[]{
                     0.0f, 0.0f,
-                    0.5f, 0.0f,
                     1.0f, 0.0f,
-                    1.0f, 0.5f,
-                    1.0f, 1.0f,
-                    0.5f, 1.0f,
+                    2.0f, 0.0f,
+                    2.0f, 1.0f,
+                    2.0f, 2.0f,
+                    1.0f, 2.0f,
+                    0.0f, 2.0f,
                     0.0f, 1.0f,
-                    0.0f, 0.5f,
             },
             new int[]{
                     // Front face
@@ -66,6 +65,7 @@ public class EnginePlayground extends GameHooks {
     private static final Vector3f ROTATION_AXIS = new Vector3f(0, 1, 0);
 
     private DummyEntity chamberEntity;
+    private DummyEntity cubeEntity;
     private float angle;
 
     public EnginePlayground(SpudEngine engineInstance) {
@@ -75,16 +75,21 @@ public class EnginePlayground extends GameHooks {
     @Override
     protected void init(Window window, Scene scene, Renderer renderer) {
         //Logger.info("\u001B[31mANSI Test.");
-        List<Model> modelDataList = List.of(
-                new Model("triangle", MESH_TRIANGLE_2D),
-                new Model("cube", MESH_CUBE)
+
+        Texture colTex = renderer.getTextureManager().newCheckerboardTexture(
+                "magenta", 256, 256, 3, 32, Color.MAGENTA, Color.BLACK
         );
 
-        Model chamberModel = ModelLoader.loadEnvironmentModel("chamber01", "env/chamber01.obj");
-        renderer.getModelManager().processModels(renderer, chamberModel);
+        renderer.getModelManager().processModels(renderer,
+                ModelLoader.loadEnvironmentModel("chamber01", "env/chamber01.obj"),
+                new Model("cube", new Material("missing", Material.WHITE), MESH_CUBE)
+        );
 
         this.chamberEntity = new DummyEntity("chamber01");
+        this.cubeEntity = new DummyEntity("cube");
+
         scene.addEntity(this.chamberEntity);
+        scene.addEntity(this.cubeEntity);
     }
 
     @Override
@@ -98,7 +103,11 @@ public class EnginePlayground extends GameHooks {
         this.chamberEntity.getRotation().identity().rotateAxis((float) Math.toRadians(this.angle), ROTATION_AXIS);
         this.chamberEntity.updateTransform();
 
-        this.chamberEntity.setPosition(0, -2, -20);
+        this.cubeEntity.getRotation().identity().rotateAxis((float) Math.toRadians(this.angle), ROTATION_AXIS);
+        this.cubeEntity.updateTransform();
+
+        this.chamberEntity.setPosition(0, -5, -20);
+        this.cubeEntity.setPosition(0, 1, -14);
     }
 
     @Override

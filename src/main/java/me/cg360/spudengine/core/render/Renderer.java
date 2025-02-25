@@ -124,6 +124,10 @@ public class Renderer {
         return this.modelManager;
     }
 
+    public TextureManager getTextureManager() {
+        return this.textureManager;
+    }
+
     public RenderProcess getRenderProcess() {
         return this.renderProcess;
     }

@@ -16,6 +16,7 @@ public abstract class DescriptorSet {
     protected final long descriptorSet;
 
     public DescriptorSet(DescriptorPool pool, DescriptorSetLayout template, int binding) {
+        Logger.info("Building DescriptorSet of type {}", template.getDescriptorSetType());
         this.descriptorSet = this.buildDescriptorSet(pool, template, binding);
     }
 
@@ -31,13 +32,11 @@ public abstract class DescriptorSet {
                     .descriptorPool(pool.getHandle())
                     .pSetLayouts(pDescriptorSetLayout);
 
-            Logger.debug(pool);
-            Logger.debug(pDescriptorSetLayout);
-            Logger.debug(template.getDescriptorSetType());
-
             LongBuffer pDescriptorSet = stack.mallocLong(1);
             int errCode = VK11.vkAllocateDescriptorSets(device.asVk(), allocInfo, pDescriptorSet);
-            VulkanUtil.checkErrorCode(errCode, "Failed to create descriptor set");
+            VulkanUtil.checkErrorCode(errCode, () -> {
+                Logger.debug(pool);
+            }, "Failed to create descriptor set");
 
             descriptorSet = pDescriptorSet.get(0);
         }

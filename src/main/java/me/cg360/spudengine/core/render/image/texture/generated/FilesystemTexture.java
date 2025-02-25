@@ -1,6 +1,8 @@
-package me.cg360.spudengine.core.render.image.texture;
+package me.cg360.spudengine.core.render.image.texture.generated;
 
 import me.cg360.spudengine.core.render.hardware.LogicalDevice;
+import me.cg360.spudengine.core.render.image.texture.ImageParseFailException;
+import me.cg360.spudengine.core.render.image.texture.Texture;
 import org.lwjgl.stb.STBImage;
 import org.lwjgl.system.MemoryStack;
 

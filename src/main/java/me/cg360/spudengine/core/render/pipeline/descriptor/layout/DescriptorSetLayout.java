@@ -57,4 +57,9 @@ public abstract class DescriptorSetLayout implements VkHandleWrapper {
     public final LogicalDevice getDevice() {
         return this.device;
     }
+
+    @Override
+    public String toString() {
+        return "[ DescriptorLayout :: type=%s, count=%s ]".formatted(this.type, this.count);
+    }
 }

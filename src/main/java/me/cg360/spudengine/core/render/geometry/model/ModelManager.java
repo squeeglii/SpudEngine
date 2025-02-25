@@ -13,6 +13,7 @@ import me.cg360.spudengine.core.render.hardware.LogicalDevice;
 import me.cg360.spudengine.core.render.image.texture.Texture;
 import me.cg360.spudengine.core.render.image.texture.TextureManager;
 import me.cg360.spudengine.core.render.sync.Fence;
+import me.cg360.spudengine.core.util.Registry;
 import me.cg360.spudengine.core.util.VulkanUtil;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
@@ -24,7 +25,7 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.*;
 
-public class ModelManager {
+public class ModelManager implements Registry {
 
     public static String ID_MISSING_MODEL = "missing";
 
@@ -37,7 +38,7 @@ public class ModelManager {
 
     private final Map<String, BufferedModel> bufferedModels;
 
-    private final Material fallbackMaterial;
+    public final Material fallbackMaterial;
 
     public ModelManager(LogicalDevice graphicsDevice, TextureManager textureManager) {
         this.graphicsDevice = graphicsDevice;
@@ -171,7 +172,6 @@ public class ModelManager {
         return this.transformMaterial(cmd, this.fallbackMaterial, device, uploadedTextures);
     }
 
-
     public BufferedModel getModel(String id) {
         if (!this.bufferedModels.containsKey(id)) {
             Logger.trace("Failed to find model {}", id);
@@ -262,4 +262,8 @@ public class ModelManager {
         }
     }
 
+    @Override
+    public String getRegistryIdentifier() {
+        return "MODEL_MANAGER";
+    }
 }

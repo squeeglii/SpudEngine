@@ -6,6 +6,8 @@ import org.tinylog.Logger;
 
 public class VulkanUtil {
 
+    public static final Runnable NO_ACTION = () -> {};
+
     public static final int MESSAGE_SEVERITY_BITMASK = EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT |
             EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
 
@@ -43,8 +45,20 @@ public class VulkanUtil {
     }
 
     public static void checkErrorCode(int errorCode, String errMsg, Object... vars) {
-        if (errorCode != VK11.VK_SUCCESS)
-            throw new RuntimeException("VkError [%s]: %s".formatted(errorCode, errMsg.formatted(vars)));
+        VulkanUtil.checkErrorCode(errorCode, NO_ACTION, errMsg, vars);
+    }
+
+    public static void checkErrorCode(int errorCode, Runnable debugDump, String errMsg, Object... vars) {
+        if (errorCode == VK11.VK_SUCCESS) return;
+
+        debugDump.run();
+
+        String translation = switch (errorCode) {
+            case -1000069000 -> "VK_ERROR_OUT_OF_POOL_MEMORY";
+            default -> "UNKNOWN_CODE";
+        };
+
+        throw new RuntimeException("VkError [%s|%s]: %s".formatted(errorCode, translation, errMsg.formatted(vars)));
     }
 
     public static int memoryTypeFromProperties(PhysicalDevice physDevice, int typeBits, int reqsMask) {

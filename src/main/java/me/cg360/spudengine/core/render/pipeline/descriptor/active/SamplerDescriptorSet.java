@@ -9,9 +9,9 @@ import org.lwjgl.vulkan.VK11;
 import org.lwjgl.vulkan.VkDescriptorImageInfo;
 import org.lwjgl.vulkan.VkWriteDescriptorSet;
 
-public class TextureDescriptorSet extends DescriptorSet {
+public class SamplerDescriptorSet extends DescriptorSet {
 
-    public TextureDescriptorSet(DescriptorPool pool, DescriptorSetLayout template, int binding, Texture texture, TextureSampler sampler) {
+    public SamplerDescriptorSet(DescriptorPool pool, DescriptorSetLayout template, int binding, Texture texture, TextureSampler sampler) {
         super(pool, template, binding); // calls buildDescriptorSet()
 
         try (MemoryStack stack = MemoryStack.stackPush()) {

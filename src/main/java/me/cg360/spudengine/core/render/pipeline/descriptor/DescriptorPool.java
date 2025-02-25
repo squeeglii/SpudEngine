@@ -103,4 +103,17 @@ public class DescriptorPool implements VkHandleWrapper {
     public DescriptorSetLayout[] getDescriptorSetLayouts() {
         return this.descriptorSetLayouts;
     }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+
+        if(this.descriptorSetLayouts != null) {
+            for(DescriptorSetLayout layout: this.descriptorSetLayouts) {
+                builder.append("\n - ").append(layout.toString());
+            }
+        } else builder.append("\n - NO LAYOUT");
+
+        return "[ Descriptor Pool #%s ]%s".formatted(this.descriptorPool, builder.toString());
+    }
 }

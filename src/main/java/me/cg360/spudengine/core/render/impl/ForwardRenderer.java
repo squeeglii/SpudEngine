@@ -21,7 +21,7 @@ import me.cg360.spudengine.core.render.image.texture.TextureSampler;
 import me.cg360.spudengine.core.render.pipeline.Pipeline;
 import me.cg360.spudengine.core.render.pipeline.PipelineCache;
 import me.cg360.spudengine.core.render.pipeline.descriptor.DescriptorPool;
-import me.cg360.spudengine.core.render.pipeline.descriptor.active.TextureDescriptorSet;
+import me.cg360.spudengine.core.render.pipeline.descriptor.active.SamplerDescriptorSet;
 import me.cg360.spudengine.core.render.pipeline.descriptor.active.UniformDescriptorSet;
 import me.cg360.spudengine.core.render.pipeline.descriptor.layout.DescriptorSetLayout;
 import me.cg360.spudengine.core.render.pipeline.descriptor.layout.SamplerDescriptorSetLayout;
@@ -33,6 +33,7 @@ import me.cg360.spudengine.core.render.pipeline.shader.ShaderProgram;
 import me.cg360.spudengine.core.render.pipeline.shader.ShaderType;
 import me.cg360.spudengine.core.render.sync.Fence;
 import me.cg360.spudengine.core.render.sync.SyncSemaphores;
+import me.cg360.spudengine.core.exception.EngineLimitExceededException;
 import me.cg360.spudengine.core.world.Projection;
 import me.cg360.spudengine.core.world.entity.RenderedEntity;
 import me.cg360.spudengine.core.world.Scene;
@@ -74,7 +75,7 @@ public class ForwardRenderer implements RenderProcess {
     private DescriptorSetLayout uniformDescriptorSetLayout;
     private DescriptorSetLayout samplerDescriptorSetLayout;
     private TextureSampler uSampler;
-    private Map<String, TextureDescriptorSet> samplerDescriptors;
+    private Map<String, SamplerDescriptorSet> samplerDescriptors;
 
     private UniformDescriptorSet dProjectionMatrix;
     private GeneralBuffer uProjectionMatrix;
@@ -163,8 +164,9 @@ public class ForwardRenderer implements RenderProcess {
     }
 
     private DescriptorSetLayout[] createDescriptorSets() {
+        Logger.info("Building Descriptor Sets");
         this.uniformDescriptorSetLayout = new UniformDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_VERTEX_BIT);
-        this.samplerDescriptorSetLayout = new SamplerDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_FRAGMENT_BIT);
+        this.samplerDescriptorSetLayout = new SamplerDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_FRAGMENT_BIT).setCount(EngineProperties.MAX_TEXTURES);
 
         DescriptorSetLayout[] layout = new DescriptorSetLayout[] {
                 this.uniformDescriptorSetLayout,
@@ -191,11 +193,14 @@ public class ForwardRenderer implements RenderProcess {
 
     private void updateTextureDescriptorSet(Texture texture) {
         String textureFileName = texture.getResourceName();
-        TextureDescriptorSet textureDescriptorSet = this.samplerDescriptors.get(textureFileName);
+        SamplerDescriptorSet samplerDescriptorSet = this.samplerDescriptors.get(textureFileName);
 
-        if (textureDescriptorSet == null) {
-            textureDescriptorSet = new TextureDescriptorSet(descriptorPool, this.samplerDescriptorSetLayout, 0, texture, this.uSampler);
-            this.samplerDescriptors.put(textureFileName, textureDescriptorSet);
+        if (samplerDescriptorSet == null) {
+            if(this.samplerDescriptors.size() >= EngineProperties.MAX_TEXTURES)
+                throw new EngineLimitExceededException("MAX_TEXTURES", EngineProperties.MAX_TEXTURES, this.samplerDescriptors.size()+1);
+
+            samplerDescriptorSet = new SamplerDescriptorSet(descriptorPool, this.samplerDescriptorSetLayout, 0, texture, this.uSampler);
+            this.samplerDescriptors.put(textureFileName, samplerDescriptorSet);
         }
     }
 
@@ -291,8 +296,8 @@ public class ForwardRenderer implements RenderProcess {
                 for(BundledMaterial material: model.getMaterials()) {
                     if (material.meshes().isEmpty()) continue;
 
-                    TextureDescriptorSet textureDescriptorSet = this.samplerDescriptors.get(material.texture().getResourceName());
-                    descriptorSets.put(1, textureDescriptorSet.getHandle());
+                    SamplerDescriptorSet samplerDescriptorSet = this.samplerDescriptors.get(material.texture().getResourceName());
+                    descriptorSets.put(1, samplerDescriptorSet.getHandle());
 
                     for(BufferedMesh mesh: material.meshes()) {
                         vertexBufferHandle.put(0, mesh.vertices().getHandle());
