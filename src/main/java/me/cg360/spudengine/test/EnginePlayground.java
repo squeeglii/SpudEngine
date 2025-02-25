@@ -6,6 +6,7 @@ import me.cg360.spudengine.core.render.Renderer;
 import me.cg360.spudengine.core.render.Window;
 import me.cg360.spudengine.core.render.geometry.model.Mesh;
 import me.cg360.spudengine.core.render.geometry.model.Model;
+import me.cg360.spudengine.core.render.geometry.model.ModelLoader;
 import me.cg360.spudengine.core.world.entity.DummyEntity;
 import me.cg360.spudengine.core.world.Scene;
 import org.joml.Vector3f;
@@ -58,12 +59,13 @@ public class EnginePlayground extends GameHooks {
                     2, 1, 6, 2, 6, 7,
                     // Back face
                     7, 6, 4, 7, 4, 5,
-            }
+            },
+            0 // Default material.
     );
 
-    private static final Vector3f ROTATION_AXIS = new Vector3f(1, 1, 1);
+    private static final Vector3f ROTATION_AXIS = new Vector3f(0, 1, 0);
 
-    private DummyEntity cubeEntity;
+    private DummyEntity chamberEntity;
     private float angle;
 
     public EnginePlayground(SpudEngine engineInstance) {
@@ -78,10 +80,11 @@ public class EnginePlayground extends GameHooks {
                 new Model("cube", MESH_CUBE)
         );
 
-        renderer.getModelManager().transformModels(renderer, modelDataList);
+        Model chamberModel = ModelLoader.loadEnvironmentModel("chamber01", "env/chamber01.obj");
+        renderer.getModelManager().processModels(renderer, chamberModel);
 
-        this.cubeEntity = new DummyEntity("cube");
-        scene.addEntity(this.cubeEntity);
+        this.chamberEntity = new DummyEntity("chamber01");
+        scene.addEntity(this.chamberEntity);
     }
 
     @Override
@@ -92,10 +95,10 @@ public class EnginePlayground extends GameHooks {
             this.angle = this.angle - 360;
 
 
-        this.cubeEntity.getRotation().identity().rotateAxis((float) Math.toRadians(this.angle), ROTATION_AXIS);
-        this.cubeEntity.updateTransform();
+        this.chamberEntity.getRotation().identity().rotateAxis((float) Math.toRadians(this.angle), ROTATION_AXIS);
+        this.chamberEntity.updateTransform();
 
-        this.cubeEntity.setPosition(0, 0, -4);
+        this.chamberEntity.setPosition(0, -2, -20);
     }
 
     @Override

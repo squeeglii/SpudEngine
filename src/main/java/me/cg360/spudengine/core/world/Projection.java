@@ -18,7 +18,7 @@ public class Projection {
         this.projectionMatrix.perspective(EngineProperties.FOV, aspectRatio, EngineProperties.NEAR_PLANE, EngineProperties.FAR_PLANE, true);
     }
 
-    public Matrix4f getProjectionMatrix() {
+    public Matrix4f asMatrix() {
         return this.projectionMatrix;
     }
 

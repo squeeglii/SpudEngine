@@ -1,19 +1,31 @@
-package me.cg360.spudengine.core.render;
+package me.cg360.spudengine.core.render.impl;
 
 import me.cg360.spudengine.core.EngineProperties;
+import me.cg360.spudengine.core.render.Renderer;
+import me.cg360.spudengine.core.render.data.DataTypes;
+import me.cg360.spudengine.core.render.data.buffer.GeneralBuffer;
 import me.cg360.spudengine.core.render.command.CommandBuffer;
 import me.cg360.spudengine.core.render.command.CommandPool;
 import me.cg360.spudengine.core.render.command.CommandQueue;
 import me.cg360.spudengine.core.render.geometry.VertexFormats;
 import me.cg360.spudengine.core.render.geometry.model.BufferedMesh;
 import me.cg360.spudengine.core.render.geometry.model.BufferedModel;
+import me.cg360.spudengine.core.render.geometry.model.BundledMaterial;
 import me.cg360.spudengine.core.render.hardware.LogicalDevice;
 import me.cg360.spudengine.core.render.image.Attachment;
 import me.cg360.spudengine.core.render.image.FrameBuffer;
 import me.cg360.spudengine.core.render.image.ImageView;
 import me.cg360.spudengine.core.render.image.SwapChain;
+import me.cg360.spudengine.core.render.image.texture.Texture;
+import me.cg360.spudengine.core.render.image.texture.TextureSampler;
 import me.cg360.spudengine.core.render.pipeline.Pipeline;
 import me.cg360.spudengine.core.render.pipeline.PipelineCache;
+import me.cg360.spudengine.core.render.pipeline.descriptor.DescriptorPool;
+import me.cg360.spudengine.core.render.pipeline.descriptor.active.TextureDescriptorSet;
+import me.cg360.spudengine.core.render.pipeline.descriptor.active.UniformDescriptorSet;
+import me.cg360.spudengine.core.render.pipeline.descriptor.layout.DescriptorSetLayout;
+import me.cg360.spudengine.core.render.pipeline.descriptor.layout.SamplerDescriptorSetLayout;
+import me.cg360.spudengine.core.render.pipeline.descriptor.layout.UniformDescriptorSetLayout;
 import me.cg360.spudengine.core.render.pipeline.pass.SwapChainRenderPass;
 import me.cg360.spudengine.core.render.pipeline.shader.BinaryShaderFile;
 import me.cg360.spudengine.core.render.pipeline.shader.ShaderCompiler;
@@ -21,7 +33,6 @@ import me.cg360.spudengine.core.render.pipeline.shader.ShaderProgram;
 import me.cg360.spudengine.core.render.pipeline.shader.ShaderType;
 import me.cg360.spudengine.core.render.sync.Fence;
 import me.cg360.spudengine.core.render.sync.SyncSemaphores;
-import me.cg360.spudengine.core.util.VulkanUtil;
 import me.cg360.spudengine.core.world.Projection;
 import me.cg360.spudengine.core.world.entity.RenderedEntity;
 import me.cg360.spudengine.core.world.Scene;
@@ -35,10 +46,11 @@ import java.awt.*;
 import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
 import java.util.Arrays;
-import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-public class ForwardRendererActivity {
+public class ForwardRenderer implements RenderProcess {
 
     private LogicalDevice device;
 
@@ -54,11 +66,21 @@ public class ForwardRendererActivity {
     private final Pipeline wireframePipeline;
     private final ShaderProgram shaderProgram;
 
-    private Attachment[] depthAttachments;
-
     private final Scene scene;
 
-    public ForwardRendererActivity(SwapChain swapChain, CommandPool commandPool, PipelineCache pipelineCache, Scene scene) {
+    private Attachment[] depthAttachments;
+
+    private DescriptorPool descriptorPool;
+    private DescriptorSetLayout uniformDescriptorSetLayout;
+    private DescriptorSetLayout samplerDescriptorSetLayout;
+    private TextureSampler uSampler;
+    private Map<String, TextureDescriptorSet> samplerDescriptors;
+
+    private UniformDescriptorSet dProjectionMatrix;
+    private GeneralBuffer uProjectionMatrix;
+
+
+    public ForwardRenderer(SwapChain swapChain, CommandPool commandPool, PipelineCache pipelineCache, Scene scene) {
         this.swapChain = swapChain;
         this.pipelineCache = pipelineCache;
         this.device = swapChain.getDevice();
@@ -82,18 +104,21 @@ public class ForwardRendererActivity {
 
         this.shaderProgram = new ShaderProgram(this.device, shaders);
 
+        DescriptorSetLayout[] descriptorSetLayouts = this.createDescriptorSets();
+
+        Logger.debug("Building Pipelines");
         Pipeline.Builder builder = Pipeline.builder(VertexFormats.POSITION_UV.getDefinition())
-                .setPushConstantLayout(  // see #applyPushConstants(...)
-                        //VulkanUtil.FLOAT_BYTES, // time
-                        //VulkanUtil.INT_BYTES // ticks per second.
-                        VulkanUtil.MAT4X4F, // proj
-                        VulkanUtil.MAT4X4F // transform
+                .setDescriptorLayouts(descriptorSetLayouts)
+                .setPushConstantLayout(  // @see ForwardRenderer#applyPushConstants(...) for how this is filled.
+                        //DataTypes.MAT4X4F, // proj
+                        DataTypes.MAT4X4F // transform
                 );
         this.pipeline = builder.build(pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
         this.wireframePipeline = builder.setUsingWireframe(true)
                                         .build(pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
 
         builder.cleanup();
+        Logger.debug("Built pipelines.");
 
         this.commandBuffers = new CommandBuffer[numImages];
         this.fences = new Fence[numImages];
@@ -101,6 +126,9 @@ public class ForwardRendererActivity {
             this.commandBuffers[i] = new CommandBuffer(commandPool, true, false);
             this.fences[i] = new Fence(device, true);
         }
+
+        // Initialize uniforms.
+        DataTypes.MAT4X4F.copyToBuffer(this.uProjectionMatrix, this.scene.getProjection().asMatrix());
     }
 
     private void createDepthImages() {
@@ -134,19 +162,52 @@ public class ForwardRendererActivity {
         }
     }
 
-    private void applyPushConstants(VkCommandBuffer cmd, long currentPipelineLayout, ByteBuffer buf, Matrix4f proj, Matrix4f transform) {
-        proj.get(buf);
-        transform.get(VulkanUtil.MAT4X4F, buf);
+    private DescriptorSetLayout[] createDescriptorSets() {
+        this.uniformDescriptorSetLayout = new UniformDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_VERTEX_BIT);
+        this.samplerDescriptorSetLayout = new SamplerDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_FRAGMENT_BIT);
+
+        DescriptorSetLayout[] layout = new DescriptorSetLayout[] {
+                this.uniformDescriptorSetLayout,
+                this.samplerDescriptorSetLayout
+        };
+        this.descriptorPool = new DescriptorPool(this.device, layout);
+
+        // Uniform - constant.
+        this.dProjectionMatrix = UniformDescriptorSet.create(this.descriptorPool, this.uniformDescriptorSetLayout, DataTypes.MAT4X4F, 0);
+        this.uProjectionMatrix = this.dProjectionMatrix.getBuffer();
+
+        // Sampler
+        this.samplerDescriptors = new HashMap<>();
+        this.uSampler = new TextureSampler(this.device, 1, true);
+
+        return layout;
+    }
+
+    private void applyPushConstants(VkCommandBuffer cmd, long currentPipelineLayout, ByteBuffer buf, Matrix4f transform) {
+        //proj.get(buf);
+        transform.get(buf);
         VK11.vkCmdPushConstants(cmd, currentPipelineLayout, VK11.VK_SHADER_STAGE_VERTEX_BIT, 0, buf);
     }
 
-    public void waitForFence() {
+    private void updateTextureDescriptorSet(Texture texture) {
+        String textureFileName = texture.getResourceName();
+        TextureDescriptorSet textureDescriptorSet = this.samplerDescriptors.get(textureFileName);
+
+        if (textureDescriptorSet == null) {
+            textureDescriptorSet = new TextureDescriptorSet(descriptorPool, this.samplerDescriptorSetLayout, 0, texture, this.uSampler);
+            this.samplerDescriptors.put(textureFileName, textureDescriptorSet);
+        }
+    }
+
+    @Override
+    public void waitTillFree() {
         int idx = this.swapChain.getCurrentFrame();
         Fence currentFence = this.fences[idx];
         currentFence.fenceWait();
     }
 
-    public void record(Renderer renderer, Collection<BufferedModel> models, float time) {
+    @Override
+    public void recordDraw(Renderer renderer) {
         try (MemoryStack stack = MemoryStack.stackPush()) {
             VkExtent2D swapChainExtent = this.swapChain.getSwapChainExtent();
             int width = swapChainExtent.width();
@@ -211,7 +272,7 @@ public class ForwardRendererActivity {
             offsets.put(0, 0L);
             LongBuffer vertexBufferHandle = stack.mallocLong(1);
 
-            ByteBuffer pushConstants = stack.malloc(128);
+            ByteBuffer pushConstants = stack.malloc(this.pipeline.getPushConstantSize());
 
             // Push Constants & Rendering!
             boolean perVertexConstants = selectedPipeline.isUsingPerVertexPushConstants();
@@ -220,26 +281,32 @@ public class ForwardRendererActivity {
             // todo: ^ figure how to make this easier to adapt.
 
             Projection proj = this.scene.getProjection();
-
+            LongBuffer descriptorSets = stack.mallocLong(2);
+            descriptorSets.put(0, this.dProjectionMatrix.getHandle()); // put proj matrix.
 
             for (String modelId: this.scene.getUsedModelIds()) {
                 BufferedModel model = renderer.getModelManager().getModel(modelId);
                 List<StaticModelEntity> entities = this.scene.getEntitiesWithModel(modelId);
 
-                //Logger.trace(entities);
-                //Logger.trace(model);
+                for(BundledMaterial material: model.getMaterials()) {
+                    if (material.meshes().isEmpty()) continue;
 
-                for (BufferedMesh mesh : model.getSubMeshes()) {
-                    vertexBufferHandle.put(0, mesh.vertices().getHandle());
-                    VK11.vkCmdBindVertexBuffers(cmd, 0, vertexBufferHandle, offsets);
-                    VK11.vkCmdBindIndexBuffer(cmd, mesh.indices().getHandle(), 0, VK11.VK_INDEX_TYPE_UINT32);
+                    TextureDescriptorSet textureDescriptorSet = this.samplerDescriptors.get(material.texture().getResourceName());
+                    descriptorSets.put(1, textureDescriptorSet.getHandle());
 
-                    for(RenderedEntity entity: entities) {
-                        if (perVertexConstants)
-                            this.applyPushConstants(cmd, selectedPipeline.getPipelineLayoutHandle(), pushConstants,
-                                                    proj.getProjectionMatrix(), entity.getTransform());
+                    for(BufferedMesh mesh: material.meshes()) {
+                        vertexBufferHandle.put(0, mesh.vertices().getHandle());
+                        VK11.vkCmdBindVertexBuffers(cmd, 0, vertexBufferHandle, offsets);
+                        VK11.vkCmdBindIndexBuffer(cmd, mesh.indices().getHandle(), 0, VK11.VK_INDEX_TYPE_UINT32);
 
-                        VK11.vkCmdDrawIndexed(cmd, mesh.numIndices(), 1, 0, 0, 0);
+                        for(RenderedEntity entity: entities) {
+                            VK11.vkCmdBindDescriptorSets(cmd, VK11.VK_PIPELINE_BIND_POINT_GRAPHICS, selectedPipeline.getPipelineLayoutHandle(), 0, descriptorSets, null);
+
+                            if (perVertexConstants)
+                                this.applyPushConstants(cmd, selectedPipeline.getPipelineLayoutHandle(), pushConstants, entity.getTransform());
+
+                            VK11.vkCmdDrawIndexed(cmd, mesh.numIndices(), 1, 0, 0, 0);
+                        }
                     }
                 }
             }
@@ -249,6 +316,7 @@ public class ForwardRendererActivity {
         }
     }
 
+    @Override
     public void submit(CommandQueue queue) {
         try (MemoryStack stack = MemoryStack.stackPush()) {
             int idx = this.swapChain.getCurrentFrame();
@@ -267,15 +335,37 @@ public class ForwardRendererActivity {
         }
     }
 
-    public void resize(SwapChain swapChain) {
-        this.swapChain = swapChain;
+    @Override
+    public void processModelBatch(List<BufferedModel> models) {
+        this.device.waitIdle();
+
+        for (BufferedModel vulkanModel : models) {
+            for (BundledMaterial vulkanMaterial : vulkanModel.getMaterials()) {
+                if (vulkanMaterial.meshes().isEmpty())
+                    continue;
+
+                this.updateTextureDescriptorSet(vulkanMaterial.texture());
+            }
+        }
+    }
+
+    @Override
+    public void onResize(SwapChain newSwapChain) {
+        DataTypes.MAT4X4F.copyToBuffer(this.uProjectionMatrix, this.scene.getProjection().asMatrix());
+
+        this.swapChain = newSwapChain;
         Arrays.asList(this.frameBuffers).forEach(FrameBuffer::cleanup);
         Arrays.asList(this.depthAttachments).forEach(Attachment::cleanup);
         this.createDepthImages();
         this.createFrameBuffers();
     }
 
+    @Override
     public void cleanup() {
+        this.uProjectionMatrix.cleanup();
+        this.uSampler.cleanup();
+        this.descriptorPool.cleanup(); // descriptor sets cleaned up here.
+
         this.pipeline.cleanup();
         this.wireframePipeline.cleanup();
 

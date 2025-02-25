@@ -2,7 +2,7 @@ package me.cg360.spudengine.core.render.geometry.model;
 
 import me.cg360.spudengine.core.render.geometry.ModelValidationException;
 
-public record Mesh(float[] positions, float[] textureCoordinates, int[] indices) {
+public record Mesh(float[] positions, float[] textureCoordinates, int[] indices, int materialIdx) {
 
     public void validate() {
         if(this.positions == null)
@@ -26,8 +26,12 @@ public record Mesh(float[] positions, float[] textureCoordinates, int[] indices)
     }
 
     public static Mesh withoutProvidedUVs(float[] positions, int[] indices) {
+        return Mesh.withoutProvidedUVs(positions, indices, 0);
+    }
+
+    public static Mesh withoutProvidedUVs(float[] positions, int[] indices, int materialIndex) {
         int texCoordCount = (positions.length / 3) * 2;
-        return new Mesh(positions, new float[texCoordCount], indices);
+        return new Mesh(positions, new float[texCoordCount], indices, materialIndex);
     }
 
 }

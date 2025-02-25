@@ -1,8 +1,9 @@
 package me.cg360.spudengine.core.render.pipeline;
 
-import me.cg360.spudengine.core.render.geometry.Attribute;
+import me.cg360.spudengine.core.render.data.TypeHelper;
 import me.cg360.spudengine.core.render.geometry.VertexFormatDefinition;
 import me.cg360.spudengine.core.render.hardware.LogicalDevice;
+import me.cg360.spudengine.core.render.pipeline.descriptor.layout.DescriptorSetLayout;
 import me.cg360.spudengine.core.render.pipeline.shader.Shader;
 import me.cg360.spudengine.core.render.pipeline.shader.ShaderProgram;
 import me.cg360.spudengine.core.util.VkHandleWrapper;
@@ -13,7 +14,10 @@ import org.tinylog.Logger;
 
 import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HexFormat;
+import java.util.List;
 
 public class Pipeline implements VkHandleWrapper {
 
@@ -25,6 +29,7 @@ public class Pipeline implements VkHandleWrapper {
     private final long pipeline;
 
     private final int pushConstantStage;
+    private final int pushConstantSize;
 
     public Pipeline(PipelineCache pipelineCache, Builder builder) {
         Logger.debug("Creating pipeline");
@@ -96,16 +101,42 @@ public class Pipeline implements VkHandleWrapper {
 
             VkPushConstantRange.Buffer pushConstantRange = null;
             if (builder.getPushConstantSize() > 0) {
-                pushConstantRange = VkPushConstantRange.calloc(1, stack)
-                        .stageFlags(builder.getPushConstantStage())
-                        .offset(0)
-                        .size(builder.getPushConstantSize());
                 this.pushConstantStage = builder.getPushConstantStage();
-            } else this.pushConstantStage = 0;
+                this.pushConstantSize = builder.getPushConstantSize();
+
+                pushConstantRange = VkPushConstantRange.calloc(1, stack)
+                        .stageFlags(VK11.VK_SHADER_STAGE_VERTEX_BIT)
+                        .offset(0)
+                        .size(this.pushConstantSize);
+
+                if((this.pushConstantStage & VK11.VK_SHADER_STAGE_VERTEX_BIT) > 0)
+                    Logger.trace("Push Constants set to Vertex Mode! ({} - size: {})", this.pushConstantStage, this.pushConstantSize);
+                else Logger.trace("Push Constants set to ?????? Mode! ({} - size: {})", this.pushConstantStage, this.pushConstantSize);
+
+            } else {
+                Logger.trace("Push Constants disabled for Pipeline Layout!");
+                this.pushConstantStage = 0;
+                this.pushConstantSize = 0;
+            }
+
+            DescriptorSetLayout[] descriptorSetLayouts = builder.getDescriptorLayouts();
+            int numLayouts = descriptorSetLayouts != null ? descriptorSetLayouts.length : 0;
+            LongBuffer ppLayout = stack.mallocLong(numLayouts);
+            List<Long> ppLayoutDebug = new ArrayList<>(numLayouts);
+            for (int i = 0; i < numLayouts; i++) {
+                ppLayout.put(i, descriptorSetLayouts[i].getHandle());
+                ppLayoutDebug.add(ppLayout.get(i));
+            }
+
+            Logger.trace("Pipeline created with descriptor layout: {} - ({} elements)", ppLayoutDebug, numLayouts);
+            Logger.trace("Pipeline layout push constants: {}", pushConstantRange);
 
             VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = VkPipelineLayoutCreateInfo.calloc(stack)
                             .sType(VK11.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
+                            .pSetLayouts(ppLayout)
                             .pPushConstantRanges(pushConstantRange);
+
+
 
             int errCreateLayout = VK11.vkCreatePipelineLayout(this.device.asVk(), pPipelineLayoutCreateInfo, null, lp);
             VulkanUtil.checkErrorCode(errCreateLayout, "Failed to create pipeline layout");
@@ -130,6 +161,10 @@ public class Pipeline implements VkHandleWrapper {
             int errCreate = VK11.vkCreateGraphicsPipelines(this.device.asVk(), pipelineCache.getHandle(), pipeline, null, lp);
             VulkanUtil.checkErrorCode(errCreate, "Error creating graphics pipeline");
             this.pipeline = lp.get(0);
+            Logger.debug("Created Pipeline {} (with layout {})",
+                    HexFormat.of().toHexDigits(this.pipeline),
+                    HexFormat.of().toHexDigits(this.pipelineLayout)
+            );
         }
     }
 
@@ -150,6 +185,10 @@ public class Pipeline implements VkHandleWrapper {
 
     public int getPushConstantStage() {
         return this.pushConstantStage;
+    }
+
+    public int getPushConstantSize() {
+        return this.pushConstantSize;
     }
 
     public boolean isUsingPerVertexPushConstants() {
@@ -175,10 +214,13 @@ public class Pipeline implements VkHandleWrapper {
         private boolean useWireframe = false;
 
         private int pushConstantStage = VK11.VK_SHADER_STAGE_VERTEX_BIT;
-        private int[] pushConstantLayout = null;
+        private TypeHelper[] pushConstantLayout = null;
+
+        private DescriptorSetLayout[] descriptorLayouts;
 
         public Builder(VertexFormatDefinition format) {
             this.vertexFormatDefinition = format;
+            this.descriptorLayouts = null;
         }
 
         public Pipeline build(PipelineCache pipelineCache, long renderPass, ShaderProgram shaderProgram, int numColorAttachments) {
@@ -214,8 +256,13 @@ public class Pipeline implements VkHandleWrapper {
             return this;
         }
 
-        public Builder setPushConstantLayout(int... pushConstantElementSizes) {
-            this.pushConstantLayout = pushConstantElementSizes;
+        public Builder setPushConstantLayout(TypeHelper... pushConstantElements) {
+            this.pushConstantLayout = pushConstantElements;
+            return this;
+        }
+
+        public Builder setDescriptorLayouts(DescriptorSetLayout... descriptorLayout) {
+            this.descriptorLayouts = descriptorLayout;
             return this;
         }
 
@@ -239,7 +286,13 @@ public class Pipeline implements VkHandleWrapper {
             if(this.pushConstantLayout == null)
                 return 0;
 
-            return Arrays.stream(this.pushConstantLayout).sum();
+            return Arrays.stream(this.pushConstantLayout)
+                         .mapToInt(TypeHelper::size)
+                         .sum();
+        }
+
+        public DescriptorSetLayout[] getDescriptorLayouts() {
+            return this.descriptorLayouts;
         }
     }
 

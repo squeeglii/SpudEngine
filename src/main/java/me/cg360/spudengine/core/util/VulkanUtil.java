@@ -16,9 +16,6 @@ public class VulkanUtil {
 
     public static final int FLOAT_BYTES = 4;
     public static final int INT_BYTES = 4;
-    public static final int VEC2F_BYTES = 2 * FLOAT_BYTES;
-    public static final int VEC3F_BYTES = 3 * FLOAT_BYTES;
-    public static final int MAT4X4F = 16 * FLOAT_BYTES;
 
     /** */
     public static VkDebugUtilsMessengerCreateInfoEXT createDebugCallback() {

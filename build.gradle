@@ -18,6 +18,7 @@ switch (OperatingSystem.current()) {
 
 // Set up environment, if not already setup.
 new File("/run/").mkdirs()
+new File("/run/assets/").mkdirs()
 
 repositories {
     mavenCentral()
@@ -54,8 +55,25 @@ dependencies {
     implementation "org.tinylog:tinylog-impl:$tiny_log_version"
 }
 
+def copyAssets = tasks.register("copyAssets", Copy) {
+    var fromPath = "$rootDir/src/main/resources/assets"
+    var toPath = "$rootDir/run/assets"
+
+    from fromPath
+    into toPath
+
+    eachFile { file ->
+        println file.sourcePath
+        println file.path
+    }
+}
+
+build {
+    finalizedBy copyAssets
+}
+
 compileJava.options.encoding = 'UTF-8'
 
-tasks.withType(JavaCompile) {
+tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }

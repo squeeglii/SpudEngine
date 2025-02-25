@@ -5,13 +5,17 @@ layout(location = 1) in vec2 texCoords;
 
 layout(location = 0) out vec2 texCoordsOut;
 
-layout(push_constant) uniform matrices {
-    mat4 projectionMatrix;
+layout(set = 0, binding = 0) uniform Projection {
+    mat4 mat;
+} projection;
+
+layout(push_constant) uniform PushConstants {
     mat4 modelMatrix;
-} push_constants;
+} pushConstants;
+
 
 void main()
 {
-    gl_Position = push_constants.projectionMatrix * push_constants.modelMatrix * vec4(pos, 1);
+    gl_Position = projection.mat * pushConstants.modelMatrix * vec4(pos, 1);
     texCoordsOut = texCoords;
 }

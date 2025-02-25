@@ -126,37 +126,37 @@ public class Image {
             return new Image(graphicsDevice, this, this.width, this.height, this.usage);
         }
 
-        public Builder setWidth(int width) {
+        public Builder width(int width) {
             this.width = width;
             return this;
         }
 
-        public Builder setHeight(int height) {
+        public Builder height(int height) {
             this.height = height;
             return this;
         }
 
-        public Builder setUsage(int usage) {
+        public Builder usage(int usage) {
             this.usage = usage;
             return this;
         }
 
-        public Builder setFormat(int format) {
+        public Builder format(int format) {
             this.format = format;
             return this;
         }
 
-        public Builder setMipLevels(int mipLevels) {
+        public Builder mipLevels(int mipLevels) {
             this.mipLevels = mipLevels;
             return this;
         }
 
-        public Builder setSampleCount(int sampleCount) {
+        public Builder sampleCount(int sampleCount) {
             this.sampleCount = sampleCount;
             return this;
         }
 
-        public Builder setLayerCount(int layerCount) {
+        public Builder layerCount(int layerCount) {
             this.layerCount = layerCount;
             return this;
         }

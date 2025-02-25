@@ -1,6 +1,6 @@
 package me.cg360.spudengine.core.render.geometry.model;
 
-import me.cg360.spudengine.core.render.buffer.GeneralBuffer;
+import me.cg360.spudengine.core.render.data.buffer.GeneralBuffer;
 
 public record BufferedMesh(GeneralBuffer vertices, GeneralBuffer indices, int numIndices) {
 

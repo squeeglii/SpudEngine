@@ -18,6 +18,7 @@ public class LogicalDevice {
     private final PhysicalDevice physicalDevice;
     private final VkDevice logicalDevice;
 
+    private final boolean samplerAnisotrophyEnabled;
 
     public LogicalDevice(PhysicalDevice physicalDevice) {
         Logger.debug("Creating logical device");
@@ -41,6 +42,12 @@ public class LogicalDevice {
             // Enable device features
             VkPhysicalDeviceFeatures features = VkPhysicalDeviceFeatures.calloc(stack)
                     .fillModeNonSolid(true);
+
+            VkPhysicalDeviceFeatures supportedFeatures = this.physicalDevice.getFeatures();
+            this.samplerAnisotrophyEnabled = supportedFeatures.samplerAnisotropy();
+            if (this.samplerAnisotrophyEnabled)
+                features.samplerAnisotropy(true);
+
 
             // Enable all the queue families
             VkQueueFamilyProperties.Buffer queuePropsBuff = physicalDevice.getQueueFamilyProperties();
@@ -104,6 +111,10 @@ public class LogicalDevice {
 
     public PhysicalDevice getPhysicalDevice() {
         return this.physicalDevice;
+    }
+
+    public boolean isSamplerAnisotrophyEnabled() {
+        return this.samplerAnisotrophyEnabled;
     }
 
     public VkDevice asVk() {

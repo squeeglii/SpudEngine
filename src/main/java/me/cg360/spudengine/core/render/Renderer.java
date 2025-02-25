@@ -9,6 +9,9 @@ import me.cg360.spudengine.core.render.hardware.PhysicalDevice;
 import me.cg360.spudengine.core.render.hardware.Surface;
 import me.cg360.spudengine.core.render.command.GraphicsQueue;
 import me.cg360.spudengine.core.render.image.SwapChain;
+import me.cg360.spudengine.core.render.image.texture.TextureManager;
+import me.cg360.spudengine.core.render.impl.ForwardRenderer;
+import me.cg360.spudengine.core.render.impl.RenderProcess;
 import me.cg360.spudengine.core.render.pipeline.PipelineCache;
 import me.cg360.spudengine.core.world.Scene;
 
@@ -21,13 +24,14 @@ public class Renderer {
 
     private SwapChain swapChain;
 
-    private final ForwardRendererActivity forwardRenderActivity;
+    private final RenderProcess renderProcess;
     private final CommandPool commandPool;
     private final GraphicsQueue graphicsQueue;
     private final PresentQueue presentQueue;
 
     private final PipelineCache pipelineCache;
 
+    private final TextureManager textureManager;
     private final ModelManager modelManager;
 
     public boolean useWireframe;
@@ -47,16 +51,17 @@ public class Renderer {
 
         this.commandPool = new CommandPool(this.graphicsDevice, this.graphicsQueue.getQueueFamilyIndex());
         this.pipelineCache = new PipelineCache(this.graphicsDevice);
-        this.forwardRenderActivity = new ForwardRendererActivity(this.swapChain, this.commandPool, this.pipelineCache, scene);
+        this.renderProcess = new ForwardRenderer(this.swapChain, this.commandPool, this.pipelineCache, scene);
 
-        this.modelManager = new ModelManager();
+        this.textureManager = new TextureManager(this.graphicsDevice);
+        this.modelManager = new ModelManager(this.graphicsDevice, this.textureManager);
     }
 
     public void render(Window window, Scene scene, float time) {
         if (window.getWidth() <= 0 && window.getHeight() <= 0)
             return;
 
-        this.forwardRenderActivity.waitForFence();
+        this.renderProcess.waitTillFree();
 
         int imageIndex;
         if (window.requiresSizeUpdate() || (imageIndex = this.swapChain.acquireNextImage()) < 0 ) {
@@ -67,8 +72,8 @@ public class Renderer {
             imageIndex = this.swapChain.acquireNextImage();
         }
 
-        this.forwardRenderActivity.record(this, this.modelManager.getAllModels(), time);
-        this.forwardRenderActivity.submit(this.graphicsQueue);
+        this.renderProcess.recordDraw(this);
+        this.renderProcess.submit(this.graphicsQueue);
 
         if (this.swapChain.presentImage(this.presentQueue, imageIndex))
             window.setRequiresSizeUpdate(true);
@@ -83,7 +88,7 @@ public class Renderer {
                 EngineProperties.SWAP_CHAIN_IMAGES, EngineProperties.VSYNC,
                 this.presentQueue, this.graphicsQueue);
 
-        this.forwardRenderActivity.resize(this.swapChain);
+        this.renderProcess.onResize(this.swapChain);
     }
 
 
@@ -92,12 +97,13 @@ public class Renderer {
         this.graphicsQueue.waitIdle();
         this.graphicsDevice.waitIdle();
 
+        this.textureManager.cleanup();
         this.modelManager.cleanup();
 
         this.swapChain.cleanup();
 
         this.pipelineCache.cleanup();
-        this.forwardRenderActivity.cleanup();
+        this.renderProcess.cleanup();
         this.commandPool.cleanup();
 
         this.surface.cleanup();
@@ -116,5 +122,9 @@ public class Renderer {
 
     public ModelManager getModelManager() {
         return this.modelManager;
+    }
+
+    public RenderProcess getRenderProcess() {
+        return this.renderProcess;
     }
 }

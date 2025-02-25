@@ -60,9 +60,9 @@ public class SwapChain implements VkHandleWrapper {
                     .sType(KHRSwapchain.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR)
                     .surface(surface.getHandle())
                     .minImageCount(numImages)
-                    .imageFormat(surfaceFormat.format())
-                    .imageColorSpace(surfaceFormat.colourSpace())
-                    .imageExtent(swapChainExtent)
+                    .imageFormat(this.surfaceFormat.format())
+                    .imageColorSpace(this.surfaceFormat.colourSpace())
+                    .imageExtent(this.swapChainExtent)
                     .imageArrayLayers(1)
                     .imageUsage(VK11.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
                     .imageSharingMode(VK11.VK_SHARING_MODE_EXCLUSIVE)
@@ -98,7 +98,7 @@ public class SwapChain implements VkHandleWrapper {
 
             this.swapchainHandle = lp.get(0);
 
-            this.imageViews = createImageViews(stack, device, this.swapchainHandle, this.surfaceFormat.format());
+            this.imageViews = SwapChain.createImageViews(stack, device, this.swapchainHandle, this.surfaceFormat.format());
 
             this.syncSemaphores = new SyncSemaphores[numImages];
             Arrays.setAll(this.syncSemaphores, i -> new SyncSemaphores(this.logicalDevice));

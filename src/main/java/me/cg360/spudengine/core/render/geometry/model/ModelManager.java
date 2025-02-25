@@ -1,8 +1,8 @@
 package me.cg360.spudengine.core.render.geometry.model;
 
 import me.cg360.spudengine.core.render.Renderer;
-import me.cg360.spudengine.core.render.buffer.BufferTransfer;
-import me.cg360.spudengine.core.render.buffer.GeneralBuffer;
+import me.cg360.spudengine.core.render.data.buffer.BufferTransfer;
+import me.cg360.spudengine.core.render.data.buffer.GeneralBuffer;
 import me.cg360.spudengine.core.render.command.CommandBuffer;
 import me.cg360.spudengine.core.render.command.CommandPool;
 import me.cg360.spudengine.core.render.command.CommandQueue;
@@ -10,6 +10,8 @@ import me.cg360.spudengine.core.render.geometry.ModelValidationException;
 import me.cg360.spudengine.core.render.geometry.VertexFormatSummary;
 import me.cg360.spudengine.core.render.geometry.VertexFormats;
 import me.cg360.spudengine.core.render.hardware.LogicalDevice;
+import me.cg360.spudengine.core.render.image.texture.Texture;
+import me.cg360.spudengine.core.render.image.texture.TextureManager;
 import me.cg360.spudengine.core.render.sync.Fence;
 import me.cg360.spudengine.core.util.VulkanUtil;
 import org.lwjgl.system.MemoryStack;
@@ -26,12 +28,23 @@ public class ModelManager {
 
     public static String ID_MISSING_MODEL = "missing";
 
+    public static final String BASE_PATH = "assets/models/";
+
     private static final VertexFormatSummary BUFFER_FORMAT = VertexFormats.POSITION_UV;
+
+    private final LogicalDevice graphicsDevice;
+    private final TextureManager textureManager;
 
     private final Map<String, BufferedModel> bufferedModels;
 
-    public ModelManager() {
+    private final Material fallbackMaterial;
+
+    public ModelManager(LogicalDevice graphicsDevice, TextureManager textureManager) {
+        this.graphicsDevice = graphicsDevice;
+        this.textureManager = textureManager;
         this.bufferedModels = new HashMap<>();
+
+        this.fallbackMaterial = new Material(TextureManager.TEX_MISSING, Material.WHITE);
     }
 
     public void createMissingModel(Renderer renderer) {
@@ -44,28 +57,24 @@ public class ModelManager {
         this.bufferedModels.clear();
     }
 
-    /** @see ModelManager#transformModels(CommandPool, CommandQueue, List) */
-    public List<BufferedModel> transformModels(Renderer renderer, Model... models) {
-        return this.transformModels(renderer.getCommandPool(), renderer.getGraphicsQueue(), models);
+    public void processModels(Renderer renderer, Model... models) {
+        List<BufferedModel> processed = this.transformModels(renderer, models);
+        renderer.getRenderProcess().processModelBatch(processed);
     }
 
     /** @see ModelManager#transformModels(CommandPool, CommandQueue, List) */
-    public List<BufferedModel> transformModels(Renderer renderer, List<Model> models) {
-        return this.transformModels(renderer.getCommandPool(), renderer.getGraphicsQueue(), models);
-    }
-
-    /** @see ModelManager#transformModels(CommandPool, CommandQueue, List) */
-    public List<BufferedModel> transformModels(CommandPool pool, CommandQueue queue, Model... models) {
-        return this.transformModels(pool, queue, List.of(models));
+    protected List<BufferedModel> transformModels(Renderer renderer, Model... models) {
+        return this.transformModels(renderer.getCommandPool(), renderer.getGraphicsQueue(), List.of(models));
     }
 
     /**
      * A batch call that loads models from their data arrays
      * into buffers.
      */
-    public List<BufferedModel> transformModels(CommandPool pool, CommandQueue queue, List<Model> models) {
+    protected List<BufferedModel> transformModels(CommandPool pool, CommandQueue queue, List<Model> models) {
         Logger.debug("Loading {} model(s)", models.size());
-        List<BufferedModel> vulkanModelList = new ArrayList<>();
+        List<BufferedModel> bufferedModels = new ArrayList<>();
+        Set<Texture> stagedTextures = new LinkedHashSet<>();
         List<GeneralBuffer> stagingBufferList = new ArrayList<>();
         LogicalDevice device = pool.getDevice();
         CommandBuffer cmd = new CommandBuffer(pool, true, true);
@@ -74,12 +83,19 @@ public class ModelManager {
         cmd.record(() -> {
             for (Model modelData : models) {
                 Logger.trace("Buffering model: {}", modelData.getId());
-                BufferedModel vulkanModel = new BufferedModel(modelData.getId(), BUFFER_FORMAT);
-                vulkanModelList.add(vulkanModel);
+                BufferedModel model = new BufferedModel(modelData.getId(), BUFFER_FORMAT);
+                bufferedModels.add(model);
+
+                for(Material material : modelData.getMaterials()) {
+                    BundledMaterial mat = this.transformMaterial(cmd, material, this.graphicsDevice, stagedTextures);
+                    model.getMaterials().add(mat);
+                }
+
+                boolean createdFallbackMaterial = false;
+                int materialCount = modelData.getMaterials().size();
 
                 // Transform meshes loading their data into GPU buffers
                 for (Mesh meshData : modelData.getSubMeshes()) {
-
                     try {
                         meshData.validate();
                     } catch (ModelValidationException err) {
@@ -94,7 +110,21 @@ public class ModelManager {
                     ModelManager.recordTransferCommand(cmd, indicesBuffers);
 
                     BufferedMesh bufferedMesh = new BufferedMesh(verticesBuffers.dst(), indicesBuffers.dst(), meshData.indices().length);
-                    vulkanModel.getSubMeshes().add(bufferedMesh);
+                    int matIndex = meshData.materialIdx();
+                    boolean isValidMaterial = matIndex >= 0 && matIndex < materialCount;
+
+                    // Place a fallback material at the end if there are invalid entries. Create once and reuse.
+                    if(!isValidMaterial) {
+                        if(!createdFallbackMaterial) {
+                            BundledMaterial fallback = this.getFallbackMaterial(cmd, device, stagedTextures);
+                            model.getMaterials().add(fallback);
+                        }
+
+                        model.getMaterials().get(materialCount).meshes().add(bufferedMesh);
+                        continue;
+                    }
+
+                    model.getMaterials().get(matIndex).meshes().add(bufferedMesh);
                 }
             }
         });
@@ -111,8 +141,9 @@ public class ModelManager {
         cmd.cleanup();
 
         stagingBufferList.forEach(GeneralBuffer::cleanup);
+        stagedTextures.forEach(Texture::cleanupStagingBuffer);
 
-        for(BufferedModel model: vulkanModelList) {
+        for(BufferedModel model: bufferedModels) {
             String modelId = model.getId();
 
             if(this.bufferedModels.containsKey(modelId)) {
@@ -124,7 +155,20 @@ public class ModelManager {
         }
 
         Logger.debug("Loaded {} model(s)", this.bufferedModels.size());
-        return vulkanModelList;
+        return bufferedModels;
+    }
+
+    private BundledMaterial transformMaterial(CommandBuffer cmd, Material material, LogicalDevice device, Set<Texture> uploadedTextures) {
+        // If texture is null, it loads the default texture.
+        Texture texture = this.textureManager.loadTexture(device, material.texture(), VK11.VK_FORMAT_R8G8B8A8_SRGB);
+        texture.upload(cmd);
+        uploadedTextures.add(texture);
+
+        return new BundledMaterial(material.diffuse(), texture, new ArrayList<>());
+    }
+
+    private BundledMaterial getFallbackMaterial(CommandBuffer cmd, LogicalDevice device, Set<Texture> uploadedTextures) {
+        return this.transformMaterial(cmd, this.fallbackMaterial, device, uploadedTextures);
     }
 
 

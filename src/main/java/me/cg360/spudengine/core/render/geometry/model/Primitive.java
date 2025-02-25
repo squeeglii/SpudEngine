@@ -103,7 +103,7 @@ public class Primitive {
             mTri[i++] = faceOffset+2;
             mTri[i  ] = faceOffset+3;
 
-            meshes[face] = new Mesh(mPos, mTexCoord, mTri);
+            meshes[face] = new Mesh(mPos, mTexCoord, mTri, 0);
         }
 
         return meshes;
