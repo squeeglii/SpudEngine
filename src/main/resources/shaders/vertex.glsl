@@ -12,6 +12,7 @@ layout(push_constant) uniform PushConstants {
 } pushConstants;
 
 layout(location=0) out VS_OUT {
+    out vec3 pos;
     out vec2 texCoords;
     out mat4 modelTransform;
     out mat4 projectionMatrix;
@@ -19,8 +20,7 @@ layout(location=0) out VS_OUT {
 
 void main()
 {
-    gl_Position = projection.mat * pushConstants.modelTransform * vec4(pos, 1);
-
+    vs_out.pos = pos;
     vs_out.texCoords = texCoords;
     vs_out.modelTransform = pushConstants.modelTransform;
     vs_out.projectionMatrix = projection.mat;

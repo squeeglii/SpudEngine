@@ -4,49 +4,49 @@
 newmtl Barrier
 Ns 250.000000
 Ka 1.000000 1.000000 1.000000
-Kd 0.417837 0.383217 0.396395
 Ks 0.500000 0.500000 0.500000
 Ke 0.000000 0.000000 0.000000
 Ni 1.500000
-d 1.000000
 illum 2
+map_Kd environment/chamber/grating.png
+map_d environment/chamber/grating.png
 
 newmtl Floor
 Ns 0.000000
 Ka 1.000000 1.000000 1.000000
-Kd 0.079089 0.079089 0.079089
 Ks 0.500000 0.500000 0.500000
 Ke 0.000000 0.000000 0.000000
 Ni 1.500000
 d 1.000000
 illum 2
+map_Kd environment/chamber/floor_tiles.png
 
 newmtl Walkway
 Ns 39.999996
 Ka 1.000000 1.000000 1.000000
-Kd 0.057295 0.039487 0.059853
 Ks 0.500000 0.500000 0.500000
 Ke 0.000000 0.000000 0.000000
 Ni 1.500000
-d 1.000000
 illum 2
+map_Kd environment/chamber/grating.png
+map_d environment/chamber/grating.png
 
 newmtl Walls
 Ns 250.000000
 Ka 1.000000 1.000000 1.000000
-Kd 0.585250 0.585250 0.585250
 Ks 0.500000 0.500000 0.500000
 Ke 0.000000 0.000000 0.000000
 Ni 1.500000
 d 1.000000
 illum 2
+map_Kd environment/chamber/white_panels.png
 
 newmtl Walls_NoPortal
 Ns 0.000000
 Ka 1.000000 1.000000 1.000000
-Kd 0.047424 0.047424 0.047424
 Ks 0.500000 0.500000 0.500000
 Ke 0.000000 0.000000 0.000000
 Ni 1.500000
 d 1.000000
 illum 2
+map_Kd environment/chamber/black_panels.png

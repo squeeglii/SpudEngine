@@ -41,21 +41,15 @@ public class ModelLoader {
         if (!modelPath.exists())
             throw new RuntimeException("Model path does not exist [" + modelPath + "]");
 
-        String texPath = ClassLoader.getSystemResource(ModelManager.BASE_PATH + modelResourcePath).getPath();
-        File texturePath = new File(texturesDir);
-
-        if (!texturePath.exists())
-            throw new RuntimeException("Textures root does not exist [" + texPath + "]");
-
         AIScene aiScene = Assimp.aiImportFile(modelPath.getPath(), flags);
         if (aiScene == null)
-            throw new RuntimeException("Error loading model [modelPath: " + modelResourcePath + ", texturesDir:" + texPath + "]");
+            throw new RuntimeException("Error loading model [modelPath: " + modelResourcePath + ", texturesDir: ]");
 
         int numMaterials = aiScene.mNumMaterials();
         List<Material> materialList = new ArrayList<>(numMaterials);
         for (int i = 0; i < numMaterials; i++) {
             AIMaterial aiMaterial = AIMaterial.create(aiScene.mMaterials().get(i));
-            Material material = ModelLoader.processMaterial(aiMaterial, texPath);
+            Material material = ModelLoader.processMaterial(aiMaterial);
             materialList.add(material);
         }
 
@@ -75,7 +69,7 @@ public class ModelLoader {
         return modelData;
     }
 
-    private static Material processMaterial(AIMaterial aiMaterial, String texturesDir) {
+    private static Material processMaterial(AIMaterial aiMaterial) {
         try (MemoryStack stack = MemoryStack.stackPush()) {
             AIColor4D colour = AIColor4D.create();
 
@@ -91,9 +85,11 @@ public class ModelLoader {
 
             String texturePath = aiTexturePath.dataString();
             if (!texturePath.isEmpty()) {
-                texturePath = texturesDir + File.separator + new File(texturePath).getName();
                 diffuse = new Vector4f(0.0f, 0.0f, 0.0f, 0.0f);
             }
+
+            Logger.debug("built-in: {}", aiTexturePath.dataString());
+            Logger.debug("processed: {}", texturePath);
 
             return new Material(texturePath, diffuse);
         }

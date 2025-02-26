@@ -213,8 +213,6 @@ public class Pipeline implements VkHandleWrapper {
         private int cullMode = VK11.VK_CULL_MODE_NONE;
         private boolean useWireframe = false;
 
-        private boolean enableGeometryShader = false;
-
         private int pushConstantStage = VK11.VK_SHADER_STAGE_VERTEX_BIT;
         private TypeHelper[] pushConstantLayout = null;
 
@@ -250,11 +248,6 @@ public class Pipeline implements VkHandleWrapper {
 
         public Builder setCullMode(int cullMode) {
             this.cullMode = cullMode;
-            return this;
-        }
-
-        public Builder setGeometryShaderEnabled(boolean enableGeometryShader) {
-            this.enableGeometryShader = enableGeometryShader;
             return this;
         }
 

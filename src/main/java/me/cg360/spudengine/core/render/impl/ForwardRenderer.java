@@ -108,7 +108,9 @@ public class ForwardRenderer implements RenderProcess {
                 .setPushConstantLayout(  // @see ForwardRenderer#applyPushConstants(...) for how this is filled.
                         //DataTypes.MAT4X4F, // proj
                         DataTypes.MAT4X4F // transform
-                );
+                )
+                .setCullMode(VK11.VK_CULL_MODE_FRONT_BIT); // uhhhh, right. Sure. This works but
+
         this.pipeline = builder.build(pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
         this.wireframePipeline = builder.setUsingWireframe(true)
                                         .build(pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);

@@ -12,6 +12,7 @@ import org.tinylog.Logger;
 
 import java.awt.*;
 import java.io.File;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -54,23 +55,17 @@ public class TextureManager implements Registry {
             return texture;
         }
 
-
-        //URL resourceDir = ClassLoader.getSystemResource();
-
         try {
-            String p = this.getClass().getResource(BASE_PATH + formattedPath).getPath();
-            File file = new File(p);
+            File file = new File(BASE_PATH, resourcePath);
             if(!file.exists()) {
                 Logger.error("Missing texture at '{}'. Using fallback.", file.getPath());
+                Logger.debug("Base Path: {}", BASE_PATH);
+                Logger.debug("Resource: {}", resourcePath);
                 return this.missingTexture;
             }
 
             Texture fileTexture = new FilesystemTexture(device, formattedPath, file.getPath(), format);
             return this.addToMap(fileTexture);
-
-        //} catch (URISyntaxException err) {
-        //    Logger.error("Failed to parse texture path '{}': {}", resourceDir, err.getMessage());
-        //    return this.missingTexture;
         } catch (ImageParseFailException err) {
             Logger.error("Failed to parse texture '{}': {}", formattedPath, err.getMessage());
             return this.missingTexture;

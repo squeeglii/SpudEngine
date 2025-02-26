@@ -17,5 +17,6 @@ vec3 hsv2rgb(vec3 c)
 
 void main()
 {
+    //uFragColor = vec4(gl_FragDepth, gl_FragDepth, gl_FragDepth, 1);
     uFragColor = texture(textureSampler, texCoords);
 }

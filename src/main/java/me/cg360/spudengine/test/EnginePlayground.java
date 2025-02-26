@@ -92,22 +92,36 @@ public class EnginePlayground extends GameHooks {
         scene.addEntity(this.cubeEntity);
     }
 
+
+    private static final boolean SHOULD_SPIN = false;
+
     @Override
     protected void logicTick(Window window, Scene scene, long delta) {
-        this.angle += 4.0f; //* delta;
+        if(SHOULD_SPIN) {
+            this.angle += 4.0f; //* delta;
 
-        if (this.angle >= 360)
-            this.angle = this.angle - 360;
+            if (this.angle >= 360)
+                this.angle = this.angle - 360;
 
+            this.chamberEntity.getRotation().identity().rotateAxis((float) Math.toRadians(this.angle), ROTATION_AXIS);
+            this.chamberEntity.updateTransform();
 
-        this.chamberEntity.getRotation().identity().rotateAxis((float) Math.toRadians(this.angle), ROTATION_AXIS);
-        this.chamberEntity.updateTransform();
+            this.cubeEntity.getRotation().identity().rotateAxis((float) Math.toRadians(this.angle), ROTATION_AXIS);
+            this.cubeEntity.updateTransform();
 
-        this.cubeEntity.getRotation().identity().rotateAxis((float) Math.toRadians(this.angle), ROTATION_AXIS);
-        this.cubeEntity.updateTransform();
+            this.chamberEntity.setPosition(0, 0, -20);
+            this.cubeEntity.setPosition(0, 1, -14);
+        } else {
+            this.chamberEntity.getRotation().identity().rotateAxis((float) Math.toRadians(145f), ROTATION_AXIS);
+            this.chamberEntity.updateTransform();
 
-        this.chamberEntity.setPosition(0, -5, -40);
-        this.cubeEntity.setPosition(0, 1, -34);
+            this.cubeEntity.getRotation().identity().rotateAxis((float) Math.toRadians(65f), ROTATION_AXIS);
+            this.cubeEntity.updateTransform();
+
+            this.chamberEntity.setPosition(0, -3, -18);
+            this.cubeEntity.setPosition(-2, -2.5f, -18);
+            this.cubeEntity.setScale(0.8f);
+        }
     }
 
     @Override
