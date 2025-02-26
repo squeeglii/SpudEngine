@@ -3,19 +3,25 @@
 layout(location = 0) in vec3 pos;
 layout(location = 1) in vec2 texCoords;
 
-layout(location = 0) out vec2 texCoordsOut;
-
 layout(set = 0, binding = 0) uniform Projection {
     mat4 mat;
 } projection;
 
 layout(push_constant) uniform PushConstants {
-    mat4 modelMatrix;
+    mat4 modelTransform;
 } pushConstants;
 
+layout(location=0) out VS_OUT {
+    out vec2 texCoords;
+    out mat4 modelTransform;
+    out mat4 projectionMatrix;
+} vs_out;
 
 void main()
 {
-    gl_Position = projection.mat * pushConstants.modelMatrix * vec4(pos, 1);
-    texCoordsOut = texCoords;
+    gl_Position = projection.mat * pushConstants.modelTransform * vec4(pos, 1);
+
+    vs_out.texCoords = texCoords;
+    vs_out.modelTransform = pushConstants.modelTransform;
+    vs_out.projectionMatrix = projection.mat;
 }

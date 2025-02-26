@@ -93,17 +93,12 @@ public class ForwardRenderer implements RenderProcess {
         this.renderPass = new SwapChainRenderPass(swapChain, this.depthAttachments[0].getImage().getFormat());
         this.createFrameBuffers();
 
-        List<BinaryShaderFile> shaders = List.of(
+        this.shaderProgram = ShaderProgram.attemptCompile(
+                this.device,
                 new BinaryShaderFile(ShaderType.VERTEX, "shaders/vertex"),
-                new BinaryShaderFile(ShaderType.FRAGMENT, "shaders/fragment")
+                new BinaryShaderFile(ShaderType.FRAGMENT, "shaders/fragment"),
+                new BinaryShaderFile(ShaderType.GEOMETRY, "shaders/geometry")
         );
-
-        if (EngineProperties.SHOULD_RECOMPILE_SHADERS) {
-            long recompiles = shaders.stream().filter(ShaderCompiler::compileShaderIfChanged).count();
-            Logger.info("Recompiled {} shader(s).", recompiles);
-        }
-
-        this.shaderProgram = new ShaderProgram(this.device, shaders);
 
         DescriptorSetLayout[] descriptorSetLayouts = this.createDescriptorSets();
 
@@ -285,7 +280,7 @@ public class ForwardRenderer implements RenderProcess {
             //    this.applyPushConstants(cmd, pushConstants);
             // todo: ^ figure how to make this easier to adapt.
 
-            Projection proj = this.scene.getProjection();
+            // Direct uniformd
             LongBuffer descriptorSets = stack.mallocLong(2);
             descriptorSets.put(0, this.dProjectionMatrix.getHandle()); // put proj matrix.
 
@@ -296,6 +291,7 @@ public class ForwardRenderer implements RenderProcess {
                 for(BundledMaterial material: model.getMaterials()) {
                     if (material.meshes().isEmpty()) continue;
 
+                    // Swap texture descriptor out when the material changes.
                     SamplerDescriptorSet samplerDescriptorSet = this.samplerDescriptors.get(material.texture().getResourceName());
                     descriptorSets.put(1, samplerDescriptorSet.getHandle());
 
@@ -305,6 +301,7 @@ public class ForwardRenderer implements RenderProcess {
                         VK11.vkCmdBindIndexBuffer(cmd, mesh.indices().getHandle(), 0, VK11.VK_INDEX_TYPE_UINT32);
 
                         for(RenderedEntity entity: entities) {
+                            // lock in uniforms.
                             VK11.vkCmdBindDescriptorSets(cmd, VK11.VK_PIPELINE_BIND_POINT_GRAPHICS, selectedPipeline.getPipelineLayoutHandle(), 0, descriptorSets, null);
 
                             if (perVertexConstants)

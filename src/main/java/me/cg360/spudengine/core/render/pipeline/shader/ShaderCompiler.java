@@ -25,7 +25,7 @@ public class ShaderCompiler {
                 Logger.info("Compiling shader [{}] to [{}]", glslFile.getPath(), spvFile.getPath());
                 String shaderCode = new String(Files.readAllBytes(glslFile.toPath()));
 
-                compiledShader = ShaderCompiler.compileShader(shaderCode, shaderFile.type().shaderc());
+                compiledShader = ShaderCompiler.compileShader(shaderFile, shaderCode, shaderFile.type().shaderc());
                 Path target = spvFile.toPath();
                 target.getParent().toFile().mkdirs();
                 Files.write(target, compiledShader, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
@@ -41,7 +41,7 @@ public class ShaderCompiler {
         }
     }
 
-    public static byte[] compileShader(String shaderCode, int shaderType) {
+    public static byte[] compileShader(BinaryShaderFile shaderSource, String shaderCode, int shaderType) {
         long compiler = 0;
         long options = 0;
         byte[] compiledShader;
@@ -55,12 +55,16 @@ public class ShaderCompiler {
                     "shader.glsl", "main", options
             );
 
-            if (Shaderc.shaderc_result_get_compilation_status(result) != Shaderc.shaderc_compilation_status_success)
-                throw new RuntimeException("Shader compilation failed: " + Shaderc.shaderc_result_get_error_message(result));
+            int compileResult = Shaderc.shaderc_result_get_compilation_status(result);
+
+            if (compileResult != Shaderc.shaderc_compilation_status_success) {
+                String message = Shaderc.shaderc_result_get_error_message(result);
+                throw new ShaderCompilationException(shaderSource, compileResult, message);
+            }
 
             ByteBuffer buffer = Shaderc.shaderc_result_get_bytes(result);
             if(buffer == null)
-                throw new RuntimeException("Failed to buffer during shader compilation.");
+                throw new IllegalStateException("Failed to buffer during shader compilation.");
 
             compiledShader = new byte[buffer.remaining()];
             buffer.get(compiledShader);

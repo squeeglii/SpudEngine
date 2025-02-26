@@ -106,8 +106,8 @@ public class EnginePlayground extends GameHooks {
         this.cubeEntity.getRotation().identity().rotateAxis((float) Math.toRadians(this.angle), ROTATION_AXIS);
         this.cubeEntity.updateTransform();
 
-        this.chamberEntity.setPosition(0, -5, -20);
-        this.cubeEntity.setPosition(0, 1, -14);
+        this.chamberEntity.setPosition(0, -5, -40);
+        this.cubeEntity.setPosition(0, 1, -34);
     }
 
     @Override
