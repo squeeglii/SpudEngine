@@ -27,14 +27,10 @@ import me.cg360.spudengine.core.render.pipeline.descriptor.layout.DescriptorSetL
 import me.cg360.spudengine.core.render.pipeline.descriptor.layout.SamplerDescriptorSetLayout;
 import me.cg360.spudengine.core.render.pipeline.descriptor.layout.UniformDescriptorSetLayout;
 import me.cg360.spudengine.core.render.pipeline.pass.SwapChainRenderPass;
-import me.cg360.spudengine.core.render.pipeline.shader.BinaryShaderFile;
-import me.cg360.spudengine.core.render.pipeline.shader.ShaderCompiler;
 import me.cg360.spudengine.core.render.pipeline.shader.ShaderProgram;
-import me.cg360.spudengine.core.render.pipeline.shader.ShaderType;
 import me.cg360.spudengine.core.render.sync.Fence;
 import me.cg360.spudengine.core.render.sync.SyncSemaphores;
 import me.cg360.spudengine.core.exception.EngineLimitExceededException;
-import me.cg360.spudengine.core.world.Projection;
 import me.cg360.spudengine.core.world.entity.RenderedEntity;
 import me.cg360.spudengine.core.world.Scene;
 import me.cg360.spudengine.core.world.entity.StaticModelEntity;
@@ -95,9 +91,7 @@ public class ForwardRenderer implements RenderProcess {
 
         this.shaderProgram = ShaderProgram.attemptCompile(
                 this.device,
-                new BinaryShaderFile(ShaderType.VERTEX, "shaders/vertex"),
-                new BinaryShaderFile(ShaderType.FRAGMENT, "shaders/fragment"),
-                new BinaryShaderFile(ShaderType.GEOMETRY, "shaders/geometry")
+                EngineProperties.shaders
         );
 
         DescriptorSetLayout[] descriptorSetLayouts = this.createDescriptorSets();

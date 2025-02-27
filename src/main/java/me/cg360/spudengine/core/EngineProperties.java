@@ -1,5 +1,7 @@
 package me.cg360.spudengine.core;
 
+import me.cg360.spudengine.core.render.pipeline.shader.BinaryShaderFile;
+import me.cg360.spudengine.core.render.pipeline.shader.ShaderType;
 import me.cg360.spudengine.test.EnginePlayground;
 import org.tinylog.Logger;
 
@@ -39,6 +41,11 @@ public class EngineProperties {
     public static final float NEAR_PLANE = 1.0f;
     public static final float FAR_PLANE = 100.0f;
     public static final int MAX_TEXTURES = 1024;
+    public static final BinaryShaderFile[] shaders = new BinaryShaderFile[] {
+            new BinaryShaderFile(ShaderType.VERTEX, "shaders/vertex"),
+            new BinaryShaderFile(ShaderType.FRAGMENT, "shaders/fragment"),
+            new BinaryShaderFile(ShaderType.GEOMETRY, "shaders/geometry")
+    };
 
     // -- End of properties --
     private static boolean isInitialized = false;

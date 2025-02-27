@@ -8,7 +8,14 @@ layout(location = 0) in VS_OUT {
     vec2 texCoords;
     mat4 modelTransform;
     mat4 projectionMatrix;
+    mat4 roomTransform;
 } gs_in[];
+
+layout(set = 0, binding = 0) uniform PORTAL_SET {
+    mat4 blueTransform;
+    mat4 redTransform;
+    // do I need to send normals as well?
+} portals;
 
 layout(location = 0) out vec2 texCoords;
 
@@ -32,5 +39,8 @@ void emitOffsetRoom(mat4 transform) {
 
 void main() {
     mat4 transform = mat4(1);
-    emitOffsetRoom(transform); // no transform.
+
+    emitOffsetRoom(transform);
+    emitOffsetRoom(blueTransform);
+    emitOffsetRoom(redTransform);
 }
