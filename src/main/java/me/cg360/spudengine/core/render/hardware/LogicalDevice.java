@@ -40,13 +40,16 @@ public class LogicalDevice {
             requiredExtensions.flip();
 
             // Enable device features
-            VkPhysicalDeviceFeatures features = VkPhysicalDeviceFeatures.calloc(stack)
-                    .fillModeNonSolid(true);
+            VkPhysicalDeviceFeatures isFeatureSupported = this.physicalDevice.getFeatures();
+            VkPhysicalDeviceFeatures features = VkPhysicalDeviceFeatures.calloc(stack);
 
-            VkPhysicalDeviceFeatures supportedFeatures = this.physicalDevice.getFeatures();
-            this.samplerAnisotrophyEnabled = supportedFeatures.samplerAnisotropy();
-            if (this.samplerAnisotrophyEnabled)
+            if (isFeatureSupported.fillModeNonSolid()) features.fillModeNonSolid(true);
+            if (isFeatureSupported.geometryShader()) features.geometryShader(true);
+
+            if (isFeatureSupported.samplerAnisotropy()) {
                 features.samplerAnisotropy(true);
+                this.samplerAnisotrophyEnabled = true;
+            } else this.samplerAnisotrophyEnabled = false;
 
 
             // Enable all the queue families

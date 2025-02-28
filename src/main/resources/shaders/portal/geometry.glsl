@@ -41,6 +41,10 @@ void main() {
     mat4 transform = mat4(1);
 
     emitOffsetRoom(transform);
-    emitOffsetRoom(blueTransform);
-    emitOffsetRoom(redTransform);
+
+    //todo: send culling through arrays to shader?
+    //      ...or even send the full octree?
+
+    emitOffsetRoom(portals.blueTransform);
+    emitOffsetRoom(portals.redTransform);
 }

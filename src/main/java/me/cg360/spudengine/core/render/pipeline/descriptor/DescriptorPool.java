@@ -19,12 +19,14 @@ public class DescriptorPool implements VkHandleWrapper {
 
     private final LogicalDevice device;
     private final long descriptorPool;
+    private int setPositions;
 
     private DescriptorSetLayout[] descriptorSetLayouts;
 
     public DescriptorPool(LogicalDevice device, DescriptorSetLayout... layout) {
         this(device, DescriptorPool.tallyTypes(layout));
         this.descriptorSetLayouts = layout;
+        this.setPositions = layout.length;
     }
 
     public DescriptorPool(LogicalDevice device, Map<Integer, Integer> descriptorTypeTally) {
@@ -102,6 +104,10 @@ public class DescriptorPool implements VkHandleWrapper {
 
     public DescriptorSetLayout[] getDescriptorSetLayouts() {
         return this.descriptorSetLayouts;
+    }
+
+    public int getSetPositionCount() {
+        return this.setPositions;
     }
 
     @Override

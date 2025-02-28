@@ -43,8 +43,8 @@ public class EngineProperties {
     public static final int MAX_TEXTURES = 1024;
     public static final BinaryShaderFile[] shaders = new BinaryShaderFile[] {
             new BinaryShaderFile(ShaderType.VERTEX, "shaders/vertex"),
+            new BinaryShaderFile(ShaderType.GEOMETRY, "shaders/geometry"),
             new BinaryShaderFile(ShaderType.FRAGMENT, "shaders/fragment"),
-            new BinaryShaderFile(ShaderType.GEOMETRY, "shaders/geometry")
     };
 
     // -- End of properties --

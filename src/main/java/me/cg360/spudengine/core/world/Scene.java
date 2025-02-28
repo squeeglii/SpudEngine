@@ -11,12 +11,14 @@ public class Scene {
     private HashMap<UUID, StaticModelEntity> entities;
     private HashMap<String, List<StaticModelEntity>> modelSets;
 
+    private Camera mainCamera;
     private Projection projection;
 
     public Scene(Window window) {
         this.entities = new HashMap<>();
         this.modelSets = new HashMap<>();
         this.projection = new Projection();
+        this.mainCamera = new Camera();
 
         this.projection.resize(window.getWidth(), window.getHeight());
     }
@@ -64,6 +66,11 @@ public class Scene {
             this.modelSets.remove(removedEntity.getModelId());
     }
 
+    public Scene setMainCamera(Camera mainCamera) {
+        this.mainCamera = mainCamera;
+        return this;
+    }
+
     public Projection getProjection() {
         return this.projection;
     }
@@ -75,5 +82,9 @@ public class Scene {
     public List<StaticModelEntity> getEntitiesWithModel(String modelId) {
         List<StaticModelEntity> models = this.modelSets.get(modelId);
         return models == null ? new LinkedList<>() : models;
+    }
+
+    public Camera getMainCamera() {
+        return this.mainCamera;
     }
 }

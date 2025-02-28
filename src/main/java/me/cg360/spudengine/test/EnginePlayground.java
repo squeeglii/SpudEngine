@@ -75,7 +75,6 @@ public class EnginePlayground extends GameHooks {
     @Override
     protected void init(Window window, Scene scene, Renderer renderer) {
         //Logger.info("\u001B[31mANSI Test.");
-
         Texture colTex = renderer.getTextureManager().newCheckerboardTexture(
                 "magenta", 256, 256, 3, 32, Color.MAGENTA, Color.BLACK
         );
@@ -93,35 +92,53 @@ public class EnginePlayground extends GameHooks {
     }
 
 
-    private static final boolean SHOULD_SPIN = false;
+    private static final int mode = 2;
 
     @Override
     protected void logicTick(Window window, Scene scene, long delta) {
-        if(SHOULD_SPIN) {
-            this.angle += 4.0f; //* delta;
+        this.angle += 1.0f; //* delta;
 
-            if (this.angle >= 360)
-                this.angle = this.angle - 360;
+        if (this.angle >= 360)
+            this.angle = this.angle - 360;
 
-            this.chamberEntity.getRotation().identity().rotateAxis((float) Math.toRadians(this.angle), ROTATION_AXIS);
-            this.chamberEntity.updateTransform();
+        switch (mode) {
+            case 0 -> {  // rotate room
+                this.chamberEntity.getRotation().identity().rotateAxis((float) Math.toRadians(this.angle), ROTATION_AXIS);
+                this.chamberEntity.updateTransform();
 
-            this.cubeEntity.getRotation().identity().rotateAxis((float) Math.toRadians(this.angle), ROTATION_AXIS);
-            this.cubeEntity.updateTransform();
+                this.cubeEntity.getRotation().identity().rotateAxis((float) Math.toRadians(this.angle), ROTATION_AXIS);
+                this.cubeEntity.updateTransform();
 
-            this.chamberEntity.setPosition(0, 0, -20);
-            this.cubeEntity.setPosition(0, 1, -14);
-        } else {
-            this.chamberEntity.getRotation().identity().rotateAxis((float) Math.toRadians(145f), ROTATION_AXIS);
-            this.chamberEntity.updateTransform();
+                this.chamberEntity.setPosition(0, -3, -5);
+                this.cubeEntity.setPosition(0, 1, -14);
+            }
+            case 1 -> { // static room
+                this.chamberEntity.getRotation().identity().rotateAxis((float) Math.toRadians(145f), ROTATION_AXIS);
+                this.chamberEntity.updateTransform();
 
-            this.cubeEntity.getRotation().identity().rotateAxis((float) Math.toRadians(65f), ROTATION_AXIS);
-            this.cubeEntity.updateTransform();
+                this.cubeEntity.getRotation().identity().rotateAxis((float) Math.toRadians(65f), ROTATION_AXIS);
+                this.cubeEntity.updateTransform();
 
-            this.chamberEntity.setPosition(0, -3, -18);
-            this.cubeEntity.setPosition(-2, -2.5f, -18);
-            this.cubeEntity.setScale(0.8f);
+                this.chamberEntity.setPosition(0, -3, -18);
+                this.cubeEntity.setPosition(-2, -2.5f, -18);
+                this.cubeEntity.setScale(0.8f);
+            }
+            case 2 -> { // rotate camera
+                this.chamberEntity.getRotation().identity().rotateAxis((float) Math.toRadians(145f), ROTATION_AXIS);
+                this.chamberEntity.updateTransform();
+
+                this.cubeEntity.getRotation().identity().rotateAxis((float) Math.toRadians(65f), ROTATION_AXIS);
+                this.cubeEntity.updateTransform();
+
+                this.chamberEntity.setPosition(0, -3, -5);
+                this.cubeEntity.setPosition(0, 1, -14);
+
+                scene.getMainCamera().setPosition(-1, 1.5f, -4);
+
+                scene.getMainCamera().setRotation((float) Math.toRadians(25f), (float) Math.toRadians(this.angle));
+            }
         }
+
     }
 
     @Override
