@@ -1,5 +1,6 @@
 package me.cg360.spudengine.core.input;
 
+import me.cg360.spudengine.core.render.Window;
 import org.joml.Vector2f;
 import org.lwjgl.glfw.GLFW;
 
@@ -11,6 +12,8 @@ public class MouseInput {
     private Vector2f previousPos;
     private Vector2f delta;
     private boolean isInWindow = false;
+    private boolean isCaptured = false;
+    private boolean shouldForceCentered = false;
 
     private boolean leftButtonDown = false;
     private boolean rightButtonDown = false;
@@ -42,7 +45,7 @@ public class MouseInput {
         });
     }
 
-    public void tickInput() {
+    public void tickInput(Window window) {
         this.delta.set(0, 0);
 
         if(this.previousPos.x >= 0 && this.previousPos.y >= 0 && this.isInWindow) {
@@ -50,8 +53,35 @@ public class MouseInput {
         }
 
         this.previousPos.set(this.currentPos);
+
+        if(this.shouldForceCentered) {
+            this.centerCursorIn(window);
+        }
     }
 
+    public void setCursorCaptured(boolean isCursorCaptured) {
+        if (isCursorCaptured) {
+            this.isCaptured = true;
+            GLFW.glfwSetInputMode(this.windowHandle, GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_DISABLED);
+        } else {
+            this.isCaptured = false;
+            GLFW.glfwSetInputMode(this.windowHandle, GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_NORMAL);
+        }
+    }
+
+    public void setForceCentered(boolean forceCentered) {
+        this.shouldForceCentered = forceCentered;
+    }
+
+    public void centerCursorIn(Window window) {
+        this.updateCursorPosition(window.getWidth() / 2, window.getHeight() / 2);
+    }
+
+    public void updateCursorPosition(int x, int y) {
+        this.previousPos.set(x, y);
+        this.currentPos.set(x, y);
+        GLFW.glfwSetCursorPos(this.windowHandle, x, y);
+    }
 
     public Vector2f getCurrentPos() {
         return this.currentPos;
@@ -63,6 +93,14 @@ public class MouseInput {
 
     public Vector2f getDelta() {
         return this.delta;
+    }
+
+    public boolean isCaptured() {
+        return this.isCaptured;
+    }
+
+    public boolean isInWindow() {
+        return this.isInWindow;
     }
 
     // Mouse buttons

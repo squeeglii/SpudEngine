@@ -2,12 +2,14 @@ package me.cg360.spudengine.test;
 
 import me.cg360.spudengine.core.GameHooks;
 import me.cg360.spudengine.core.SpudEngine;
+import me.cg360.spudengine.core.input.MouseInput;
 import me.cg360.spudengine.core.render.Renderer;
 import me.cg360.spudengine.core.render.Window;
 import me.cg360.spudengine.core.render.geometry.model.*;
 import me.cg360.spudengine.core.render.image.texture.Texture;
 import me.cg360.spudengine.core.world.entity.DummyEntity;
 import me.cg360.spudengine.core.world.Scene;
+import org.joml.Vector2f;
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 
@@ -89,6 +91,21 @@ public class EnginePlayground extends GameHooks {
 
         scene.addEntity(this.chamberEntity);
         scene.addEntity(this.cubeEntity);
+
+        this.chamberEntity.getRotation().identity().rotateAxis((float) Math.toRadians(145f), ROTATION_AXIS);
+        this.chamberEntity.updateTransform();
+
+        this.cubeEntity.getRotation().identity().rotateAxis((float) Math.toRadians(65f), ROTATION_AXIS);
+        this.cubeEntity.updateTransform();
+
+        this.chamberEntity.setPosition(0, -3, -5);
+        this.cubeEntity.setPosition(0, 1, -14);
+
+        scene.getMainCamera().setPosition(-1, 1.5f, -4);
+        scene.getMainCamera().setRotation((float) Math.toRadians(40f), (float) Math.toRadians(this.angle));
+
+        window.getMouseInput().setCursorCaptured(true);
+        window.getMouseInput().setForceCentered(true);
     }
 
 
@@ -124,18 +141,7 @@ public class EnginePlayground extends GameHooks {
                 this.cubeEntity.setScale(0.8f);
             }
             case 2 -> { // rotate camera
-                this.chamberEntity.getRotation().identity().rotateAxis((float) Math.toRadians(145f), ROTATION_AXIS);
-                this.chamberEntity.updateTransform();
 
-                this.cubeEntity.getRotation().identity().rotateAxis((float) Math.toRadians(65f), ROTATION_AXIS);
-                this.cubeEntity.updateTransform();
-
-                this.chamberEntity.setPosition(0, -3, -5);
-                this.cubeEntity.setPosition(0, 1, -14);
-
-                scene.getMainCamera().setPosition(-1, 1.5f, -4);
-
-                scene.getMainCamera().setRotation((float) Math.toRadians(25f), (float) Math.toRadians(this.angle));
             }
         }
 
@@ -143,12 +149,47 @@ public class EnginePlayground extends GameHooks {
 
     @Override
     protected void input(Window window, Scene scene, long delta) {
+        MouseInput mouseInput = window.getMouseInput();
+        Vector2f mDelta = mouseInput.getDelta().mul(0.01f);
 
+        // Camera Rotation
+        if(mouseInput.isCaptured() && mouseInput.isInWindow()) {
+            float pitch = mDelta.y;
+            float yaw = mDelta.x;
+            if(scene.getMainCamera().isUpsideDown()) yaw = -yaw;
+
+            scene.getMainCamera().addRotation(pitch, yaw);
+        }
+
+        // Camera movement
+        int forward = 0, up = 0, left = 0;
+
+        if(window.isKeyPressed(GLFW.GLFW_KEY_W)) forward += 1;
+        if(window.isKeyPressed(GLFW.GLFW_KEY_S)) forward -= 1;
+
+        if(window.isKeyPressed(GLFW.GLFW_KEY_A)) left += 1;
+        if(window.isKeyPressed(GLFW.GLFW_KEY_D)) left -= 1;
+
+        if(window.isKeyPressed(GLFW.GLFW_KEY_SPACE)) up += 1;
+        if(window.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT)) up -= 1;
+
+        if(mouseInput.isLeftButtonDown()) {
+            mouseInput.setCursorCaptured(true);
+            window.getMouseInput().setForceCentered(true);
+        }
+
+        if(forward != 0 || up != 0 || left != 0)
+            scene.getMainCamera().move(forward, up, left, 0.01f*delta);
     }
 
     @Override
     protected void inputEvent(Window window, int key, int action, int modifiers) {
-        if(key == GLFW.GLFW_KEY_W && action == GLFW.GLFW_RELEASE)
+        if(key == GLFW.GLFW_KEY_F1 && action == GLFW.GLFW_RELEASE)
             this.getEngine().getRenderer().useWireframe = !this.getEngine().getRenderer().useWireframe;
+
+        if(key == GLFW.GLFW_KEY_ESCAPE && action == GLFW.GLFW_RELEASE) {
+            window.getMouseInput().setCursorCaptured(false);
+            window.getMouseInput().setForceCentered(false);
+        }
     }
 }

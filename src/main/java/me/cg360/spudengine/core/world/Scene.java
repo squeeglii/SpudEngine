@@ -18,7 +18,7 @@ public class Scene {
         this.entities = new HashMap<>();
         this.modelSets = new HashMap<>();
         this.projection = new Projection();
-        this.mainCamera = new Camera();
+        this.mainCamera = new Camera(true);
 
         this.projection.resize(window.getWidth(), window.getHeight());
     }

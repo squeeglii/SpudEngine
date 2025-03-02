@@ -16,7 +16,6 @@ public class Window implements VkHandleWrapper {
     private int height;
     private boolean hasBeenResized;
 
-
     public Window(String title) {
         this(title, null);
     }
@@ -55,7 +54,7 @@ public class Window implements VkHandleWrapper {
 
     public void pollEvents() {
         GLFW.glfwPollEvents();
-        this.mouseInput.tickInput();
+        this.mouseInput.tickInput(this);
     }
 
     public void cleanup() {
