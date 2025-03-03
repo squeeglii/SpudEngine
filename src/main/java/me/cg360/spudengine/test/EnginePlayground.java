@@ -1,13 +1,14 @@
 package me.cg360.spudengine.test;
 
-import me.cg360.spudengine.core.GameInstance;
+import me.cg360.spudengine.core.GameComponent;
 import me.cg360.spudengine.core.SpudEngine;
+import me.cg360.spudengine.core.component.FlyCameraController;
 import me.cg360.spudengine.core.input.MouseInput;
 import me.cg360.spudengine.core.render.Renderer;
 import me.cg360.spudengine.core.render.Window;
 import me.cg360.spudengine.core.render.geometry.model.*;
 import me.cg360.spudengine.core.render.image.texture.Texture;
-import me.cg360.spudengine.core.world.entity.SimpleMoveableEntity;
+import me.cg360.spudengine.core.world.entity.impl.SimpleMoveableEntity;
 import me.cg360.spudengine.core.world.Scene;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
@@ -15,7 +16,7 @@ import org.lwjgl.glfw.GLFW;
 
 import java.awt.*;
 
-public class EnginePlayground extends GameInstance {
+public class EnginePlayground extends GameComponent {
 
     // Assumes clockwise winding order.
     private static final Mesh MESH_TRIANGLE_2D = Mesh.withoutProvidedUVs(
@@ -72,6 +73,8 @@ public class EnginePlayground extends GameInstance {
 
     public EnginePlayground(SpudEngine engineInstance) {
         super("Engine Playground", engineInstance);
+
+        this.addSubListener(new FlyCameraController(this, engineInstance));
     }
 
     @Override
@@ -103,9 +106,6 @@ public class EnginePlayground extends GameInstance {
 
         scene.getMainCamera().setPosition(-1, 1.5f, -4);
         scene.getMainCamera().setRotation((float) Math.toRadians(40f), (float) Math.toRadians(this.angle));
-
-        window.getMouseInput().setCursorCaptured(true);
-        window.getMouseInput().setForceCentered(true);
     }
 
 
@@ -148,48 +148,8 @@ public class EnginePlayground extends GameInstance {
     }
 
     @Override
-    protected void onInputTick(Window window, Scene scene, long delta) {
-        MouseInput mouseInput = window.getMouseInput();
-        Vector2f mDelta = mouseInput.getDelta().mul(0.01f);
-
-        // Camera Rotation
-        if(mouseInput.isCaptured() && mouseInput.isInWindow()) {
-            float pitch = mDelta.y;
-            float yaw = mDelta.x;
-            if(scene.getMainCamera().isUpsideDown()) yaw = -yaw;
-
-            scene.getMainCamera().addRotation(pitch, yaw);
-        }
-
-        // Camera movement
-        int forward = 0, up = 0, left = 0;
-
-        if(window.isKeyPressed(GLFW.GLFW_KEY_W)) forward += 1;
-        if(window.isKeyPressed(GLFW.GLFW_KEY_S)) forward -= 1;
-
-        if(window.isKeyPressed(GLFW.GLFW_KEY_A)) left += 1;
-        if(window.isKeyPressed(GLFW.GLFW_KEY_D)) left -= 1;
-
-        if(window.isKeyPressed(GLFW.GLFW_KEY_SPACE)) up += 1;
-        if(window.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT)) up -= 1;
-
-        if(mouseInput.isLeftButtonDown()) {
-            mouseInput.setCursorCaptured(true);
-            window.getMouseInput().setForceCentered(true);
-        }
-
-        if(forward != 0 || up != 0 || left != 0)
-            scene.getMainCamera().move(forward, up, left, 0.01f*delta);
-    }
-
-    @Override
     protected void onInputEvent(Window window, int key, int action, int modifiers) {
         if(key == GLFW.GLFW_KEY_F1 && action == GLFW.GLFW_RELEASE)
             this.getEngine().getRenderer().useWireframe = !this.getEngine().getRenderer().useWireframe;
-
-        if(key == GLFW.GLFW_KEY_ESCAPE && action == GLFW.GLFW_RELEASE) {
-            window.getMouseInput().setCursorCaptured(false);
-            window.getMouseInput().setForceCentered(false);
-        }
     }
 }

@@ -1,6 +1,7 @@
-package me.cg360.spudengine.core.world.entity;
+package me.cg360.spudengine.core.world.entity.impl;
 
 import me.cg360.spudengine.core.world.Scene;
+import me.cg360.spudengine.core.world.entity.SimpleEntity;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 

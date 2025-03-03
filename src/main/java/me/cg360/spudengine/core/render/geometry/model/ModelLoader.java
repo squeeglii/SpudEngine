@@ -15,12 +15,20 @@ import java.util.List;
 
 public class ModelLoader {
 
+    public static Model loadEnvironmentModel(String modelResourcePath) {
+        return ModelLoader.loadEnvironmentModel(modelResourcePath, modelResourcePath+".obj");
+    }
+
     public static Model loadEnvironmentModel(String modelId, String modelResourcePath) {
         return loadModel(
                 modelId, modelResourcePath, TextureManager.BASE_PATH,
                 Assimp.aiProcess_JoinIdenticalVertices | Assimp.aiProcess_Triangulate |
                 Assimp.aiProcess_CalcTangentSpace | Assimp.aiProcess_PreTransformVertices
         );
+    }
+
+    public static Model loadModel(String modelResourcePath) {
+        return ModelLoader.loadModel(modelResourcePath, modelResourcePath+".obj");
     }
 
     public static Model loadModel(String modelId, String modelResourcePath) {

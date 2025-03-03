@@ -13,7 +13,7 @@ public class SpudEngine {
     private Scene scene;
     private Renderer renderer;
 
-    private GameInstance gameInstance;
+    private GameComponent gameInstance;
 
     private long ticksAlive = 0;
 

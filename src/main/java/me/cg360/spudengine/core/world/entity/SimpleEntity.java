@@ -22,29 +22,43 @@ public abstract class SimpleEntity extends StaticModelEntity {
         this.scale = 1.0f;
     }
 
+    public void updateTransform() {
+        this.modelMatrix.translationRotateScale(this.position, this.rotation, this.scale);
+    }
+
     @Override
     public Matrix4f getTransform() {
         return this.modelMatrix;
     }
 
-    @Override
     public Vector3f getPosition() {
         return this.position;
     }
 
-    @Override
     public Quaternionf getRotation() {
         return this.rotation;
     }
 
-    @Override
     public float getScale() {
         return this.scale;
     }
 
-    @Override
-    public void updateTransform() {
-        this.modelMatrix.translationRotateScale(this.position, this.rotation, this.scale);
+    public Vector3f getEulerAngles() {
+        Vector3f eular = new Vector3f();
+        this.getRotation().getEulerAnglesXYZ(eular);
+        return eular;
+    }
+
+    public float getPitch() {
+        return this.getRotation().y;
+    }
+
+    public float getYaw() {
+        return this.getEulerAngles().z;
+    }
+
+    public float getRoll() {
+        return this.getEulerAngles().x;
     }
 
 

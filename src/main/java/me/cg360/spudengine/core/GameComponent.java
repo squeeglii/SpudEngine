@@ -8,14 +8,14 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
-public abstract class GameInstance {
+public abstract class GameComponent {
 
     private final String instanceNickname;
     private final SpudEngine engineInstance;
 
-    private final List<GameInstance> subListeners;
+    private final List<GameComponent> subListeners;
 
-    public GameInstance(String nickname, SpudEngine engineInstance, GameInstance... subListeners) {
+    public GameComponent(String nickname, SpudEngine engineInstance, GameComponent... subListeners) {
         this.instanceNickname = nickname;
         this.engineInstance = engineInstance;
 
@@ -24,7 +24,7 @@ public abstract class GameInstance {
     }
 
     /** Registers and returns the provided sub-listener. */
-    public <T extends GameInstance> T addSubListener(T listener) {
+    public <T extends GameComponent> T addSubListener(T listener) {
         if(listener == null)
             throw new NullPointerException("Sub-Listener cannot be null");
 
@@ -33,28 +33,28 @@ public abstract class GameInstance {
     }
 
     protected final void passInit(Window window, Scene scene, Renderer renderer) {
-        for(GameInstance subListener : this.subListeners)
+        for(GameComponent subListener : this.subListeners)
             subListener.passInit(window, scene, renderer);
 
         this.onInit(window, scene, renderer);
     }
 
     protected final void passLogicTick(Window window, Scene scene, long delta) {
-        for(GameInstance subListener : this.subListeners)
+        for(GameComponent subListener : this.subListeners)
             subListener.passLogicTick(window, scene, delta);
 
         this.onLogicTick(window, scene, delta);
     }
 
     protected final void passInputTick(Window window, Scene scene, long delta) {
-        for(GameInstance subListener : this.subListeners)
+        for(GameComponent subListener : this.subListeners)
             subListener.passInputTick(window, scene, delta);
 
         this.onInputTick(window, scene, delta);
     }
 
     protected final void passInputEvent(Window window, int key, int action, int modifiers) {
-        for(GameInstance subListener : this.subListeners)
+        for(GameComponent subListener : this.subListeners)
             subListener.passInputEvent(window, key, action, modifiers);
 
         this.onInputEvent(window, key, action, modifiers);
@@ -94,5 +94,9 @@ public abstract class GameInstance {
 
     public final SpudEngine getEngine() {
         return this.engineInstance;
+    }
+
+    public static String sub(GameComponent parent, String name) {
+        return "%s.%s".formatted(parent.getInstanceNickname(), name);
     }
 }

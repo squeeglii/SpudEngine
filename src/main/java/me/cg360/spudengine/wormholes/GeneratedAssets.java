@@ -41,7 +41,7 @@ public class GeneratedAssets {
     }
 
     public static void registerTextures(TextureManager textureManager) {
-        textureManager.newSolidColourTexture(BLUE_PORTAL_MATERIAL.texture(), 512, 512, 0, new Color(50, 100, 255));
-        textureManager.newSolidColourTexture(ORANGE_PORTAL_MATERIAL.texture(), 512, 512, 0, new Color(255, 100, 20));
+        textureManager.newSolidColourTexture(BLUE_PORTAL_MATERIAL.texture(), 512, 512, 1, new Color(50, 100, 255));
+        textureManager.newSolidColourTexture(ORANGE_PORTAL_MATERIAL.texture(), 512, 512, 1, new Color(255, 100, 20));
     }
 }

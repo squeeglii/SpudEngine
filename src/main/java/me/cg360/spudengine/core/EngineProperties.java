@@ -3,6 +3,7 @@ package me.cg360.spudengine.core;
 import me.cg360.spudengine.core.render.pipeline.shader.BinaryShaderFile;
 import me.cg360.spudengine.core.render.pipeline.shader.ShaderType;
 import me.cg360.spudengine.test.EnginePlayground;
+import me.cg360.spudengine.wormholes.WormholeDemo;
 import org.tinylog.Logger;
 
 import java.awt.*;
@@ -27,7 +28,7 @@ public class EngineProperties {
     public static final Color CLEAR_COLOUR = new Color(0.05f, 0.05f, 0.05f, 0.00f);
 
     // Logic
-    public static final Entrypoint GAME = EnginePlayground::new;
+    public static final Entrypoint GAME = WormholeDemo::new;
     public static final int UPDATES_PER_SECOND = 30; // logic tick interval
 
     // Graphics

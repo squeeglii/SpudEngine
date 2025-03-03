@@ -1,24 +1,21 @@
 package me.cg360.spudengine.wormholes.logic;
 
-import me.cg360.spudengine.core.GameInstance;
+import me.cg360.spudengine.core.GameComponent;
 import me.cg360.spudengine.core.SpudEngine;
-import me.cg360.spudengine.core.input.MouseInput;
 import me.cg360.spudengine.core.render.Window;
 import me.cg360.spudengine.wormholes.world.entity.PortalEntity;
 import org.joml.Vector2f;
 import org.lwjgl.glfw.GLFW;
 import org.tinylog.Logger;
 
-import java.awt.event.KeyEvent;
-
-public class PortalTracker extends GameInstance {
+public class PortalTracker extends GameComponent {
 
     private PortalEntity bluePortal = null;
     private PortalEntity orangePortal = null;
 
-    public PortalTracker(GameInstance parentState, SpudEngine engineInstance) {
+    public PortalTracker(GameComponent parent, SpudEngine engineInstance) {
         super(
-                "%s.portal_tracker".formatted(parentState.getInstanceNickname()),
+                GameComponent.sub(parent, "portal_tracker"),
                 engineInstance
         );
     }
