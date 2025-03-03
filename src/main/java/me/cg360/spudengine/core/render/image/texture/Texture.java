@@ -97,7 +97,7 @@ public abstract class Texture {
                         .baseArrayLayer(0)
                         .layerCount(1))
                 .srcAccessMask(uploadMode.srcAccessMask())
-                .dstAccessMask(uploadMode.dstStage());
+                .dstAccessMask(uploadMode.dstAccessMask());
 
         VK11.vkCmdPipelineBarrier(cmd.asVk(), uploadMode.srcStage(), uploadMode.dstStage(), 0, null, null, barrier);
     }

@@ -1,13 +1,13 @@
 package me.cg360.spudengine.test;
 
-import me.cg360.spudengine.core.GameHooks;
+import me.cg360.spudengine.core.GameInstance;
 import me.cg360.spudengine.core.SpudEngine;
 import me.cg360.spudengine.core.input.MouseInput;
 import me.cg360.spudengine.core.render.Renderer;
 import me.cg360.spudengine.core.render.Window;
 import me.cg360.spudengine.core.render.geometry.model.*;
 import me.cg360.spudengine.core.render.image.texture.Texture;
-import me.cg360.spudengine.core.world.entity.DummyEntity;
+import me.cg360.spudengine.core.world.entity.SimpleMoveableEntity;
 import me.cg360.spudengine.core.world.Scene;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
@@ -15,7 +15,7 @@ import org.lwjgl.glfw.GLFW;
 
 import java.awt.*;
 
-public class EnginePlayground extends GameHooks {
+public class EnginePlayground extends GameInstance {
 
     // Assumes clockwise winding order.
     private static final Mesh MESH_TRIANGLE_2D = Mesh.withoutProvidedUVs(
@@ -66,8 +66,8 @@ public class EnginePlayground extends GameHooks {
 
     private static final Vector3f ROTATION_AXIS = new Vector3f(0, 1, 0);
 
-    private DummyEntity chamberEntity;
-    private DummyEntity cubeEntity;
+    private SimpleMoveableEntity chamberEntity;
+    private SimpleMoveableEntity cubeEntity;
     private float angle;
 
     public EnginePlayground(SpudEngine engineInstance) {
@@ -75,19 +75,19 @@ public class EnginePlayground extends GameHooks {
     }
 
     @Override
-    protected void init(Window window, Scene scene, Renderer renderer) {
+    protected void onInit(Window window, Scene scene, Renderer renderer) {
         //Logger.info("\u001B[31mANSI Test.");
         Texture colTex = renderer.getTextureManager().newCheckerboardTexture(
                 "magenta", 256, 256, 3, 32, Color.MAGENTA, Color.BLACK
         );
 
-        renderer.getModelManager().processModels(renderer,
+        renderer.getModelManager().processModels(
                 ModelLoader.loadEnvironmentModel("chamber01", "env/chamber01.obj"),
                 new Model("cube", new Material("missing", Material.WHITE), MESH_CUBE)
         );
 
-        this.chamberEntity = new DummyEntity("chamber01");
-        this.cubeEntity = new DummyEntity("cube");
+        this.chamberEntity = new SimpleMoveableEntity("chamber01");
+        this.cubeEntity = new SimpleMoveableEntity("cube");
 
         scene.addEntity(this.chamberEntity);
         scene.addEntity(this.cubeEntity);
@@ -112,7 +112,7 @@ public class EnginePlayground extends GameHooks {
     private static final int mode = 2;
 
     @Override
-    protected void logicTick(Window window, Scene scene, long delta) {
+    protected void onLogicTick(Window window, Scene scene, long delta) {
         this.angle += 1.0f; //* delta;
 
         if (this.angle >= 360)
@@ -148,7 +148,7 @@ public class EnginePlayground extends GameHooks {
     }
 
     @Override
-    protected void input(Window window, Scene scene, long delta) {
+    protected void onInputTick(Window window, Scene scene, long delta) {
         MouseInput mouseInput = window.getMouseInput();
         Vector2f mDelta = mouseInput.getDelta().mul(0.01f);
 
@@ -183,7 +183,7 @@ public class EnginePlayground extends GameHooks {
     }
 
     @Override
-    protected void inputEvent(Window window, int key, int action, int modifiers) {
+    protected void onInputEvent(Window window, int key, int action, int modifiers) {
         if(key == GLFW.GLFW_KEY_F1 && action == GLFW.GLFW_RELEASE)
             this.getEngine().getRenderer().useWireframe = !this.getEngine().getRenderer().useWireframe;
 

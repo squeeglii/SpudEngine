@@ -50,6 +50,8 @@ import java.util.Map;
 
 public class ForwardRenderer implements RenderProcess {
 
+    private static final int DEPTH_ATTACHMENT_FORMAT = VK11.VK_FORMAT_D32_SFLOAT;
+
     private LogicalDevice device;
 
     private final CommandBuffer[] commandBuffers;
@@ -140,7 +142,7 @@ public class ForwardRenderer implements RenderProcess {
         this.depthAttachments = new Attachment[numImages];
         for (int i = 0; i < numImages; i++) {
             this.depthAttachments[i] = new Attachment(this.device, swapChainExtent.width(), swapChainExtent.height(),
-                    VK11.VK_FORMAT_D32_SFLOAT, VK11.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+                    DEPTH_ATTACHMENT_FORMAT, VK11.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
         }
     }
 
@@ -395,6 +397,15 @@ public class ForwardRenderer implements RenderProcess {
         Arrays.asList(this.fences).forEach(Fence::cleanup);
     }
 
+    @Override
+    public Attachment getDepthAttachment(int index) {
+        return this.depthAttachments[index];
+    }
+
+    @Override
+    public int getDepthFormat() {
+        return DEPTH_ATTACHMENT_FORMAT;
+    }
 
     public static class ShaderIO {
         private LongBuffer descriptorSets;

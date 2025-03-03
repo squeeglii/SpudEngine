@@ -33,6 +33,8 @@ public class ModelManager implements Registry {
 
     private static final VertexFormatSummary BUFFER_FORMAT = VertexFormats.POSITION_UV;
 
+    private Renderer host;
+
     private final LogicalDevice graphicsDevice;
     private final TextureManager textureManager;
 
@@ -40,7 +42,8 @@ public class ModelManager implements Registry {
 
     public final Material fallbackMaterial;
 
-    public ModelManager(LogicalDevice graphicsDevice, TextureManager textureManager) {
+    public ModelManager(Renderer host, LogicalDevice graphicsDevice, TextureManager textureManager) {
+        this.host = host;
         this.graphicsDevice = graphicsDevice;
         this.textureManager = textureManager;
         this.bufferedModels = new HashMap<>();
@@ -48,24 +51,32 @@ public class ModelManager implements Registry {
         this.fallbackMaterial = new Material(TextureManager.TEX_MISSING, Material.WHITE);
     }
 
-    public void createMissingModel(Renderer renderer) {
+    public void createMissingModel() {
         Model model = new Model(ID_MISSING_MODEL, Primitive.CUBE);
-        this.transformModels(renderer, model);
+        this.processModels(model);
     }
 
     public void cleanup() {
         this.bufferedModels.values().forEach(BufferedModel::cleanup);
         this.bufferedModels.clear();
+        this.host = null;
     }
 
-    public void processModels(Renderer renderer, Model... models) {
-        List<BufferedModel> processed = this.transformModels(renderer, models);
-        renderer.getRenderProcess().processModelBatch(processed);
+    /** Registers and stages models & their materials in a batch call. */
+    public void processModels(Model... models) {
+        List<BufferedModel> processed = this.transformModels(this.host.getCommandPool(), this.host.getGraphicsQueue(), models);
+        this.host.getRenderProcess().processModelBatch(processed);
+    }
+
+    /** Registers and stages models & their materials in a batch call. */
+    public void processModels(List<Model> models) {
+        List<BufferedModel> processed = this.transformModels(this.host.getCommandPool(), this.host.getGraphicsQueue(), models);
+        this.host.getRenderProcess().processModelBatch(processed);
     }
 
     /** @see ModelManager#transformModels(CommandPool, CommandQueue, List) */
-    protected List<BufferedModel> transformModels(Renderer renderer, Model... models) {
-        return this.transformModels(renderer.getCommandPool(), renderer.getGraphicsQueue(), List.of(models));
+    protected List<BufferedModel> transformModels(CommandPool pool, CommandQueue queue, Model... models) {
+        return this.transformModels(pool, queue, List.of(models));
     }
 
     /**

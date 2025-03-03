@@ -10,13 +10,30 @@ import java.util.UUID;
 public abstract class RenderedEntity {
 
     private final UUID entityId;
+    private boolean isInScene;
 
     public RenderedEntity(UUID entityId) {
         this.entityId = entityId;
     }
 
-    public abstract void onAdd(Scene scene);
-    public abstract void onRemove(Scene scene);
+    public final void markAddedToScene(Scene scene) {
+        if(this.isInScene) return;
+        if(!scene.hasEntity(this)) return;
+
+        this.onAdd(scene);
+        this.isInScene = true;
+    }
+
+    public final void markRemovedFromScene(Scene scene) {
+        if(!this.isInScene) return;
+        if(scene.hasEntity(this)) return;
+
+        this.onRemove(scene);
+        this.isInScene = false;
+    }
+
+    protected abstract void onAdd(Scene scene);
+    protected abstract void onRemove(Scene scene);
 
     public abstract String getModelId();
     public abstract Matrix4f getTransform();

@@ -3,6 +3,7 @@ package me.cg360.spudengine.core.render.impl;
 import me.cg360.spudengine.core.render.Renderer;
 import me.cg360.spudengine.core.render.command.CommandQueue;
 import me.cg360.spudengine.core.render.geometry.model.BufferedModel;
+import me.cg360.spudengine.core.render.image.Attachment;
 import me.cg360.spudengine.core.render.image.SwapChain;
 
 import java.util.List;
@@ -19,4 +20,7 @@ public interface RenderProcess {
     void onResize(SwapChain newSwapChain);
 
     void cleanup();
+
+    Attachment getDepthAttachment(int index);
+    int getDepthFormat();
 }

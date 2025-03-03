@@ -13,7 +13,7 @@ public class SpudEngine {
     private Scene scene;
     private Renderer renderer;
 
-    private GameHooks gameInstance;
+    private GameInstance gameInstance;
 
     private long ticksAlive = 0;
 
@@ -23,6 +23,7 @@ public class SpudEngine {
         this.window = new Window(EngineProperties.WINDOW_TITLE, this::inputEvent);
         this.scene = new Scene(this.window);
         this.renderer = new Renderer(this.window, this.scene);
+
         this.gameInstance = null;
 
         this.preinit(this.window, this.scene, this.renderer);
@@ -83,7 +84,7 @@ public class SpudEngine {
     private void preinit(Window window, Scene scene, Renderer renderer) {
         Logger.info("Initializing engine... (pre-init)");
 
-        // logic!
+
 
         Logger.info("Completed engine initialisation (pre-init)");
     }
@@ -91,24 +92,24 @@ public class SpudEngine {
     private void init(Window window, Scene scene, Renderer renderer) {
         Logger.info("Initialising logic... (init)");
 
-        renderer.getModelManager().createMissingModel(renderer);
+        renderer.getModelManager().createMissingModel();
 
-        this.gameInstance.init(window, scene, renderer);
+        this.gameInstance.passInit(window, scene, renderer);
 
         Logger.info("Completed logic initialisation (init)");
     }
 
     private void logicTick(Window window, Scene scene, long delta) {
-        this.gameInstance.logicTick(window, scene, delta);
+        this.gameInstance.passLogicTick(window, scene, delta);
         this.ticksAlive++;
     }
 
     private void inputTick(Window window, Scene scene, long delta) {
-        this.gameInstance.input(window, scene, delta);
+        this.gameInstance.passInputTick(window, scene, delta);
     }
 
     private void inputEvent(long windowHandle, int key, int scanCode, int action, int modifiers) {
-        this.gameInstance.inputEvent(window, key, action, modifiers);
+        this.gameInstance.passInputEvent(window, key, action, modifiers);
     }
 
 
@@ -127,6 +128,10 @@ public class SpudEngine {
 
     public Window getWindow() {
         return this.window;
+    }
+
+    public Scene getScene() {
+        return this.scene;
     }
 
     // Engine State:

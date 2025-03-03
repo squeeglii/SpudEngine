@@ -195,6 +195,10 @@ public class SwapChain implements VkHandleWrapper {
         return this.currentFrame;
     }
 
+    public ImageView getCurrentFrameView() {
+        return this.imageViews[this.currentFrame];
+    }
+
     private static int calcNumImages(VkSurfaceCapabilitiesKHR surfCapabilities, int requestedImages) {
         int maxImages = surfCapabilities.maxImageCount();
         int minImages = surfCapabilities.minImageCount();

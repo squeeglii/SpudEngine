@@ -1,12 +1,10 @@
 package me.cg360.spudengine.core.render.image;
 
+import me.cg360.spudengine.core.render.data.buffer.GeneralBuffer;
 import me.cg360.spudengine.core.render.hardware.LogicalDevice;
 import me.cg360.spudengine.core.util.VulkanUtil;
 import org.lwjgl.system.MemoryStack;
-import org.lwjgl.vulkan.VK11;
-import org.lwjgl.vulkan.VkImageCreateInfo;
-import org.lwjgl.vulkan.VkMemoryAllocateInfo;
-import org.lwjgl.vulkan.VkMemoryRequirements;
+import org.lwjgl.vulkan.*;
 
 import java.nio.LongBuffer;
 
@@ -74,6 +72,12 @@ public class Image {
             VulkanUtil.checkErrorCode(errBind, "Failed to bind image memory");
         }
     }
+
+    //TODO: Add a way to download the image to a buffer for
+    // obtaining the depth at a point.
+    //public void download(VkCommandBuffer cmd) {
+    //
+    //}
 
     public void cleanup() {
         VK11.vkDestroyImage(this.device.asVk(), this.image, null);

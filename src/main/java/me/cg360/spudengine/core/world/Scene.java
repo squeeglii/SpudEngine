@@ -43,7 +43,7 @@ public class Scene {
 
         groupedEntities.add(entity);
 
-        entity.onAdd(this);
+        entity.markAddedToScene(this);
     }
 
     public void removeEntity(RenderedEntity entity) {
@@ -56,7 +56,7 @@ public class Scene {
         if(removedEntity == null)
             return;
 
-        removedEntity.onRemove(this);
+        removedEntity.markRemovedFromScene(this);
 
         List<StaticModelEntity> modelList = this.getEntitiesWithModel(removedEntity.getModelId());
         modelList.remove(removedEntity);
@@ -64,6 +64,14 @@ public class Scene {
         // Save processing models when they're not used.
         if(modelList.isEmpty())
             this.modelSets.remove(removedEntity.getModelId());
+    }
+
+    public boolean hasEntity(RenderedEntity entityId) {
+        return this.hasEntity(entityId.getEntityId());
+    }
+
+    public boolean hasEntity(UUID entityId) {
+        return this.entities.containsKey(entityId);
     }
 
     public Scene setMainCamera(Camera mainCamera) {

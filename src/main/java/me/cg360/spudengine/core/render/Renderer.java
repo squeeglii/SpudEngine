@@ -8,12 +8,16 @@ import me.cg360.spudengine.core.render.hardware.LogicalDevice;
 import me.cg360.spudengine.core.render.hardware.PhysicalDevice;
 import me.cg360.spudengine.core.render.hardware.Surface;
 import me.cg360.spudengine.core.render.command.GraphicsQueue;
+import me.cg360.spudengine.core.render.image.Attachment;
+import me.cg360.spudengine.core.render.image.ImageView;
 import me.cg360.spudengine.core.render.image.SwapChain;
 import me.cg360.spudengine.core.render.image.texture.TextureManager;
 import me.cg360.spudengine.core.render.impl.ForwardRenderer;
 import me.cg360.spudengine.core.render.impl.RenderProcess;
 import me.cg360.spudengine.core.render.pipeline.PipelineCache;
 import me.cg360.spudengine.core.world.Scene;
+import org.joml.Vector2f;
+import org.joml.Vector3f;
 
 public class Renderer {
 
@@ -54,7 +58,7 @@ public class Renderer {
         this.renderProcess = new ForwardRenderer(this.swapChain, this.commandPool, this.pipelineCache, scene);
 
         this.textureManager = new TextureManager(this.graphicsDevice);
-        this.modelManager = new ModelManager(this.graphicsDevice, this.textureManager);
+        this.modelManager = new ModelManager(this, this.graphicsDevice, this.textureManager);
     }
 
     public void render(Window window, Scene scene, float time) {
@@ -89,6 +93,13 @@ public class Renderer {
                 this.presentQueue, this.graphicsQueue);
 
         this.renderProcess.onResize(this.swapChain);
+    }
+
+    public Vector3f getWorldPosFrom(int screenX, int screenY) {
+        int currentFrame = this.swapChain.getCurrentFrame();
+        Attachment depth = this.renderProcess.getDepthAttachment(currentFrame);
+
+        throw new IllegalStateException("Unimplemented."); //TODO
     }
 
 
