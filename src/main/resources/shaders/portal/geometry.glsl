@@ -1,7 +1,9 @@
 #version 450
 
+#define RECURSION_DEPTH 10
+
 layout (triangles) in;
-layout (triangle_strip, max_vertices = 3+(3*2*5)) out; // 3x triangles, 9 vertices. Allows for 2 copies of every model.
+layout (triangle_strip, max_vertices = 3+(3*2*RECURSION_DEPTH)) out; // 3x triangles, 9 vertices. Allows for 2 copies of every model.
 
 layout(location = 0) in VS_OUT {
     vec3 pos;
@@ -18,6 +20,19 @@ layout(set = 2, binding = 0) uniform PORTAL_SET {
 
 layout(location = 0) out vec2 texCoords;
 layout(location = 1) out vec4 debugColour;
+
+// https://gamedev.stackexchange.com/questions/59797/glsl-shader-change-hue-saturation-brightness
+vec3 hsv2rgb(vec3 c)
+{
+    vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+
+vec3 hsv2rgb(float h, float s, float v)
+{
+    return hsv2rgb(vec3(h, s, v));
+}
 
 void emitOffsetRoom(mat4 transform, vec4 debug) {
     mat4 mP = gs_in[0].projectionMatrix;
@@ -48,15 +63,20 @@ void main() {
     //todo: send culling through arrays to shader?
     //      ...or even send the full octree?
 
-    //transform[3][0] = 10;
+    mat4 blue = mat4(1);
+    mat4 orange = mat4(1);
 
-    emitOffsetRoom(portals.blueTransform, vec4(0.5, 0.5, 1.0, 1));
-    emitOffsetRoom(portals.blueTransform*portals.blueTransform, vec4(0.3, 0.3, 1.0, 1));
-    emitOffsetRoom(portals.blueTransform*portals.blueTransform*portals.blueTransform, vec4(0.1, 0.1, 1.0, 1));
+    for(int i = 0; i < RECURSION_DEPTH; i++) {
+        blue *= portals.blueTransform;
+        orange *= portals.orangeTransform;
 
-    emitOffsetRoom(portals.orangeTransform, vec4(1.0, 0.6, 0.4, 1));
-    emitOffsetRoom(portals.orangeTransform*portals.orangeTransform, vec4(1.0, 0.6, 0.2, 1));
-    emitOffsetRoom(portals.orangeTransform*portals.orangeTransform*portals.orangeTransform, vec4(1.0, 0.6, 0.03, 1));
+        float r = RECURSION_DEPTH;
+        float colFrac = 0.5 + 0.5 * ((i+1) / r);
 
-    //emitOffsetRoom(portals.orangeTransform);
+        vec4 blueCol = vec4(hsv2rgb(0.5, colFrac, 1), 1);
+        vec4 orangeCol = vec4(hsv2rgb(0.05, colFrac, 1), 1);
+
+        emitOffsetRoom(blue, blueCol);
+        emitOffsetRoom(orange, orangeCol);
+    }
 }

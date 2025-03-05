@@ -26,6 +26,11 @@ public class FlyCameraController extends GameComponent {
         MouseInput mouseInput = window.getMouseInput();
         Vector2f mDelta = mouseInput.getDelta().mul(0.01f);
 
+        if(!window.isWindowFocused()) {
+            mouseInput.setForceCentered(false);
+            mouseInput.setCursorCaptured(false);
+        }
+
         // Camera Rotation
         if(mouseInput.isCaptured() && mouseInput.isInWindow()) {
             float pitch = mDelta.y;

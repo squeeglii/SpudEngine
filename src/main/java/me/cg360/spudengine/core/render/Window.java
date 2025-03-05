@@ -96,6 +96,10 @@ public class Window implements VkHandleWrapper {
         return this.hasBeenResized;
     }
 
+    public boolean isWindowFocused() {
+        return GLFW.glfwGetWindowAttrib(this.handle, GLFW.GLFW_FOCUSED) != 0;
+    }
+
     public int getWidth() {
         return this.width;
     }

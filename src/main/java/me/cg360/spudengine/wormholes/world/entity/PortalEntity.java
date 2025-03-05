@@ -13,12 +13,21 @@ public class PortalEntity extends SimpleEntity {
 
     private final PortalType portalType;
 
+    // this loosely depends on this.rotation.
+    // If portals can be moved (which is a colossal task)
+    // make sure this gets updated.
+    private Vector3f up;
+
     public PortalEntity(PortalType type, Vector3f position, Vector3f rotation) {
         super(UUID.randomUUID(), type.modelId());
 
         this.portalType = type;
         this.position = position.add(0, 1, 0); // Spawn portal at bottom.
+        this.up = new Vector3f(0, 1, 0);
+
         this.rotation.rotateXYZ(rotation.x(), rotation.y(), rotation.z());
+        this.up.rotate(this.rotation);
+
         this.updateTransform();
     }
 
@@ -50,17 +59,26 @@ public class PortalEntity extends SimpleEntity {
         Vector3f subOtherPos = new Vector3f(otherPortal.position).mul(-1);
         mat.translate(subOtherPos);
 
-        Vector3f eularThis = new Vector3f();
-        Vector3f eularOther = new Vector3f();
+        // THIS WORKS!
+        // I can't lie, this rotation magic is half planned, and
+        // half tinkering around with values till it worked.
+        // BUT IT WORKS.
+        // So I'm not touching it.
+        Quaternionf thisRot = new Quaternionf();
+        Vector3f viewThis = new Vector3f(0, 0, -1);
+        viewThis.rotate(this.rotation);
+        thisRot.lookAlong(viewThis, this.up);
 
-        this.rotation.getEulerAnglesXYZ(eularThis);
-        otherPortal.rotation.getEulerAnglesXYZ(eularOther);
+        Quaternionf otherRot = new Quaternionf();
+        Vector3f invertedViewOther = new Vector3f(0, 0, 1); // invert the view dir, so the back side is used to align rotations.
+        invertedViewOther.rotate(otherPortal.rotation);
+        otherRot.lookAlong(invertedViewOther, otherPortal.up);
 
-        eularThis.sub(eularOther);
-        Quaternionf quaternion = new Quaternionf();
-        quaternion.rotateXYZ(eularThis.x, eularThis.y, eularThis.z);
+        // Rotate around origin, the difference between the two portals rotations.
+        Quaternionf rotDiff = new Quaternionf();
+        otherRot.mul(thisRot.invert(), rotDiff);
+        mat.rotateLocal(rotDiff);
 
-        mat.rotateLocal(quaternion);
         mat.translateLocal(this.position);
 
         return mat;
