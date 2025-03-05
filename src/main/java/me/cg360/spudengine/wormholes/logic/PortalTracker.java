@@ -79,4 +79,15 @@ public class PortalTracker extends GameComponent {
         return this.orangePortal != null;
     }
 
+    public boolean hasPortalPair() {
+        return this.hasBluePortal() && this.hasOrangePortal();
+    }
+
+    public PortalEntity getBluePortal() {
+        return this.bluePortal;
+    }
+
+    public PortalEntity getOrangePortal() {
+        return this.orangePortal;
+    }
 }

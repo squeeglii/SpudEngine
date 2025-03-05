@@ -23,6 +23,11 @@ public class Scene {
         this.projection.resize(window.getWidth(), window.getHeight());
     }
 
+    public void addEntities(StaticModelEntity... entities) {
+        for(StaticModelEntity entity : entities)
+            this.addEntity(entity);
+    }
+
     // todo: distinguish between rendered entities and some improved version of DummyEntities.
     public void addEntity(StaticModelEntity entity) {
         UUID entityId = entity.getEntityId();

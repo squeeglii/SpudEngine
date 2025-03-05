@@ -134,6 +134,10 @@ public class SpudEngine {
         return this.scene;
     }
 
+    public GameComponent getGameInstance() {
+        return this.gameInstance;
+    }
+
     // Engine State:
     public boolean isRunning() {
         return this.isRunning;

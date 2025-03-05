@@ -32,6 +32,7 @@ public class EngineProperties {
     public static final int UPDATES_PER_SECOND = 30; // logic tick interval
 
     // Graphics
+    public static final int GEOMETRY_SHADER_VERTEX_LIMIT = 3+(3*2*5);  // original room * two copies * 5 recursion depth
     public static final boolean SHOULD_RECOMPILE_SHADERS = true;
     public static final String PREFERRED_DEVICE_NAME = null;
     public static final int STARTING_WIDTH = 1600;
@@ -44,8 +45,8 @@ public class EngineProperties {
     public static final int MAX_TEXTURES = 1024;
     public static final BinaryShaderFile[] shaders = new BinaryShaderFile[] {
             new BinaryShaderFile(ShaderType.VERTEX, "shaders/vertex"),
-            new BinaryShaderFile(ShaderType.GEOMETRY, "shaders/geometry"),
-            new BinaryShaderFile(ShaderType.FRAGMENT, "shaders/fragment"),
+            new BinaryShaderFile(ShaderType.GEOMETRY, "shaders/portal/geometry"),
+            new BinaryShaderFile(ShaderType.FRAGMENT, "shaders/portal/fragment"),
     };
 
     // -- End of properties --

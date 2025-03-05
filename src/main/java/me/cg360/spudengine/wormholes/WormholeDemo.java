@@ -5,10 +5,14 @@ import me.cg360.spudengine.core.SpudEngine;
 import me.cg360.spudengine.core.component.FlyCameraController;
 import me.cg360.spudengine.core.render.Renderer;
 import me.cg360.spudengine.core.render.Window;
+import me.cg360.spudengine.core.util.Vectors;
 import me.cg360.spudengine.core.world.Scene;
 import me.cg360.spudengine.core.world.entity.impl.EnvironmentGeometry;
 import me.cg360.spudengine.wormholes.logic.AssetInitialisationStage;
 import me.cg360.spudengine.wormholes.logic.PortalTracker;
+import me.cg360.spudengine.wormholes.world.entity.PortalEntity;
+import me.cg360.spudengine.wormholes.world.entity.PortalType;
+import org.joml.Vector3f;
 
 public class WormholeDemo extends GameComponent {
 
@@ -35,6 +39,35 @@ public class WormholeDemo extends GameComponent {
 
         this.levelGeometry = new EnvironmentGeometry("env/chamber01");
         this.scene().addEntity(this.levelGeometry);
+
+        /*
+        PortalEntity bluePortal = new PortalEntity(
+                PortalType.BLUE,
+                new Vector3f(-6f, 0f, -1.01f),
+                Vectors.toRadians(0, 0, 0)
+        );
+
+        PortalEntity orangePortal = new PortalEntity(
+                PortalType.ORANGE,
+                new Vector3f(0, 2.0f, -3.99f),
+                Vectors.toRadians(0, 180, 0)
+        );
+        */
+
+
+        PortalEntity bluePortal = new PortalEntity(
+                PortalType.BLUE,
+                new Vector3f(1.99f, 0, 3.5f),
+                Vectors.toRadians(0, 90, 0)
+        );
+
+        PortalEntity orangePortal = new PortalEntity(
+                PortalType.ORANGE,
+                new Vector3f(0, 2.0f, -3.99f),
+                Vectors.toRadians(0, 180, 0)
+        );
+
+        this.scene().addEntities(bluePortal, orangePortal);
     }
 
     @Override

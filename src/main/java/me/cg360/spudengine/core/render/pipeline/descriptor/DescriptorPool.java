@@ -21,31 +21,43 @@ public class DescriptorPool implements VkHandleWrapper {
     private final long descriptorPool;
     private int setPositions;
 
-    private DescriptorSetLayout[] descriptorSetLayouts;
+    private final DescriptorSetLayout[] descriptorSetLayouts;
 
-    public DescriptorPool(LogicalDevice device, DescriptorSetLayout... layout) {
-        this(device, DescriptorPool.tallyTypes(layout));
-        this.descriptorSetLayouts = layout;
-        this.setPositions = layout.length;
-    }
-
-    public DescriptorPool(LogicalDevice device, Map<Integer, Integer> descriptorTypeTally) {
+    public DescriptorPool(LogicalDevice device, DescriptorSetLayout... layout) {;
         Logger.debug("Creating descriptor pool");
         this.device = device;
+        this.descriptorSetLayouts = layout;
+        this.setPositions = layout.length;
+
+        // Pre-process DescriptorSetLayout
+        // - save their positions setting them later
+        // - tally the types for building the pool
+        Map<Integer, Integer> typeTally = new HashMap<>();
+        for(int i = 0; i < this.setPositions; i++) {
+            DescriptorSetLayout l = layout[i];
+            l.setSetPosition(i);
+
+            int t = l.getDescriptorSetType();
+            int lastVal = typeTally.getOrDefault(t, 0);
+            typeTally.put(t, lastVal + l.getCount());
+        }
+
+        // And build.
         try (MemoryStack stack = MemoryStack.stackPush()) {
+            int numTypes = typeTally.size();
             int maxSets = 0;
-            int numTypes = descriptorTypeTally.size();
+            int i = 0;
+
             VkDescriptorPoolSize.Buffer typeCounts = VkDescriptorPoolSize.calloc(numTypes, stack);
 
-            int i = 0;
-            for (Map.Entry<Integer, Integer> entry: descriptorTypeTally.entrySet()) {
+            for (Map.Entry<Integer, Integer> entry: typeTally.entrySet()) {
                 maxSets += entry.getValue();
                 typeCounts.get(i++)
                           .type(entry.getKey())
                           .descriptorCount(entry.getValue());
             }
 
-            Logger.debug("DescriptorPool Type Tally: {}", descriptorTypeTally);
+            Logger.debug("DescriptorPool Type Tally: {}", typeTally);
             Logger.debug("Max Sets: {}  Types: {}", maxSets, numTypes);
 
             VkDescriptorPoolCreateInfo descriptorPoolInfo = VkDescriptorPoolCreateInfo.calloc(stack)
@@ -59,18 +71,6 @@ public class DescriptorPool implements VkHandleWrapper {
             VulkanUtil.checkErrorCode(errCode, "Failed to create descriptor pool");
             this.descriptorPool = pDescriptorPool.get(0);
         }
-    }
-
-    private static Map<Integer, Integer> tallyTypes(DescriptorSetLayout... layoutElements) {
-        Map<Integer, Integer> tally = new HashMap<>();
-
-        for(DescriptorSetLayout layout: layoutElements) {
-            int t = layout.getDescriptorSetType();
-            int lastVal = tally.getOrDefault(t, 0);
-            tally.put(t, lastVal + layout.getCount());
-        }
-
-        return tally;
     }
 
     public void freeDescriptorSet(long vkDescriptorSet) {
@@ -122,4 +122,5 @@ public class DescriptorPool implements VkHandleWrapper {
 
         return "[ Descriptor Pool #%s ]%s".formatted(this.descriptorPool, builder.toString());
     }
+
 }

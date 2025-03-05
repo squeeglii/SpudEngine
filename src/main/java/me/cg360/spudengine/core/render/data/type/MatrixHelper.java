@@ -10,8 +10,25 @@ import java.nio.ByteBuffer;
 
 public class MatrixHelper extends TypeHelper {
 
+    private final int perMatrixSize;
+
     public MatrixHelper(int sizeInBytes, BufferAllocator allocator) {
         super(sizeInBytes, allocator);
+        this.perMatrixSize = sizeInBytes;
+    }
+
+    public MatrixHelper(int sizeInBytes, int perMatrixSize, BufferAllocator allocator) {
+        super(sizeInBytes, allocator); // total size. count * per matrix
+        this.perMatrixSize = perMatrixSize;
+    }
+
+    @Override
+    public MatrixHelper asList(int count) {
+        return new MatrixHelper(
+                this.size * count,
+                this.perMatrixSize,
+                this.allocator
+        );
     }
 
     public void copyToBuffer(GeneralBuffer buffer, Matrix4f... mArray) {
@@ -24,7 +41,7 @@ public class MatrixHelper extends TypeHelper {
 
         for(int i = 0; i < mArray.length; i++) {
             Matrix4f mat = mArray[i];
-            int pos = offset + (i * this.size);
+            int pos = offset + (i * this.perMatrixSize);
             mat.get(pos, matrixBuffer);
         }
 

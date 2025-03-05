@@ -20,8 +20,7 @@ public class ModelLoader {
     }
 
     public static Model loadEnvironmentModel(String modelId, String modelResourcePath) {
-        return loadModel(
-                modelId, modelResourcePath, TextureManager.BASE_PATH,
+        return loadModel(modelId, modelResourcePath, false,
                 Assimp.aiProcess_JoinIdenticalVertices | Assimp.aiProcess_Triangulate |
                 Assimp.aiProcess_CalcTangentSpace | Assimp.aiProcess_PreTransformVertices
         );
@@ -32,18 +31,19 @@ public class ModelLoader {
     }
 
     public static Model loadModel(String modelId, String modelResourcePath) {
-        return loadModel(
-                modelId, modelResourcePath, TextureManager.BASE_PATH,
+        return loadModel(modelId, modelResourcePath, false,
                 Assimp.aiProcess_JoinIdenticalVertices | Assimp.aiProcess_Triangulate |
                 Assimp.aiProcess_CalcTangentSpace | Assimp.aiProcess_PreTransformVertices |
                 Assimp.aiProcess_GenSmoothNormals | Assimp.aiProcess_FixInfacingNormals
         );
     }
 
-    private static Model loadModel(String modelId, String modelResourcePath, String texturesDir, int flags) {
+    private static Model loadModel(String modelId, String modelResourcePath, boolean searchBundledResources, int flags) {
         Logger.debug("Loading model data [{}]", modelResourcePath);
 
-        String resPath = ClassLoader.getSystemResource(ModelManager.BASE_PATH + modelResourcePath).getPath();
+        String resPath = searchBundledResources
+                ? ClassLoader.getSystemResource(ModelManager.BASE_PATH + modelResourcePath).getPath()
+                : ModelManager.BASE_PATH + modelResourcePath;
         File modelPath = new File(resPath);
 
         if (!modelPath.exists())

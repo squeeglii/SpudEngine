@@ -1,12 +1,14 @@
 package me.cg360.spudengine.core.render.impl;
 
 import me.cg360.spudengine.core.EngineProperties;
+import me.cg360.spudengine.core.SpudEngine;
 import me.cg360.spudengine.core.render.Renderer;
 import me.cg360.spudengine.core.render.data.DataTypes;
 import me.cg360.spudengine.core.render.data.buffer.GeneralBuffer;
 import me.cg360.spudengine.core.render.command.CommandBuffer;
 import me.cg360.spudengine.core.render.command.CommandPool;
 import me.cg360.spudengine.core.render.command.CommandQueue;
+import me.cg360.spudengine.core.render.data.type.MatrixHelper;
 import me.cg360.spudengine.core.render.geometry.VertexFormats;
 import me.cg360.spudengine.core.render.geometry.model.BufferedMesh;
 import me.cg360.spudengine.core.render.geometry.model.BufferedModel;
@@ -35,6 +37,9 @@ import me.cg360.spudengine.core.exception.EngineLimitExceededException;
 import me.cg360.spudengine.core.world.entity.RenderedEntity;
 import me.cg360.spudengine.core.world.Scene;
 import me.cg360.spudengine.core.world.entity.StaticModelEntity;
+import me.cg360.spudengine.wormholes.WormholeDemo;
+import me.cg360.spudengine.wormholes.logic.PortalTracker;
+import me.cg360.spudengine.wormholes.world.entity.PortalEntity;
 import org.joml.Matrix4f;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.*;
@@ -71,18 +76,23 @@ public class ForwardRenderer implements RenderProcess {
     private Attachment[] depthAttachments;
 
     private DescriptorPool descriptorPool;
-    private DescriptorSetLayout modelTransformLayout;
-    private DescriptorSetLayout viewMatixLayout;
-    private DescriptorSetLayout samplerDescriptorSetLayout;
 
-    private TextureSampler uSampler;
-    private Map<String, SamplerDescriptorSet> samplerDescriptors;
-
+    private DescriptorSetLayout lProjectionMatrix;
     private UniformDescriptorSet dProjectionMatrix;
     private GeneralBuffer uProjectionMatrix;
 
+    private DescriptorSetLayout lViewMatrix;
     private UniformDescriptorSet[] dViewMatrix;
     private GeneralBuffer[] uViewMatrix;
+
+    private DescriptorSetLayout lPortalTransform;
+    private UniformDescriptorSet[] dPortalTransforms;
+    private GeneralBuffer[] uPortalTransforms;
+    private MatrixHelper portalTransformType;
+
+    private DescriptorSetLayout lSampler;
+    private TextureSampler uSampler;
+    private Map<String, SamplerDescriptorSet> samplerDescriptors;
 
     private final ShaderIO shaderIO; // #reset(...) whenever new draw call
 
@@ -94,7 +104,6 @@ public class ForwardRenderer implements RenderProcess {
 
         this.scene = scene;
 
-        this.shaderIO = new ShaderIO();
 
         int numImages = swapChain.getImageViews().length;
         this.createDepthImages();
@@ -105,6 +114,8 @@ public class ForwardRenderer implements RenderProcess {
                 this.device,
                 EngineProperties.shaders
         );
+
+        this.shaderIO = new ShaderIO();
 
         DescriptorSetLayout[] descriptorSetLayouts = this.createDescriptorSets();
 
@@ -168,26 +179,33 @@ public class ForwardRenderer implements RenderProcess {
 
     private DescriptorSetLayout[] createDescriptorSets() {
         Logger.info("Building Descriptor Sets");
-        this.modelTransformLayout = new UniformDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_VERTEX_BIT);
-        this.viewMatixLayout = new UniformDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_VERTEX_BIT)
+        this.lProjectionMatrix = new UniformDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_VERTEX_BIT);
+        this.lViewMatrix = new UniformDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_VERTEX_BIT)
                 .enablePerFrameWrites(this.swapChain);
 
-        this.samplerDescriptorSetLayout = new SamplerDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_FRAGMENT_BIT)
+        this.lPortalTransform = new UniformDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_GEOMETRY_BIT)
+                .enablePerFrameWrites(this.swapChain);
+
+        this.lSampler = new SamplerDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_FRAGMENT_BIT)
                 .setCount(EngineProperties.MAX_TEXTURES);
 
         DescriptorSetLayout[] layout = new DescriptorSetLayout[] {
-                this.modelTransformLayout,
-                this.viewMatixLayout,
-                this.samplerDescriptorSetLayout
+                this.lProjectionMatrix, // vertex
+                this.lViewMatrix,
+                this.lPortalTransform, // geometry
+                this.lSampler // fragment
         };
         this.descriptorPool = new DescriptorPool(this.device, layout);
 
-        // Uniform - constant.
-        this.dProjectionMatrix = UniformDescriptorSet.create(this.descriptorPool, this.modelTransformLayout, DataTypes.MAT4X4F, 0)[0];
+        this.dProjectionMatrix = UniformDescriptorSet.create(this.descriptorPool, this.lProjectionMatrix, DataTypes.MAT4X4F, 0)[0];
         this.uProjectionMatrix = this.dProjectionMatrix.getBuffer();
 
-        this.dViewMatrix = UniformDescriptorSet.create(this.descriptorPool, this.viewMatixLayout, DataTypes.MAT4X4F, 0);
+        this.dViewMatrix = UniformDescriptorSet.create(this.descriptorPool, this.lViewMatrix, DataTypes.MAT4X4F, 0);
         this.uViewMatrix = this.collectUniformBuffers(this.dViewMatrix);
+
+        this.portalTransformType = DataTypes.MAT4X4F.asList(2);
+        this.dPortalTransforms = UniformDescriptorSet.create(this.descriptorPool, this.lPortalTransform, this.portalTransformType, 0);
+        this.uPortalTransforms = this.collectUniformBuffers(this.dPortalTransforms);
 
         // Sampler
         this.samplerDescriptors = new HashMap<>();
@@ -212,7 +230,7 @@ public class ForwardRenderer implements RenderProcess {
             if(this.samplerDescriptors.size() >= EngineProperties.MAX_TEXTURES)
                 throw new EngineLimitExceededException("MAX_TEXTURES", EngineProperties.MAX_TEXTURES, this.samplerDescriptors.size()+1);
 
-            samplerDescriptorSet = new SamplerDescriptorSet(descriptorPool, this.samplerDescriptorSetLayout, 0, texture, this.uSampler);
+            samplerDescriptorSet = new SamplerDescriptorSet(descriptorPool, this.lSampler, 0, texture, this.uSampler);
             this.samplerDescriptors.put(textureFileName, samplerDescriptorSet);
         }
     }
@@ -291,8 +309,29 @@ public class ForwardRenderer implements RenderProcess {
             Matrix4f view = this.scene.getMainCamera().getViewMatrix();
             DataTypes.MAT4X4F.copyToBuffer(this.uViewMatrix[idx], view);
 
-            this.shaderIO.setUniform(0, this.dProjectionMatrix);
-            this.shaderIO.setUniform(1, this.dViewMatrix, idx);
+
+            //TODO: remove this. Core engine shouldn't depend on game implementations.
+            // Add a hook here. SubRenderProcess?
+            if(SpudEngine.getMainInstance().getGameInstance() instanceof WormholeDemo game) {
+                PortalTracker pTrack = game.getPortalTracker();
+
+                if (pTrack.hasPortalPair()) {
+                    PortalEntity bluePortal =  pTrack.getBluePortal();
+                    PortalEntity orangePortal =  pTrack.getOrangePortal();
+
+                    // new Matrix4f(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+                    Matrix4f bluePortalTransform = bluePortal.calculateConnectionTransform(orangePortal);
+                    Matrix4f orangePortalTransform = orangePortal.calculateConnectionTransform(bluePortal);
+
+                    this.portalTransformType.copyToBuffer(this.uPortalTransforms[idx], bluePortalTransform, orangePortalTransform);
+
+                }
+            }
+
+            this.shaderIO.setUniform(this.lProjectionMatrix, this.dProjectionMatrix);
+            this.shaderIO.setUniform(this.lViewMatrix, this.dViewMatrix, idx);
+            this.shaderIO.setUniform(this.lPortalTransform, this.dPortalTransforms, idx);
             // [ If pushing pushConsants that don't change per vertex, do it here. ]
 
             // Push updated view every frame.
@@ -316,7 +355,7 @@ public class ForwardRenderer implements RenderProcess {
 
                 // Swap texture descriptor out when the material changes.
                 SamplerDescriptorSet samplerDescriptorSet = this.samplerDescriptors.get(material.texture().getResourceName());
-                this.shaderIO.setUniform(2, samplerDescriptorSet);
+                this.shaderIO.setUniform(this.lSampler, samplerDescriptorSet);
 
                 for(BufferedMesh mesh: material.meshes()) {
                     this.shaderIO.bindMesh(cmd, mesh);
@@ -381,6 +420,7 @@ public class ForwardRenderer implements RenderProcess {
     public void cleanup() {
         this.uProjectionMatrix.cleanup();
         Arrays.stream(this.uViewMatrix).forEach(GeneralBuffer::cleanup);
+        Arrays.stream(this.uPortalTransforms).forEach(GeneralBuffer::cleanup);
         this.uSampler.cleanup();
         this.descriptorPool.cleanup(); // descriptor sets cleaned up here.
 
@@ -421,8 +461,16 @@ public class ForwardRenderer implements RenderProcess {
             this.descriptorSets.put(setNumber, set.getHandle());
         }
 
+        public void setUniform(DescriptorSetLayout layout, DescriptorSet set) {
+            this.descriptorSets.put(layout.getSetPosition(), set.getHandle());
+        }
+
         public void setUniform(int setNumber, DescriptorSet[] set, int swapImageIndex) {
             this.descriptorSets.put(setNumber, set[swapImageIndex].getHandle());
+        }
+
+        public void setUniform(DescriptorSetLayout layout, DescriptorSet[] set, int swapImageIndex) {
+            this.descriptorSets.put(layout.getSetPosition(), set[swapImageIndex].getHandle());
         }
 
         public void bindMesh(VkCommandBuffer cmd, BufferedMesh mesh) {

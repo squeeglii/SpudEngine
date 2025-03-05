@@ -13,12 +13,14 @@ public abstract class DescriptorSetLayout implements VkHandleWrapper {
 
     protected final int type;
 
+    protected int position;
     protected int count;
 
     protected DescriptorSetLayout(LogicalDevice device, int type, int binding, int stage) {
         this.type = type;
         this.device = device;
         this.count = 1;
+        this.position = -1;
         this.descriptorSet = this.buildDescriptorSetLayout(type, binding, stage);
     }
 
@@ -41,6 +43,11 @@ public abstract class DescriptorSetLayout implements VkHandleWrapper {
         return this;
     }
 
+    // this is handled by the pool!
+    public void setSetPosition(int position) {
+        this.position = position;
+    }
+
     @Override
     public final long getHandle() {
         return this.descriptorSet;
@@ -58,8 +65,15 @@ public abstract class DescriptorSetLayout implements VkHandleWrapper {
         return this.device;
     }
 
+    public int getSetPosition() {
+        if(this.position < 0)
+            throw new IllegalStateException("Tried to get position of Descriptor Set Layout without one assigned");
+
+        return this.position;
+    }
+
     @Override
     public String toString() {
-        return "[ DescriptorLayout :: type=%s, count=%s ]".formatted(this.type, this.count);
+        return "[ DescriptorSetLayout :: set=%s type=%s, count=%s ]".formatted(this.position, this.type, this.count);
     }
 }

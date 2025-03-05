@@ -1,6 +1,7 @@
 #version 450
 
 layout(location = 0) in vec2 texCoords;
+layout(location = 1) in vec4 debugColour;
 
 layout(location = 0) out vec4 uFragColor;
 
@@ -18,5 +19,5 @@ vec3 hsv2rgb(vec3 c)
 void main()
 {
     //uFragColor = vec4(gl_FragDepth, gl_FragDepth, gl_FragDepth, 1);
-    uFragColor = texture(textureSampler, texCoords);
+    uFragColor = texture(textureSampler, texCoords) * debugColour;
 }
