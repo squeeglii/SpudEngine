@@ -10,6 +10,7 @@ import me.cg360.spudengine.core.world.Scene;
 import me.cg360.spudengine.core.world.entity.impl.EnvironmentGeometry;
 import me.cg360.spudengine.wormholes.logic.AssetInitialisationStage;
 import me.cg360.spudengine.wormholes.logic.PortalTracker;
+import me.cg360.spudengine.wormholes.render.PortalSubRenderer;
 import me.cg360.spudengine.wormholes.world.entity.PortalEntity;
 import me.cg360.spudengine.wormholes.world.entity.PortalType;
 import org.joml.Vector3f;
@@ -18,9 +19,10 @@ public class WormholeDemo extends GameComponent {
 
     private static WormholeDemo instance = null;
 
-    private PortalTracker portalTracker;
+    private final PortalTracker portalTracker;
 
     private EnvironmentGeometry levelGeometry;
+
 
     public WormholeDemo(SpudEngine engineInstance) {
         super("Wormhole Demo", engineInstance);
@@ -31,7 +33,10 @@ public class WormholeDemo extends GameComponent {
         this.addSubListener(new AssetInitialisationStage(this, engineInstance));
         this.addSubListener(new FlyCameraController(this, engineInstance));
         this.portalTracker = this.addSubListener(new PortalTracker(this, engineInstance));
+
+        this.addRenderProcess(new PortalSubRenderer(this));
     }
+
 
     @Override
     protected void onInit(Window window, Scene scene, Renderer renderer) {

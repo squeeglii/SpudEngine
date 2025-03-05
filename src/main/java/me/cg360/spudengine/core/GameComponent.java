@@ -2,9 +2,10 @@ package me.cg360.spudengine.core;
 
 import me.cg360.spudengine.core.render.Renderer;
 import me.cg360.spudengine.core.render.Window;
+import me.cg360.spudengine.core.render.impl.SubRenderProcess;
 import me.cg360.spudengine.core.world.Scene;
 
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -14,13 +15,14 @@ public abstract class GameComponent {
     private final SpudEngine engineInstance;
 
     private final List<GameComponent> subListeners;
+    private final List<SubRenderProcess> renderProcesses;
 
-    public GameComponent(String nickname, SpudEngine engineInstance, GameComponent... subListeners) {
+    public GameComponent(String nickname, SpudEngine engineInstance) {
         this.instanceNickname = nickname;
         this.engineInstance = engineInstance;
 
         this.subListeners = new LinkedList<>();
-        this.subListeners.addAll(Arrays.asList(subListeners));
+        this.renderProcesses = new LinkedList<>();
     }
 
     /** Registers and returns the provided sub-listener. */
@@ -29,7 +31,16 @@ public abstract class GameComponent {
             throw new NullPointerException("Sub-Listener cannot be null");
 
         this.subListeners.add(listener);
+        this.renderProcesses.addAll(listener.getSubRenderProcesses());
         return listener;
+    }
+
+    public <T extends SubRenderProcess> T addRenderProcess(T subRenderProcess) {
+        if(subRenderProcess == null)
+            throw new NullPointerException("SubRenderProcess cannot be null");
+
+        this.renderProcesses.add(subRenderProcess);
+        return subRenderProcess;
     }
 
     protected final void passInit(Window window, Scene scene, Renderer renderer) {
@@ -94,6 +105,10 @@ public abstract class GameComponent {
 
     public final SpudEngine getEngine() {
         return this.engineInstance;
+    }
+
+    public List<SubRenderProcess> getSubRenderProcesses() {
+        return Collections.unmodifiableList(this.renderProcesses);
     }
 
     public static String sub(GameComponent parent, String name) {

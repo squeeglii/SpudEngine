@@ -8,19 +8,25 @@ import me.cg360.spudengine.core.render.image.SwapChain;
 
 import java.util.List;
 
-public interface RenderProcess {
+public abstract class RenderProcess {
 
-    void recordDraw(Renderer renderer);
-    void submit(CommandQueue queue);
+    protected final SubRenderProcess[] subRenderProcesses;
 
-    void processModelBatch(List<BufferedModel> models);
+    public RenderProcess(SubRenderProcess[] subRenderProcesses) {
+        this.subRenderProcesses = subRenderProcesses;
+    }
 
-    void waitTillFree(); // should this be generalized?
+    public abstract void recordDraw(Renderer renderer);
+    public abstract void submit(CommandQueue queue);
 
-    void onResize(SwapChain newSwapChain);
+    public abstract void processModelBatch(List<BufferedModel> models);
 
-    void cleanup();
+    public abstract void waitTillFree(); // should this be generalized?
 
-    Attachment getDepthAttachment(int index);
-    int getDepthFormat();
+    public abstract void onResize(SwapChain newSwapChain);
+
+    public abstract void cleanup();
+
+    public abstract Attachment getDepthAttachment(int index);
+    public abstract int getDepthFormat();
 }

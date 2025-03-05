@@ -1,14 +1,12 @@
 package me.cg360.spudengine.core.render.impl;
 
 import me.cg360.spudengine.core.EngineProperties;
-import me.cg360.spudengine.core.SpudEngine;
 import me.cg360.spudengine.core.render.Renderer;
 import me.cg360.spudengine.core.render.data.DataTypes;
 import me.cg360.spudengine.core.render.data.buffer.GeneralBuffer;
 import me.cg360.spudengine.core.render.command.CommandBuffer;
 import me.cg360.spudengine.core.render.command.CommandPool;
 import me.cg360.spudengine.core.render.command.CommandQueue;
-import me.cg360.spudengine.core.render.data.type.MatrixHelper;
 import me.cg360.spudengine.core.render.geometry.VertexFormats;
 import me.cg360.spudengine.core.render.geometry.model.BufferedMesh;
 import me.cg360.spudengine.core.render.geometry.model.BufferedModel;
@@ -23,13 +21,14 @@ import me.cg360.spudengine.core.render.image.texture.TextureSampler;
 import me.cg360.spudengine.core.render.pipeline.Pipeline;
 import me.cg360.spudengine.core.render.pipeline.PipelineCache;
 import me.cg360.spudengine.core.render.pipeline.descriptor.DescriptorPool;
-import me.cg360.spudengine.core.render.pipeline.descriptor.active.DescriptorSet;
 import me.cg360.spudengine.core.render.pipeline.descriptor.active.SamplerDescriptorSet;
 import me.cg360.spudengine.core.render.pipeline.descriptor.active.UniformDescriptorSet;
 import me.cg360.spudengine.core.render.pipeline.descriptor.layout.DescriptorSetLayout;
 import me.cg360.spudengine.core.render.pipeline.descriptor.layout.SamplerDescriptorSetLayout;
 import me.cg360.spudengine.core.render.pipeline.descriptor.layout.UniformDescriptorSetLayout;
 import me.cg360.spudengine.core.render.pipeline.pass.SwapChainRenderPass;
+import me.cg360.spudengine.core.render.pipeline.shader.DescriptorSetLayoutBundle;
+import me.cg360.spudengine.core.render.pipeline.shader.ShaderIO;
 import me.cg360.spudengine.core.render.pipeline.shader.ShaderProgram;
 import me.cg360.spudengine.core.render.sync.Fence;
 import me.cg360.spudengine.core.render.sync.SyncSemaphores;
@@ -37,27 +36,21 @@ import me.cg360.spudengine.core.exception.EngineLimitExceededException;
 import me.cg360.spudengine.core.world.entity.RenderedEntity;
 import me.cg360.spudengine.core.world.Scene;
 import me.cg360.spudengine.core.world.entity.StaticModelEntity;
-import me.cg360.spudengine.wormholes.WormholeDemo;
-import me.cg360.spudengine.wormholes.logic.PortalTracker;
-import me.cg360.spudengine.wormholes.world.entity.PortalEntity;
 import org.joml.Matrix4f;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.*;
 import org.tinylog.Logger;
 
 import java.awt.*;
-import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
-import java.util.Arrays;
-import java.util.HashMap;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
 
-public class ForwardRenderer implements RenderProcess {
+public class ForwardRenderer extends RenderProcess {
 
     private static final int DEPTH_ATTACHMENT_FORMAT = VK11.VK_FORMAT_D32_SFLOAT;
 
-    private LogicalDevice device;
+    private final LogicalDevice device;
 
     private final CommandBuffer[] commandBuffers;
     private final Fence[] fences;
@@ -85,25 +78,21 @@ public class ForwardRenderer implements RenderProcess {
     private UniformDescriptorSet[] dViewMatrix;
     private GeneralBuffer[] uViewMatrix;
 
-    private DescriptorSetLayout lPortalTransform;
-    private UniformDescriptorSet[] dPortalTransforms;
-    private GeneralBuffer[] uPortalTransforms;
-    private MatrixHelper portalTransformType;
-
     private DescriptorSetLayout lSampler;
+    private Map<String, SamplerDescriptorSet> dSampler;
     private TextureSampler uSampler;
-    private Map<String, SamplerDescriptorSet> samplerDescriptors;
 
     private final ShaderIO shaderIO; // #reset(...) whenever new draw call
 
 
-    public ForwardRenderer(SwapChain swapChain, CommandPool commandPool, PipelineCache pipelineCache, Scene scene) {
+    public ForwardRenderer(SwapChain swapChain, CommandPool commandPool, PipelineCache pipelineCache, Scene scene, SubRenderProcess[] subRenderProcesses) {
+        super(subRenderProcesses);
+
         this.swapChain = swapChain;
         this.pipelineCache = pipelineCache;
         this.device = swapChain.getDevice();
 
         this.scene = scene;
-
 
         int numImages = swapChain.getImageViews().length;
         this.createDepthImages();
@@ -128,9 +117,9 @@ public class ForwardRenderer implements RenderProcess {
                 )
                 .setCullMode(VK11.VK_CULL_MODE_FRONT_BIT); // uhhhh, right. Sure. This works but
 
-        this.pipeline = builder.build(pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
+        this.pipeline = builder.build(this.pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
         this.wireframePipeline = builder.setUsingWireframe(true)
-                                        .build(pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
+                                        .build(this.pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
 
         builder.cleanup();
         Logger.debug("Built pipelines.");
@@ -183,55 +172,48 @@ public class ForwardRenderer implements RenderProcess {
         this.lViewMatrix = new UniformDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_VERTEX_BIT)
                 .enablePerFrameWrites(this.swapChain);
 
-        this.lPortalTransform = new UniformDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_GEOMETRY_BIT)
-                .enablePerFrameWrites(this.swapChain);
+
 
         this.lSampler = new SamplerDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_FRAGMENT_BIT)
                 .setCount(EngineProperties.MAX_TEXTURES);
 
-        DescriptorSetLayout[] layout = new DescriptorSetLayout[] {
-                this.lProjectionMatrix, // vertex
-                this.lViewMatrix,
-                this.lPortalTransform, // geometry
-                this.lSampler // fragment
-        };
+        DescriptorSetLayoutBundle bundle = new DescriptorSetLayoutBundle(this.device, this.swapChain);
+        bundle.addVertexUniforms(this.lProjectionMatrix, this.lViewMatrix);
+        bundle.addFragmentUniforms(this.lSampler);
+
+        for(SubRenderProcess process: this.subRenderProcesses)
+            process.buildUniformLayout(bundle);
+
+        DescriptorSetLayout[] layout = bundle.merge();
+        Logger.info("Collected {} uniform(s) from {}", layout.length, bundle);
+
         this.descriptorPool = new DescriptorPool(this.device, layout);
 
         this.dProjectionMatrix = UniformDescriptorSet.create(this.descriptorPool, this.lProjectionMatrix, DataTypes.MAT4X4F, 0)[0];
         this.uProjectionMatrix = this.dProjectionMatrix.getBuffer();
 
         this.dViewMatrix = UniformDescriptorSet.create(this.descriptorPool, this.lViewMatrix, DataTypes.MAT4X4F, 0);
-        this.uViewMatrix = this.collectUniformBuffers(this.dViewMatrix);
+        this.uViewMatrix = ShaderIO.collectUniformBuffers(this.dViewMatrix);
 
-        this.portalTransformType = DataTypes.MAT4X4F.asList(2);
-        this.dPortalTransforms = UniformDescriptorSet.create(this.descriptorPool, this.lPortalTransform, this.portalTransformType, 0);
-        this.uPortalTransforms = this.collectUniformBuffers(this.dPortalTransforms);
+        for(SubRenderProcess process: this.subRenderProcesses)
+            process.createDescriptorSets(this.descriptorPool);
 
-        // Sampler
-        this.samplerDescriptors = new HashMap<>();
+        this.dSampler = new HashMap<>();
         this.uSampler = new TextureSampler(this.device, 1, true);
 
         return layout;
     }
 
-    private GeneralBuffer[] collectUniformBuffers(UniformDescriptorSet[] set) {
-        GeneralBuffer[] buffers = new GeneralBuffer[set.length];
-        for (int i = 0; i < set.length; i++)
-            buffers[i] = set[i].getBuffer();
-
-        return buffers;
-    }
-
     private void updateTextureDescriptorSet(Texture texture) {
         String textureFileName = texture.getResourceName();
-        SamplerDescriptorSet samplerDescriptorSet = this.samplerDescriptors.get(textureFileName);
+        SamplerDescriptorSet samplerDescriptorSet = this.dSampler.get(textureFileName);
 
         if (samplerDescriptorSet == null) {
-            if(this.samplerDescriptors.size() >= EngineProperties.MAX_TEXTURES)
-                throw new EngineLimitExceededException("MAX_TEXTURES", EngineProperties.MAX_TEXTURES, this.samplerDescriptors.size()+1);
+            if(this.dSampler.size() >= EngineProperties.MAX_TEXTURES)
+                throw new EngineLimitExceededException("MAX_TEXTURES", EngineProperties.MAX_TEXTURES, this.dSampler.size()+1);
 
             samplerDescriptorSet = new SamplerDescriptorSet(descriptorPool, this.lSampler, 0, texture, this.uSampler);
-            this.samplerDescriptors.put(textureFileName, samplerDescriptorSet);
+            this.dSampler.put(textureFileName, samplerDescriptorSet);
         }
     }
 
@@ -303,41 +285,20 @@ public class ForwardRenderer implements RenderProcess {
                             .y(0));
             VK11.vkCmdSetScissor(cmd, 0, scissor);
 
-            // Render Models
+            // Populate Uniforms
             this.shaderIO.reset(stack, selectedPipeline, this.descriptorPool);
 
             Matrix4f view = this.scene.getMainCamera().getViewMatrix();
             DataTypes.MAT4X4F.copyToBuffer(this.uViewMatrix[idx], view);
 
-
-            //TODO: remove this. Core engine shouldn't depend on game implementations.
-            // Add a hook here. SubRenderProcess?
-            if(SpudEngine.getMainInstance().getGameInstance() instanceof WormholeDemo game) {
-                PortalTracker pTrack = game.getPortalTracker();
-
-                if (pTrack.hasPortalPair()) {
-                    PortalEntity bluePortal =  pTrack.getBluePortal();
-                    PortalEntity orangePortal =  pTrack.getOrangePortal();
-
-                    // new Matrix4f(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-
-                    Matrix4f bluePortalTransform = bluePortal.calculateConnectionTransform(orangePortal);
-                    Matrix4f orangePortalTransform = orangePortal.calculateConnectionTransform(bluePortal);
-
-                    this.portalTransformType.copyToBuffer(this.uPortalTransforms[idx], bluePortalTransform, orangePortalTransform);
-
-                }
-            }
-
             this.shaderIO.setUniform(this.lProjectionMatrix, this.dProjectionMatrix);
             this.shaderIO.setUniform(this.lViewMatrix, this.dViewMatrix, idx);
-            this.shaderIO.setUniform(this.lPortalTransform, this.dPortalTransforms, idx);
-            // [ If pushing pushConsants that don't change per vertex, do it here. ]
 
-            // Push updated view every frame.
+            for(SubRenderProcess process:  this.subRenderProcesses)
+                process.renderPreMesh(this.shaderIO, idx);
 
-
-            this.drawMeshes(cmd, renderer, selectedPipeline);
+            // Render the models!
+            this.drawMeshes(cmd, renderer, selectedPipeline, idx);
 
             this.shaderIO.free(); // free buffers from stack.
             VK11.vkCmdEndRenderPass(cmd); // ------------------------------------------------------
@@ -345,16 +306,19 @@ public class ForwardRenderer implements RenderProcess {
         }
     }
 
-    private void drawMeshes(VkCommandBuffer cmd, Renderer renderer, Pipeline selectedPipeline) {
+    private void drawMeshes(VkCommandBuffer cmd, Renderer renderer, Pipeline selectedPipeline, int frameIndex) {
         for (String modelId: this.scene.getUsedModelIds()) {
             BufferedModel model = renderer.getModelManager().getModel(modelId);
             List<StaticModelEntity> entities = this.scene.getEntitiesWithModel(modelId);
+
+            for(SubRenderProcess process: this.subRenderProcesses)
+                process.renderModel(this.shaderIO, model, frameIndex);
 
             for(BundledMaterial material: model.getMaterials()) {
                 if (material.meshes().isEmpty()) continue;
 
                 // Swap texture descriptor out when the material changes.
-                SamplerDescriptorSet samplerDescriptorSet = this.samplerDescriptors.get(material.texture().getResourceName());
+                SamplerDescriptorSet samplerDescriptorSet = this.dSampler.get(material.texture().getResourceName());
                 this.shaderIO.setUniform(this.lSampler, samplerDescriptorSet);
 
                 for(BufferedMesh mesh: material.meshes()) {
@@ -418,10 +382,13 @@ public class ForwardRenderer implements RenderProcess {
 
     @Override
     public void cleanup() {
+        for(SubRenderProcess process: this.subRenderProcesses)
+            process.cleanup();
+
         this.uProjectionMatrix.cleanup();
         Arrays.stream(this.uViewMatrix).forEach(GeneralBuffer::cleanup);
-        Arrays.stream(this.uPortalTransforms).forEach(GeneralBuffer::cleanup);
         this.uSampler.cleanup();
+
         this.descriptorPool.cleanup(); // descriptor sets cleaned up here.
 
         this.pipeline.cleanup();
@@ -445,66 +412,6 @@ public class ForwardRenderer implements RenderProcess {
     @Override
     public int getDepthFormat() {
         return DEPTH_ATTACHMENT_FORMAT;
-    }
-
-    public static class ShaderIO {
-        private LongBuffer descriptorSets;
-        private LongBuffer vertexBuffer;
-        private LongBuffer vertexBufferOffset;
-        private ByteBuffer pushConstantsBuffer;
-
-        public ShaderIO() {
-            this.free();
-        }
-
-        public void setUniform(int setNumber, DescriptorSet set) {
-            this.descriptorSets.put(setNumber, set.getHandle());
-        }
-
-        public void setUniform(DescriptorSetLayout layout, DescriptorSet set) {
-            this.descriptorSets.put(layout.getSetPosition(), set.getHandle());
-        }
-
-        public void setUniform(int setNumber, DescriptorSet[] set, int swapImageIndex) {
-            this.descriptorSets.put(setNumber, set[swapImageIndex].getHandle());
-        }
-
-        public void setUniform(DescriptorSetLayout layout, DescriptorSet[] set, int swapImageIndex) {
-            this.descriptorSets.put(layout.getSetPosition(), set[swapImageIndex].getHandle());
-        }
-
-        public void bindMesh(VkCommandBuffer cmd, BufferedMesh mesh) {
-            this.vertexBuffer.put(0, mesh.vertices().getHandle());
-            VK11.vkCmdBindVertexBuffers(cmd, 0, this.vertexBuffer, this.vertexBufferOffset);
-            VK11.vkCmdBindIndexBuffer(cmd, mesh.indices().getHandle(), 0, VK11.VK_INDEX_TYPE_UINT32);
-        }
-
-        public void bindDescriptorSets(VkCommandBuffer cmd, long pipelineLayout) {
-            VK11.vkCmdBindDescriptorSets(cmd, VK11.VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, this.descriptorSets, null);
-        }
-
-        private void applyVertexPushConstants(VkCommandBuffer cmd, long currentPipelineLayout, Matrix4f transform) {
-            //proj.get(buf);
-            transform.get(this.pushConstantsBuffer); // copy transform to pushConstantsBuffer
-            VK11.vkCmdPushConstants(cmd, currentPipelineLayout, VK11.VK_SHADER_STAGE_VERTEX_BIT, 0, this.pushConstantsBuffer);
-        }
-
-        protected void reset(MemoryStack stack, Pipeline pipeline, DescriptorPool pool) {
-            this.descriptorSets = stack.mallocLong(pool.getSetPositionCount());
-            this.vertexBuffer = stack.mallocLong(1);
-            this.vertexBufferOffset = stack.mallocLong(1);
-            this.vertexBufferOffset.put(0, 0L);
-
-            this.pushConstantsBuffer = stack.malloc(pipeline.getPushConstantSize());
-        }
-
-        protected void free() {
-            this.descriptorSets = null;
-            this.vertexBuffer = null;
-            this.vertexBufferOffset = null;
-            this.pushConstantsBuffer = null;
-        }
-
     }
 
 }

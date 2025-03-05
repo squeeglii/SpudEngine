@@ -2,6 +2,7 @@ package me.cg360.spudengine.core;
 
 import me.cg360.spudengine.core.render.Renderer;
 import me.cg360.spudengine.core.render.Window;
+import me.cg360.spudengine.core.render.impl.SubRenderProcess;
 import me.cg360.spudengine.core.world.Scene;
 import org.tinylog.Logger;
 
@@ -9,8 +10,8 @@ public class SpudEngine {
 
     private static SpudEngine engineInstance;
 
-    private Window window;
-    private Scene scene;
+    private final Window window;
+    private final Scene scene;
     private Renderer renderer;
 
     private GameComponent gameInstance;
@@ -22,16 +23,21 @@ public class SpudEngine {
     public SpudEngine() {
         this.window = new Window(EngineProperties.WINDOW_TITLE, this::inputEvent);
         this.scene = new Scene(this.window);
-        this.renderer = new Renderer(this.window, this.scene);
 
+        this.renderer = null;
         this.gameInstance = null;
 
-        this.preinit(this.window, this.scene, this.renderer);
+        this.preinit(this.window, this.scene);
     }
 
     // Engine Controls:
     public void start() {
         this.gameInstance = EngineProperties.GAME.create(this);
+        this.renderer = new Renderer(
+                this.window, this.scene,
+                this.gameInstance.getSubRenderProcesses().toArray(SubRenderProcess[]::new)
+        );
+
         this.init(this.window, this.scene, this.renderer);
 
         this.isRunning = true;
@@ -81,7 +87,7 @@ public class SpudEngine {
     }
 
     // Core Logic:
-    private void preinit(Window window, Scene scene, Renderer renderer) {
+    private void preinit(Window window, Scene scene) {
         Logger.info("Initializing engine... (pre-init)");
 
 
