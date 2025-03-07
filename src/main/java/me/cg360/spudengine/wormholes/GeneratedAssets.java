@@ -15,16 +15,20 @@ public class GeneratedAssets {
              0.5f,  1.0f, 0.0f,
              0.5f, -1.0f, 0.0f,
             -0.5f, -1.0f, 0.0f,
+             0.0f,  0.0f, 0.0f,
     };
     private static final float[] PORTAL_UVs = new float[] {
             0.0f, 1.0f,
             1.0f, 0.0f,
             1.0f, 0.0f,
             0.0f, 0.0f,
+            0.5f, 0.5f
     };
     private static final int[] PORTAL_INDICES = new int[] {
-            0, 1, 2,
-            2, 3, 0
+            0, 1, 4,
+            1, 2, 4,
+            2, 3, 5,
+            3, 0, 5
     };
 
 

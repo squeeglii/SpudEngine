@@ -99,10 +99,12 @@ public class ForwardRenderer extends RenderProcess {
         this.renderPass = new SwapChainRenderPass(swapChain, this.depthAttachments[0].getImage().getFormat());
         this.createFrameBuffers();
 
+        Logger.info("Shader Program Pre!");
         this.shaderProgram = ShaderProgram.attemptCompile(
                 this.device,
                 EngineProperties.shaders
         );
+        Logger.info("Shader Program Post!");
 
         this.shaderIO = new ShaderIO();
 

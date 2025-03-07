@@ -33,7 +33,7 @@ public class EngineProperties {
 
     // Graphics
     public static final int GEOMETRY_SHADER_VERTEX_LIMIT = 3+(3*2*5);  // original room * two copies * 5 recursion depth
-    public static final boolean SHOULD_RECOMPILE_SHADERS = true;
+    public static final boolean SHOULD_RECOMPILE_SHADERS = true; // Disable if init hangs after pipeline cache
     public static final String PREFERRED_DEVICE_NAME = null;
     public static final int STARTING_WIDTH = 1600;
     public static final int STARTING_HEIGHT = 900;

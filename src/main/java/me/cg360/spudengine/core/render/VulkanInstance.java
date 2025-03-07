@@ -121,9 +121,31 @@ public class VulkanInstance {
                     .ppEnabledLayerNames(requiredLayers)
                     .ppEnabledExtensionNames(requiredExtensions);
 
+            /*
+            if(usingDebugging) {
+                ByteBuffer boolVal = stack.calloc(1);
+                boolVal.put((byte) 0x0f);
+
+                VkLayerSettingEXT.Buffer ext = VkLayerSettingEXT.calloc(1, stack)
+                        .pLayerName(stack.ASCII("VK_LAYER_KHRONOS_validation"))
+                        .pSettingName(stack.ASCII("printf_to_stdout"))
+                        .type(EXTLayerSettings.VK_LAYER_SETTING_TYPE_BOOL32_EXT)
+                        .valueCount(1)
+                        .pValues(boolVal);
+
+                VkLayerSettingsCreateInfoEXT createLayerSettings = VkLayerSettingsCreateInfoEXT.calloc(stack)
+                                .sType(EXTLayerSettings.VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT)
+                                .pSettings(ext);
+
+                instanceInfo.pNext(createLayerSettings);
+            }
+             */
+
             if (usePortability) {
                 instanceInfo.flags(0x00000001); // VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR
             }
+
+
 
             PointerBuffer pInstance = stack.mallocPointer(1);
             int errCode = VK11.vkCreateInstance(instanceInfo, null, pInstance);

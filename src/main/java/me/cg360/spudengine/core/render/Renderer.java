@@ -17,6 +17,7 @@ import me.cg360.spudengine.core.render.impl.SubRenderProcess;
 import me.cg360.spudengine.core.render.pipeline.PipelineCache;
 import me.cg360.spudengine.core.world.Scene;
 import org.joml.Vector3f;
+import org.tinylog.Logger;
 
 public class Renderer {
 
@@ -54,6 +55,8 @@ public class Renderer {
 
         this.commandPool = new CommandPool(this.graphicsDevice, this.graphicsQueue.getQueueFamilyIndex());
         this.pipelineCache = new PipelineCache(this.graphicsDevice);
+
+        Logger.debug("Creating Render Process...");
         this.renderProcess = new ForwardRenderer(this.swapChain, this.commandPool, this.pipelineCache, scene, subRenderProcesses);
 
         this.textureManager = new TextureManager(this.graphicsDevice);

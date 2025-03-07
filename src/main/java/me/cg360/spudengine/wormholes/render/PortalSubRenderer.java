@@ -3,6 +3,7 @@ package me.cg360.spudengine.wormholes.render;
 import me.cg360.spudengine.core.render.data.DataTypes;
 import me.cg360.spudengine.core.render.data.buffer.GeneralBuffer;
 import me.cg360.spudengine.core.render.data.type.MatrixHelper;
+import me.cg360.spudengine.core.render.data.type.VectorHelper;
 import me.cg360.spudengine.core.render.impl.SubRenderProcess;
 import me.cg360.spudengine.core.render.pipeline.descriptor.DescriptorPool;
 import me.cg360.spudengine.core.render.pipeline.descriptor.active.UniformDescriptorSet;
@@ -14,6 +15,7 @@ import me.cg360.spudengine.wormholes.WormholeDemo;
 import me.cg360.spudengine.wormholes.logic.PortalTracker;
 import me.cg360.spudengine.wormholes.world.entity.PortalEntity;
 import org.joml.Matrix4f;
+import org.joml.Vector4f;
 import org.lwjgl.vulkan.VK11;
 import org.tinylog.Logger;
 
@@ -28,6 +30,11 @@ public class PortalSubRenderer implements SubRenderProcess {
     private GeneralBuffer[] uPortalTransforms;
     private MatrixHelper portalTransformType;
 
+    private DescriptorSetLayout lPortalOrigins;
+    private UniformDescriptorSet[] dPortalOrigins;
+    private GeneralBuffer[] uPortalOrigins;
+    private VectorHelper portalOriginType;
+
     public PortalSubRenderer(WormholeDemo game) {
         this.game = game;
 
@@ -41,14 +48,21 @@ public class PortalSubRenderer implements SubRenderProcess {
                                          .enablePerFrameWrites(builder.swapChain());
         this.portalTransformType = DataTypes.MAT4X4F.asList(2);
 
+        this.lPortalOrigins = new UniformDescriptorSetLayout(builder.device(), 0, VK11.VK_SHADER_STAGE_GEOMETRY_BIT)
+                                        .enablePerFrameWrites(builder.swapChain());
+        this.portalOriginType = DataTypes.VEC4F.asList(2);
 
         builder.addGeometryUniform(this.lPortalTransform);
+        builder.addGeometryUniform(this.lPortalOrigins);
     }
 
     @Override
     public void createDescriptorSets(DescriptorPool pool) {
         this.dPortalTransforms = UniformDescriptorSet.create(pool, this.lPortalTransform, this.portalTransformType, 0);
         this.uPortalTransforms = ShaderIO.collectUniformBuffers(this.dPortalTransforms);
+
+        this.dPortalOrigins = UniformDescriptorSet.create(pool, this.lPortalOrigins, this.portalOriginType, 0);
+        this.uPortalOrigins = ShaderIO.collectUniformBuffers(this.dPortalOrigins);
     }
 
     @Override
@@ -62,15 +76,23 @@ public class PortalSubRenderer implements SubRenderProcess {
             Matrix4f bluePortalTransform = bluePortal.calculateConnectionTransform(orangePortal);
             Matrix4f orangePortalTransform = orangePortal.calculateConnectionTransform(bluePortal);
 
-            this.portalTransformType.copyToBuffer(this.uPortalTransforms[frameIndex], bluePortalTransform, orangePortalTransform);
+            //TODO: Fix alignment of vec3s in shaders.
+            //      Shader handled uniforms in minimum of 16 byte chunks on this device.
+            //      Get the val from the device, and align based off of that.
+            Vector4f blueOrigin = new Vector4f(bluePortal.getPosition(), 1);
+            Vector4f orangeOrigin = new Vector4f(orangePortal.getPosition(), 1);
 
+            this.portalTransformType.copyToBuffer(this.uPortalTransforms[frameIndex], bluePortalTransform, orangePortalTransform);
+            this.portalOriginType.copy4fToBuffer(this.uPortalOrigins[frameIndex], blueOrigin, orangeOrigin);
         }
 
         shaderIO.setUniform(this.lPortalTransform, this.dPortalTransforms, frameIndex);
+        shaderIO.setUniform(this.lPortalOrigins, this.dPortalOrigins, frameIndex);
     }
 
     @Override
     public void cleanup() {
         Arrays.stream(this.uPortalTransforms).forEach(GeneralBuffer::cleanup);
+        Arrays.stream(this.uPortalOrigins).forEach(GeneralBuffer::cleanup);
     }
 }

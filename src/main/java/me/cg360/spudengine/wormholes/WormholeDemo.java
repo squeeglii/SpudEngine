@@ -14,6 +14,7 @@ import me.cg360.spudengine.wormholes.render.PortalSubRenderer;
 import me.cg360.spudengine.wormholes.world.entity.PortalEntity;
 import me.cg360.spudengine.wormholes.world.entity.PortalType;
 import org.joml.Vector3f;
+import org.lwjgl.glfw.GLFW;
 
 public class WormholeDemo extends GameComponent {
 
@@ -45,7 +46,7 @@ public class WormholeDemo extends GameComponent {
         this.levelGeometry = new EnvironmentGeometry("env/chamber01");
         this.scene().addEntity(this.levelGeometry);
 
-        this.testRotation();
+        this.testTranslation();
     }
 
     private void testRotation() {
@@ -104,6 +105,12 @@ public class WormholeDemo extends GameComponent {
     @Override
     protected void onInputTick(Window window, Scene scene, long delta) {
 
+    }
+
+    @Override
+    protected void onInputEvent(Window window, int key, int action, int modifiers) {
+        if(key == GLFW.GLFW_KEY_F1 && action == GLFW.GLFW_RELEASE)
+            this.getEngine().getRenderer().useWireframe = !this.getEngine().getRenderer().useWireframe;
     }
 
     public PortalTracker getPortalTracker() {

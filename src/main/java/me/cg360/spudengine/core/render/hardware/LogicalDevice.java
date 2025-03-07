@@ -29,7 +29,11 @@ public class LogicalDevice {
             Set<String> deviceExtensions = this.getDeviceExtensions();
             boolean usePortability = deviceExtensions.contains(KHRPortabilitySubset.VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME) &&
                                      Util.getOS() == OSType.MACOS;
-            int numExtensions = usePortability ? 2 : 1;
+            int numExtensions = 0;
+
+            numExtensions++; // swapchain extension.
+            if(usePortability) numExtensions++; // optional portibility.
+            //numExtensions++;  // debug printf
 
             PointerBuffer requiredExtensions = stack.mallocPointer(numExtensions);
             requiredExtensions.put(stack.ASCII(KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME));
