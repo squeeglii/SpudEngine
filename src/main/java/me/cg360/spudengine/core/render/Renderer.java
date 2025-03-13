@@ -13,11 +13,13 @@ import me.cg360.spudengine.core.render.image.SwapChain;
 import me.cg360.spudengine.core.render.image.texture.TextureManager;
 import me.cg360.spudengine.core.render.impl.ForwardRenderer;
 import me.cg360.spudengine.core.render.impl.RenderProcess;
+import me.cg360.spudengine.core.render.impl.RenderProcessInitialiser;
 import me.cg360.spudengine.core.render.impl.SubRenderProcess;
 import me.cg360.spudengine.core.render.pipeline.PipelineCache;
 import me.cg360.spudengine.core.world.Scene;
 import org.joml.Vector3f;
 import org.tinylog.Logger;
+import org.tinylog.Supplier;
 
 public class Renderer {
 

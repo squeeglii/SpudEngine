@@ -58,8 +58,6 @@ public class VectorHelper extends TypeHelper {
             vecBuffer.putFloat(vec.w());
         }
 
-        Logger.info("req size: {}   pos: {}", buffer.getRequestedSize(), vecBuffer.position());
-
         buffer.unmap();
     }
 

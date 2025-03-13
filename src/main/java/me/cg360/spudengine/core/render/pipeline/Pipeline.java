@@ -6,6 +6,7 @@ import me.cg360.spudengine.core.render.hardware.LogicalDevice;
 import me.cg360.spudengine.core.render.pipeline.descriptor.layout.DescriptorSetLayout;
 import me.cg360.spudengine.core.render.pipeline.shader.Shader;
 import me.cg360.spudengine.core.render.pipeline.shader.ShaderProgram;
+import me.cg360.spudengine.core.render.pipeline.util.stencil.StencilConfig;
 import me.cg360.spudengine.core.util.VkHandleWrapper;
 import me.cg360.spudengine.core.util.VulkanUtil;
 import org.lwjgl.system.MemoryStack;
@@ -14,10 +15,7 @@ import org.tinylog.Logger;
 
 import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HexFormat;
-import java.util.List;
+import java.util.*;
 
 public class Pipeline implements VkHandleWrapper {
 
@@ -80,15 +78,28 @@ public class Pipeline implements VkHandleWrapper {
                             .sType(VK11.VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO)
                             .pAttachments(blendAttachmentState);
 
-            VkPipelineDepthStencilStateCreateInfo vkDepthStencilState = null;
-            if (builder.isUsingDepth()){
-                vkDepthStencilState = VkPipelineDepthStencilStateCreateInfo.calloc(stack)
-                        .sType(VK11.VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO)
-                        .depthTestEnable(true)
-                        .depthWriteEnable(true)
-                        .depthCompareOp(VK11.VK_COMPARE_OP_LESS_OR_EQUAL)
-                        .depthBoundsTestEnable(false)
-                        .stencilTestEnable(false);
+            VkPipelineDepthStencilStateCreateInfo vkDepthStencilState = VkPipelineDepthStencilStateCreateInfo.calloc(stack)
+                    .sType(VK11.VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO)
+                    .depthBoundsTestEnable(false)
+                    .depthTestEnable(builder.isUsingDepthTest())
+                    .depthWriteEnable(builder.isWritingDepth())
+                    .depthCompareOp(VK11.VK_COMPARE_OP_LESS_OR_EQUAL);
+
+            if (builder.isStencilConfigSpecified()){
+                vkDepthStencilState.stencilTestEnable(builder.isUsingStencilTest());
+
+                builder.getStencilFrontConfig().ifPresent(frontConfig -> {
+                    VkStencilOpState front = frontConfig.configure(stack);
+                    vkDepthStencilState.front(front);
+                });
+
+                builder.getStencilFrontConfig().ifPresent(backConfig -> {
+                    VkStencilOpState back = backConfig.configure(stack);
+                    vkDepthStencilState.back(back);
+                });
+
+            } else {
+                vkDepthStencilState.stencilTestEnable(false);
             }
 
             VkPipelineDynamicStateCreateInfo vkDynamicStates = VkPipelineDynamicStateCreateInfo.calloc(stack)
@@ -97,7 +108,6 @@ public class Pipeline implements VkHandleWrapper {
                                     VK11.VK_DYNAMIC_STATE_VIEWPORT,   // support window resizing.
                                     VK11.VK_DYNAMIC_STATE_SCISSOR
                             ));
-
 
             VkPushConstantRange.Buffer pushConstantRange = null;
             if (builder.getPushConstantSize() > 0) {
@@ -135,8 +145,6 @@ public class Pipeline implements VkHandleWrapper {
                             .sType(VK11.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
                             .pSetLayouts(ppLayout)
                             .pPushConstantRanges(pushConstantRange);
-
-
 
             int errCreateLayout = VK11.vkCreatePipelineLayout(this.device.asVk(), pPipelineLayoutCreateInfo, null, lp);
             VulkanUtil.checkErrorCode(errCreateLayout, "Failed to create pipeline layout");
@@ -209,7 +217,6 @@ public class Pipeline implements VkHandleWrapper {
         private VertexFormatDefinition vertexFormatDefinition;
 
         // Optional
-        private boolean useDepth = true;
         private int cullMode = VK11.VK_CULL_MODE_NONE;
         private boolean useWireframe = false;
 
@@ -218,9 +225,19 @@ public class Pipeline implements VkHandleWrapper {
 
         private DescriptorSetLayout[] descriptorLayouts;
 
+        private boolean useDepthTest;
+        private boolean useDepthWrite;
+
+        private boolean enableStencilTest;
+        private StencilConfig stencilFront;
+        private StencilConfig stencilBack;
+
         public Builder(VertexFormatDefinition format) {
             this.vertexFormatDefinition = format;
             this.descriptorLayouts = null;
+
+            this.resetDepth();
+            this.resetStencil();
         }
 
         public Pipeline build(PipelineCache pipelineCache, long renderPass, ShaderProgram shaderProgram, int numColorAttachments) {
@@ -235,9 +252,29 @@ public class Pipeline implements VkHandleWrapper {
             this.vertexFormatDefinition.cleanup();
         }
 
+        // Setters that reset things
+        public Builder resetStencil() {
+            this.stencilFront = null;
+            this.stencilBack = null;
+            this.enableStencilTest = false;
+            return this;
+        }
+
+        public Builder resetDepth() {
+            this.useDepthWrite = true;
+            this.useDepthTest = true;
+            return this;
+        }
+
+
         // Setters
         public Builder setUsingDepth(boolean useDepth) {
-            this.useDepth = useDepth;
+            this.useDepthTest = useDepth;
+            return this;
+        }
+
+        public Builder setUsingStencilTest(boolean enableStencilTest) {
+            this.enableStencilTest = enableStencilTest;
             return this;
         }
 
@@ -266,8 +303,12 @@ public class Pipeline implements VkHandleWrapper {
             return this;
         }
 
-        public boolean isUsingDepth() {
-            return this.useDepth;
+        public boolean isUsingDepthTest() {
+            return this.useDepthTest;
+        }
+
+        public boolean isWritingDepth() {
+            return this.useDepthWrite;
         }
 
         public boolean isUsingWireframe() {
@@ -293,6 +334,22 @@ public class Pipeline implements VkHandleWrapper {
 
         public DescriptorSetLayout[] getDescriptorLayouts() {
             return this.descriptorLayouts;
+        }
+
+        public boolean isStencilConfigSpecified() {
+            return this.stencilFront != null ||  this.stencilBack != null;
+        }
+
+        public boolean isUsingStencilTest() {
+            return this.enableStencilTest;
+        }
+
+        public Optional<StencilConfig> getStencilFrontConfig() {
+            return Optional.ofNullable(this.stencilFront);
+        }
+
+        public Optional<StencilConfig> getStencilBackConfig() {
+            return Optional.ofNullable(this.stencilBack);
         }
     }
 

@@ -35,7 +35,7 @@ public class SpudEngine {
         this.gameInstance = EngineProperties.GAME.create(this);
         this.renderer = new Renderer(
                 this.window, this.scene,
-                this.gameInstance.getSubRenderProcesses().toArray(SubRenderProcess[]::new)
+                this.gameInstance.getRendererAddons().toArray(SubRenderProcess[]::new)
         );
 
         this.init(this.window, this.scene, this.renderer);

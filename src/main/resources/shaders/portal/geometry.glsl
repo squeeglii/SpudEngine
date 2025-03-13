@@ -1,6 +1,6 @@
 #version 450
 
-#define RECURSION_DEPTH 10
+#define RECURSION_DEPTH 5
 #define HOLEPUNCH_DIST 0.2
 
 layout (triangles) in;

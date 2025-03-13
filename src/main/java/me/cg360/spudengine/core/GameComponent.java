@@ -2,6 +2,7 @@ package me.cg360.spudengine.core;
 
 import me.cg360.spudengine.core.render.Renderer;
 import me.cg360.spudengine.core.render.Window;
+import me.cg360.spudengine.core.render.impl.RenderProcessInitialiser;
 import me.cg360.spudengine.core.render.impl.SubRenderProcess;
 import me.cg360.spudengine.core.world.Scene;
 
@@ -31,7 +32,7 @@ public abstract class GameComponent {
             throw new NullPointerException("Sub-Listener cannot be null");
 
         this.subListeners.add(listener);
-        this.renderProcesses.addAll(listener.getSubRenderProcesses());
+        this.renderProcesses.addAll(listener.getRendererAddons());
         return listener;
     }
 
@@ -107,7 +108,7 @@ public abstract class GameComponent {
         return this.engineInstance;
     }
 
-    public List<SubRenderProcess> getSubRenderProcesses() {
+    public List<SubRenderProcess> getRendererAddons() {
         return Collections.unmodifiableList(this.renderProcesses);
     }
 
