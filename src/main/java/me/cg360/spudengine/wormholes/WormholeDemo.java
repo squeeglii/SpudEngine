@@ -52,13 +52,13 @@ public class WormholeDemo extends GameComponent {
     private void testRotation() {
         PortalEntity bluePortal = new PortalEntity(
                 PortalType.BLUE,
-                new Vector3f(0.99f, 0, 3.5f),
+                new Vector3f(1.0f, 0, 3.5f),
                 Vectors.toRadians(0, 45, 0)
         );
 
         PortalEntity orangePortal = new PortalEntity(
                 PortalType.ORANGE,
-                new Vector3f(0, 2.0f, -3.99f),
+                new Vector3f(0, 2.0f, -4.0f),
                 Vectors.toRadians(0, 180, 0)
         );
 
@@ -68,13 +68,13 @@ public class WormholeDemo extends GameComponent {
     public void testTranslation() {
         PortalEntity bluePortal = new PortalEntity(
                 PortalType.BLUE,
-                new Vector3f(-6f, 0f, -1.01f),
+                new Vector3f(-6f, 0f, -1.00f),
                 Vectors.toRadians(0, 0, 0)
         );
 
         PortalEntity orangePortal = new PortalEntity(
                 PortalType.ORANGE,
-                new Vector3f(0, 2.0f, -3.99f),
+                new Vector3f(0, 2.0f, -4.0f),
                 Vectors.toRadians(0, 180, 0)
         );
 
@@ -84,13 +84,13 @@ public class WormholeDemo extends GameComponent {
     public void testVertical() {
         PortalEntity bluePortal = new PortalEntity(
                 PortalType.BLUE,
-                new Vector3f(-6f, 0f, -1.01f),
+                new Vector3f(-6f, 0f, -1.0f),
                 Vectors.toRadians(0, 0, 90)
         );
 
         PortalEntity orangePortal = new PortalEntity(
                 PortalType.ORANGE,
-                new Vector3f(0, 2.0f, -3.99f),
+                new Vector3f(0, 2.0f, -4.00f),
                 Vectors.toRadians(0, 180, 0)
         );
 

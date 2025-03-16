@@ -12,8 +12,8 @@ public class ShaderCompilationException extends RuntimeException {
 
     private static String getShaderName(BinaryShaderFile shaderSource) {
         return shaderSource == null
-                ? "<<built-in>>"
-                : shaderSource.getSourcePath().getPath();
+                ? "<<generated>>"
+                : shaderSource.getSourcePath();
     }
 
 }

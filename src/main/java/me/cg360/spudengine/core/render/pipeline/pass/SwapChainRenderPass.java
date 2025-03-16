@@ -37,6 +37,8 @@ public class SwapChainRenderPass implements VkHandleWrapper {
                     .samples(VK11.VK_SAMPLE_COUNT_1_BIT)
                     .loadOp(VK11.VK_ATTACHMENT_LOAD_OP_CLEAR)
                     .storeOp(VK11.VK_ATTACHMENT_STORE_OP_DONT_CARE)
+                    .stencilLoadOp(VK11.VK_ATTACHMENT_LOAD_OP_CLEAR)
+                    .stencilStoreOp(VK11.VK_ATTACHMENT_STORE_OP_STORE)
                     .initialLayout(VK11.VK_IMAGE_LAYOUT_UNDEFINED)
                     .finalLayout(VK11.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 

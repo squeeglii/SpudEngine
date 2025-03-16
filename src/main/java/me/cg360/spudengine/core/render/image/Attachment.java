@@ -25,7 +25,7 @@ public class Attachment {
         }
 
         if ((usage & VK11.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) > 0) {
-            aspectMask = VK11.VK_IMAGE_ASPECT_DEPTH_BIT;
+            aspectMask = VK11.VK_IMAGE_ASPECT_DEPTH_BIT | VK11.VK_IMAGE_ASPECT_STENCIL_BIT;
             this.isDepthAttachment = true;
         }
 

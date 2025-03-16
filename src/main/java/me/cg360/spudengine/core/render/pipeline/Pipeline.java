@@ -93,7 +93,7 @@ public class Pipeline implements VkHandleWrapper {
                     vkDepthStencilState.front(front);
                 });
 
-                builder.getStencilFrontConfig().ifPresent(backConfig -> {
+                builder.getStencilBackConfig().ifPresent(backConfig -> {
                     VkStencilOpState back = backConfig.configure(stack);
                     vkDepthStencilState.back(back);
                 });
@@ -161,10 +161,8 @@ public class Pipeline implements VkHandleWrapper {
                     .pColorBlendState(vkColorBlendState)
                     .pDynamicState(vkDynamicStates)
                     .layout(this.pipelineLayout)
-                    .renderPass(builder.renderPass);
-
-            if(vkDepthStencilState != null)
-                pipeline.pDepthStencilState(vkDepthStencilState);
+                    .renderPass(builder.renderPass)
+                    .pDepthStencilState(vkDepthStencilState);
 
             int errCreate = VK11.vkCreateGraphicsPipelines(this.device.asVk(), pipelineCache.getHandle(), pipeline, null, lp);
             VulkanUtil.checkErrorCode(errCreate, "Error creating graphics pipeline");
@@ -268,8 +266,13 @@ public class Pipeline implements VkHandleWrapper {
 
 
         // Setters
-        public Builder setUsingDepth(boolean useDepth) {
+        public Builder setUsingDepthTest(boolean useDepth) {
             this.useDepthTest = useDepth;
+            return this;
+        }
+
+        public Builder setUsingDepthWrite(boolean useDepthWrite) {
+            this.useDepthWrite = useDepthWrite;
             return this;
         }
 
@@ -303,6 +306,17 @@ public class Pipeline implements VkHandleWrapper {
             return this;
         }
 
+        public Builder setStencilFront(StencilConfig stencilFront) {
+            this.stencilFront = stencilFront;
+            return this;
+        }
+
+        public Builder setStencilBack(StencilConfig stencilBack) {
+            this.stencilBack = stencilBack;
+            return this;
+        }
+
+        // Getters
         public boolean isUsingDepthTest() {
             return this.useDepthTest;
         }

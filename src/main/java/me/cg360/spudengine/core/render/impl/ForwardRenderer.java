@@ -30,12 +30,16 @@ import me.cg360.spudengine.core.render.pipeline.pass.SwapChainRenderPass;
 import me.cg360.spudengine.core.render.pipeline.shader.DescriptorSetLayoutBundle;
 import me.cg360.spudengine.core.render.pipeline.shader.ShaderIO;
 import me.cg360.spudengine.core.render.pipeline.shader.ShaderProgram;
+import me.cg360.spudengine.core.render.pipeline.util.stencil.CompareOperation;
+import me.cg360.spudengine.core.render.pipeline.util.stencil.StencilConfig;
+import me.cg360.spudengine.core.render.pipeline.util.stencil.StencilOperation;
 import me.cg360.spudengine.core.render.sync.Fence;
 import me.cg360.spudengine.core.render.sync.SyncSemaphores;
 import me.cg360.spudengine.core.exception.EngineLimitExceededException;
 import me.cg360.spudengine.core.world.entity.RenderedEntity;
 import me.cg360.spudengine.core.world.Scene;
 import me.cg360.spudengine.core.world.entity.StaticModelEntity;
+import me.cg360.spudengine.wormholes.GeneratedAssets;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Matrix4f;
 import org.lwjgl.system.MemoryStack;
@@ -49,9 +53,7 @@ import java.util.List;
 
 public class ForwardRenderer extends RenderProcess {
 
-    public static final RenderProcessInitialiser INITIALISER = ForwardRenderer::new;
-
-    private static final int DEPTH_ATTACHMENT_FORMAT = VK11.VK_FORMAT_D32_SFLOAT;
+    private static final int DEPTH_ATTACHMENT_FORMAT = VK11.VK_FORMAT_D32_SFLOAT_S8_UINT;
 
     private final LogicalDevice device;
 
@@ -63,8 +65,11 @@ public class ForwardRenderer extends RenderProcess {
     private FrameBuffer[] frameBuffers;
 
     private PipelineCache pipelineCache;
-    private Pipeline pipeline;
+    private Pipeline standardPipeline;
     private Pipeline wireframePipeline;
+    private Pipeline stencilBuildingPipeline;
+    private Pipeline drawMaskedPipeline;
+
     private ShaderProgram shaderProgram;
 
     private final Scene scene;
@@ -209,7 +214,8 @@ public class ForwardRenderer extends RenderProcess {
     }
 
     protected void buildPipelines(DescriptorSetLayout[] descriptorSetLayouts) {
-        Logger.debug("Building Pipelines");
+        Logger.debug("Building Pipelines...");
+
         Pipeline.Builder builder = Pipeline.builder(VertexFormats.POSITION_UV.getDefinition())
                 .setDescriptorLayouts(descriptorSetLayouts)
                 .setPushConstantLayout(  // @see ForwardRenderer#applyPushConstants(...) for how this is filled.
@@ -218,9 +224,43 @@ public class ForwardRenderer extends RenderProcess {
                 )
                 .setCullMode(VK11.VK_CULL_MODE_FRONT_BIT); // uhhhh, right. Sure. This works but
 
-        this.pipeline = builder.build(this.pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
+        this.standardPipeline = builder.build(this.pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
         this.wireframePipeline = builder.setUsingWireframe(true)
+                                        .build(this.pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
+
+        // omg use depth fail.
+        // - run portal on stencil with ref of 1. Increment on writing portal.
+        // - run with stencil test. Depth decrements by 1.
+
+        //TODO: These pipelines are very much for portal. Move these to a seperate renderer.
+        builder.setUsingWireframe(false);
+
+        StencilConfig stencilWrite = new StencilConfig(255, CompareOperation.ALWAYS);
+        stencilWrite.setPassOp(StencilOperation.REPLACE);
+        stencilWrite.setDepthFailOp(StencilOperation.REPLACE);
+        stencilWrite.setStencilFailOp(StencilOperation.REPLACE);
+
+        this.stencilBuildingPipeline = builder.resetDepth().resetStencil()
+                .setUsingDepthTest(true)
+                .setUsingDepthWrite(true)
+                .setUsingStencilTest(true)
+                .setStencilFront(stencilWrite)
+                .setStencilBack(stencilWrite)
                 .build(this.pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
+
+        // Renderer everything with a value over or equal to 1.
+        // anywhere that has a failed double render gets stencil'd?
+        StencilConfig stencilRead = new StencilConfig(1, CompareOperation.GREATER_THAN_OR_EQUAL);
+        stencilRead.setPassOp(StencilOperation.REPLACE);
+        stencilRead.setDepthFailOp(StencilOperation.DECREMENT_AND_CLAMP);
+        stencilRead.setStencilFailOp(StencilOperation.DECREMENT_AND_CLAMP);
+        stencilRead.setWriteMask(0x00);
+
+        this.drawMaskedPipeline = builder.resetDepth().resetStencil()
+                .setStencilFront(stencilRead)
+                .setUsingStencilTest(true)
+                .build(this.pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
+
 
         builder.cleanup();
         Logger.debug("Built pipelines!");
@@ -276,7 +316,10 @@ public class ForwardRenderer extends RenderProcess {
                     .float32(2, components[2])
                     .float32(3, components[3])
             );
-            clearValues.apply(1, v -> v.depthStencil().depth(1.0f));
+            clearValues.apply(1, v -> v.depthStencil()
+                    .depth(1.0f)
+                    .stencil(1)
+            );
 
             VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.calloc(stack)
                     .sType(VK11.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO)
@@ -289,7 +332,8 @@ public class ForwardRenderer extends RenderProcess {
             VkCommandBuffer cmd = commandBuffer.asVk();
             VK11.vkCmdBeginRenderPass(cmd, renderPassBeginInfo, VK11.VK_SUBPASS_CONTENTS_INLINE); // ----
 
-            Pipeline selectedPipeline = renderer.useWireframe ? this.wireframePipeline : this.pipeline;
+            //Pipeline selectedPipeline = renderer.useWireframe ? this.wireframePipeline : this.standardPipeline;
+            Pipeline selectedPipeline = this.stencilBuildingPipeline;
             VK11.vkCmdBindPipeline(cmd, VK11.VK_PIPELINE_BIND_POINT_GRAPHICS, selectedPipeline.getHandle());
 
             // Setup view
@@ -324,7 +368,16 @@ public class ForwardRenderer extends RenderProcess {
                 process.renderPreMesh(this.shaderIO, idx);
 
             // Render the models!
-            this.drawMeshes(cmd, renderer, selectedPipeline, idx);
+
+            // TODO: Remove these portal-code references.
+            this.drawModel(cmd, renderer, selectedPipeline, GeneratedAssets.BLUE_PORTAL_MODEL.getId(), idx);
+            this.drawModel(cmd, renderer, selectedPipeline, GeneratedAssets.ORANGE_PORTAL_MODEL.getId(), idx);
+
+            selectedPipeline = this.standardPipeline;
+            VK11.vkCmdBindPipeline(cmd, VK11.VK_PIPELINE_BIND_POINT_GRAPHICS, selectedPipeline.getHandle());
+            this.drawNonPortalModels(cmd, renderer, selectedPipeline, idx);
+
+            //this.drawMeshes(cmd, renderer, selectedPipeline, idx);
 
             this.shaderIO.free(); // free buffers from stack.
             VK11.vkCmdEndRenderPass(cmd); // ------------------------------------------------------
@@ -334,29 +387,42 @@ public class ForwardRenderer extends RenderProcess {
 
     protected void drawMeshes(VkCommandBuffer cmd, Renderer renderer, Pipeline selectedPipeline, int frameIndex) {
         for (String modelId: this.scene.getUsedModelIds()) {
-            BufferedModel model = renderer.getModelManager().getModel(modelId);
-            List<StaticModelEntity> entities = this.scene.getEntitiesWithModel(modelId);
+            this.drawModel(cmd, renderer, selectedPipeline, modelId, frameIndex);
+        }
+    }
 
-            for(SubRenderProcess process: this.subRenderProcesses)
-                process.renderModel(this.shaderIO, model, frameIndex);
+    protected void drawNonPortalModels(VkCommandBuffer cmd, Renderer renderer, Pipeline selectedPipeline, int frameIndex) {
+        for (String modelId: this.scene.getUsedModelIds()) {
+            if(modelId.equalsIgnoreCase(GeneratedAssets.BLUE_PORTAL_MODEL.getId())) continue;
+            if(modelId.equalsIgnoreCase(GeneratedAssets.ORANGE_PORTAL_MODEL.getId())) continue;
 
-            for(BundledMaterial material: model.getMaterials()) {
-                if (material.meshes().isEmpty()) continue;
+            this.drawModel(cmd, renderer, selectedPipeline, modelId, frameIndex);
+        }
+    }
 
-                // Swap texture descriptor out when the material changes.
-                SamplerDescriptorSet samplerDescriptorSet = this.dSampler.get(material.texture().getResourceName());
-                this.shaderIO.setUniform(this.lSampler, samplerDescriptorSet);
+    protected void drawModel(VkCommandBuffer cmd, Renderer renderer, Pipeline selectedPipeline, String modelId, int frameIndex) {
+        BufferedModel model = renderer.getModelManager().getModel(modelId);
+        List<StaticModelEntity> entities = this.scene.getEntitiesWithModel(modelId);
 
-                for(BufferedMesh mesh: material.meshes()) {
-                    this.shaderIO.bindMesh(cmd, mesh);
+        for(SubRenderProcess process: this.subRenderProcesses)
+            process.renderModel(this.shaderIO, model, frameIndex);
 
-                    for(RenderedEntity entity: entities) {
-                        long layoutHandle = selectedPipeline.getPipelineLayoutHandle();
-                        this.shaderIO.bindDescriptorSets(cmd, layoutHandle);
-                        this.shaderIO.applyVertexPushConstants(cmd, layoutHandle, entity.getTransform());
+        for(BundledMaterial material: model.getMaterials()) {
+            if (material.meshes().isEmpty()) continue;
 
-                        VK11.vkCmdDrawIndexed(cmd, mesh.numIndices(), 1, 0, 0, 0);
-                    }
+            // Swap texture descriptor out when the material changes.
+            SamplerDescriptorSet samplerDescriptorSet = this.dSampler.get(material.texture().getResourceName());
+            this.shaderIO.setUniform(this.lSampler, samplerDescriptorSet);
+
+            for(BufferedMesh mesh: material.meshes()) {
+                this.shaderIO.bindMesh(cmd, mesh);
+
+                for(RenderedEntity entity: entities) {
+                    long layoutHandle = selectedPipeline.getPipelineLayoutHandle();
+                    this.shaderIO.bindDescriptorSets(cmd, layoutHandle);
+                    this.shaderIO.applyVertexPushConstants(cmd, layoutHandle, entity.getTransform());
+
+                    VK11.vkCmdDrawIndexed(cmd, mesh.numIndices(), 1, 0, 0, 0);
                 }
             }
         }
@@ -417,8 +483,10 @@ public class ForwardRenderer extends RenderProcess {
 
         this.descriptorPool.cleanup(); // descriptor sets cleaned up here.
 
-        this.pipeline.cleanup();
+        this.standardPipeline.cleanup();
         this.wireframePipeline.cleanup();
+        this.stencilBuildingPipeline.cleanup();
+        this.drawMaskedPipeline.cleanup();
 
         this.shaderProgram.cleanup();
 

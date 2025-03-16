@@ -70,7 +70,7 @@ void emitOffsetRoom(mat4 roomTransform, int currentDepth, vec4 debugHighlight) {
 
         if (p1Punch || p2Punch || p3Punch) {
             //debugColour = vec4(1, 0, 0, 0); // Entire triangle within range, cut.
-            return;
+            //return;
         }
     }
 

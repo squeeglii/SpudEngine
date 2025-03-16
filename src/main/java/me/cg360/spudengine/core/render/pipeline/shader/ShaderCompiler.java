@@ -3,12 +3,9 @@ package me.cg360.spudengine.core.render.pipeline.shader;
 import org.lwjgl.util.shaderc.Shaderc;
 import org.tinylog.Logger;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.URISyntaxException;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
-import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
@@ -16,27 +13,41 @@ public class ShaderCompiler {
 
     public static boolean compileShaderIfChanged(BinaryShaderFile shaderFile) {
         byte[] compiledShader;
-        try {
+        String shaderSrc = shaderFile.getSourcePath();
 
-            File glslFile = new File(shaderFile.getSourcePath().toURI());
+        // todo: reimplement file timestamp checking.
+        // move shaders out of resources?
+
+        try(InputStream shaderIn = ShaderCompiler.class.getResourceAsStream(shaderSrc)) {
             File spvFile = new File(shaderFile.getCompiledPath().toUri());
 
-            if (!spvFile.exists() || glslFile.lastModified() > spvFile.lastModified()) {
-                Logger.info("Compiling shader [{}] to [{}]", glslFile.getPath(), spvFile.getPath());
-                String shaderCode = new String(Files.readAllBytes(glslFile.toPath()));
+            if(shaderIn == null)
+                throw new FileNotFoundException("Cannot find internal shader source '%s'".formatted(shaderSrc));
 
-                compiledShader = ShaderCompiler.compileShader(shaderFile, shaderCode, shaderFile.type().shaderc());
-                Path target = spvFile.toPath();
-                target.getParent().toFile().mkdirs();
-                Files.write(target, compiledShader, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-                return true;
+
+            Logger.info("Compiling shader [{}] to [{}]", shaderSrc, spvFile.getPath());
+
+            BufferedInputStream read = new BufferedInputStream(shaderIn);
+            byte[] srcBytes = read.readAllBytes();
+            String srcString = new String(srcBytes); // encoding? um
+
+            compiledShader = ShaderCompiler.compileShader(shaderFile, srcString, shaderFile.type().shaderc());
+            Path target = spvFile.toPath();
+            target.getParent().toFile().mkdirs();
+            Files.write(target, compiledShader, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            return true;
+
+            /*
+            if (!spvFile.exists() || glslFile.lastModified() > spvFile.lastModified()) {
+
 
             } else {
                 Logger.debug("Shader [{}] already compiled. Loading compiled version: [{}]", glslFile.getPath(), spvFile.getPath());
                 return false;
             }
+             */
 
-        } catch (IOException | URISyntaxException err) {
+        } catch (IOException err) {
             throw new RuntimeException(err);
         }
     }
