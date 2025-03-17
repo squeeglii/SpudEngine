@@ -2,10 +2,7 @@ package me.cg360.spudengine.core.render.image.texture;
 
 import me.cg360.spudengine.core.exception.DuplicateException;
 import me.cg360.spudengine.core.render.hardware.LogicalDevice;
-import me.cg360.spudengine.core.render.image.texture.generated.BorderTexture;
-import me.cg360.spudengine.core.render.image.texture.generated.CheckerboardTexture;
-import me.cg360.spudengine.core.render.image.texture.generated.FilesystemTexture;
-import me.cg360.spudengine.core.render.image.texture.generated.SolidColourTexture;
+import me.cg360.spudengine.core.render.image.texture.generated.*;
 import me.cg360.spudengine.core.util.IndexedLinkedHashMap;
 import me.cg360.spudengine.core.util.Registry;
 import org.tinylog.Logger;
@@ -147,6 +144,17 @@ public class TextureManager implements Registry {
             throw new DuplicateException(this, resourceName);
 
         BorderTexture texture = new BorderTexture(this.device, resourceName, width, height, mipLevels, borderSize, baseColour, borderColour);
+        this.registerTexture(texture);
+
+        return texture;
+    }
+
+    /** Creates and registers a border texture. */
+    public CircleTexture newCircleTexture(String resourceName, int width, int height, int mipLevels, int radius, Color baseColour, Color circleColour) {
+        if(this.textures.containsKey(resourceName))
+            throw new DuplicateException(this, resourceName);
+
+        CircleTexture texture = new CircleTexture(this.device, resourceName, width, height, mipLevels, radius, baseColour, circleColour);
         this.registerTexture(texture);
 
         return texture;

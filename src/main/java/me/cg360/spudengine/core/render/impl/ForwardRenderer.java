@@ -30,6 +30,7 @@ import me.cg360.spudengine.core.render.pipeline.pass.SwapChainRenderPass;
 import me.cg360.spudengine.core.render.pipeline.shader.DescriptorSetLayoutBundle;
 import me.cg360.spudengine.core.render.pipeline.shader.ShaderIO;
 import me.cg360.spudengine.core.render.pipeline.shader.ShaderProgram;
+import me.cg360.spudengine.core.render.pipeline.util.BlendFunc;
 import me.cg360.spudengine.core.render.pipeline.util.stencil.CompareOperation;
 import me.cg360.spudengine.core.render.pipeline.util.stencil.StencilConfig;
 import me.cg360.spudengine.core.render.pipeline.util.stencil.StencilOperation;
@@ -69,9 +70,8 @@ public class ForwardRenderer extends RenderProcess {
     private PipelineCache pipelineCache;
     private Pipeline standardPipeline;
     private Pipeline wireframePipeline;
-    private Pipeline[] portalWritePipeline;
-    private Pipeline[] roomWritePipeline;
-    private Pipeline[] portalReadPipeline;
+    private Pipeline portalPipeline;
+    private Pipeline roomGeometryPipeline;
 
     private ShaderProgram shaderProgram;
 
@@ -238,43 +238,33 @@ public class ForwardRenderer extends RenderProcess {
         StencilConfig stencilWrite = new StencilConfig(1, CompareOperation.ALWAYS);
         stencilWrite.setAllWriteOps(StencilOperation.REPLACE);
 
-        StencilConfig stencilWriteRoom = new StencilConfig(1, CompareOperation.ALWAYS);
-        stencilWrite.setAllWriteOps(StencilOperation.REPLACE);
-
         StencilConfig stencilRead = new StencilConfig(0, CompareOperation.EQUAL);
-        stencilRead.setPassOp(StencilOperation.REPLACE);
+        stencilRead.setPassOp(StencilOperation.KEEP);
         stencilRead.setDepthFailOp(StencilOperation.KEEP);
         stencilRead.setStencilFailOp(StencilOperation.KEEP);
         stencilRead.setWriteMask(0x00);
 
-        this.portalReadPipeline = new Pipeline[PORTAL_DEPTH+1];
-        this.portalWritePipeline = new Pipeline[PORTAL_DEPTH+1];
-        this.roomWritePipeline = new Pipeline[PORTAL_DEPTH+1];
+        this.portalPipeline = builder.resetDepth().resetStencil()
+                .disableColourWrite().enableAlphaWrite() // could we do some magic blending
+                .setUsingDepthTest(false)
+                .setUsingDepthWrite(false)
+                .setUsingBlend(true)
+                .setColourBlendOp(VK11.VK_BLEND_OP_ADD)
+                .setBlendFunc(BlendFunc.REPLACE)
+                //.setUsingStencilTest(true)
+                //.setStencilBack(stencilWrite)
+                .build(this.pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
 
-        // trying to create almost a fake depth buffer?
-        for(int i = 0; i <= PORTAL_DEPTH; i++) {
-            stencilWrite.setReference(i+1);
-            stencilWriteRoom.setReference(i+1);
-            stencilRead.setReference(i);
+        this.roomGeometryPipeline = builder.resetDepth().resetStencil()
+                .enableColourWrite()
+                .setUsingDepthTest(false)
+                .setUsingBlend(true)
+                .setColourBlendOp(VK11.VK_BLEND_OP_ADD)
+                .setBlendFunc(BlendFunc.USE_DESTINATION_ALPHA)
+                //.setUsingStencilTest(true)
+                //.setStencilBack(stencilRead)
+                .build(this.pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
 
-            builder.resetDepth().resetStencil()
-                    .setUsingDepthTest(false)
-                    .setUsingDepthWrite(false)
-                    .setUsingStencilTest(true);
-
-            this.portalWritePipeline[i] = builder
-                    .setStencilBack(stencilWrite)
-                    .build(this.pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
-
-            this.roomWritePipeline[i] = builder
-                    .setStencilBack(stencilWriteRoom)
-                    .build(this.pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
-
-            this.portalReadPipeline[i] = builder.resetDepth().resetStencil()
-                    .setStencilBack(stencilRead)
-                    .setUsingStencilTest(true)
-                    .build(this.pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
-        }
 
 
         builder.cleanup();
@@ -321,20 +311,7 @@ public class ForwardRenderer extends RenderProcess {
             //fence.reset();
             commandBuffer.reset();
 
-            VkClearValue.Buffer clearValues = VkClearValue.calloc(2, stack);
-            Color c = EngineProperties.CLEAR_COLOUR;
-            float[] components = new float[4];
-            c.getComponents(components);
-            clearValues.apply(0, v -> v.color()
-                    .float32(0, components[0])
-                    .float32(1, components[1])
-                    .float32(2, components[2])
-                    .float32(3, components[3])
-            );
-            clearValues.apply(1, v -> v.depthStencil()
-                    .depth(1.0f)
-                    .stencil(1)
-            );
+            VkClearValue.Buffer clearValues = generateClearValues(stack);
 
             VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.calloc(stack)
                     .sType(VK11.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO)
@@ -347,8 +324,8 @@ public class ForwardRenderer extends RenderProcess {
             VkCommandBuffer cmd = commandBuffer.asVk();
             VK11.vkCmdBeginRenderPass(cmd, renderPassBeginInfo, VK11.VK_SUBPASS_CONTENTS_INLINE); // ----
 
-            //Pipeline selectedPipeline = renderer.useWireframe ? this.wireframePipeline : this.standardPipeline;
-            Pipeline selectedPipeline = this.standardPipeline;
+            Pipeline selectedPipeline = renderer.useWireframe ? this.wireframePipeline : this.standardPipeline;
+            //Pipeline selectedPipeline = this.standardPipeline;
             VK11.vkCmdBindPipeline(cmd, VK11.VK_PIPELINE_BIND_POINT_GRAPHICS, selectedPipeline.getHandle());
 
             // Setup view
@@ -385,31 +362,16 @@ public class ForwardRenderer extends RenderProcess {
             // Render the models!
 
             // TODO: Remove these portal-code references.
-            for(int roomId = PORTAL_DEPTH; roomId >= 0; roomId--) {
-                for(SubRenderProcess process:  this.subRenderProcesses)
-                    process.tmp_setPortalUniform(this.shaderIO, roomId, idx);
 
-                selectedPipeline = this.roomWritePipeline[roomId];
-                VK11.vkCmdBindPipeline(cmd, VK11.VK_PIPELINE_BIND_POINT_GRAPHICS, selectedPipeline.getHandle());
+            selectedPipeline = this.portalPipeline;
+            VK11.vkCmdBindPipeline(cmd, VK11.VK_PIPELINE_BIND_POINT_GRAPHICS, selectedPipeline.getHandle());
 
-                this.drawNonPortalModels(cmd, renderer, selectedPipeline, idx);
+            this.drawModel(cmd, renderer, selectedPipeline, GeneratedAssets.BLUE_PORTAL_MODEL.getId(), idx);
+            this.drawModel(cmd, renderer, selectedPipeline, GeneratedAssets.ORANGE_PORTAL_MODEL.getId(), idx);
 
-                selectedPipeline = this.portalWritePipeline[roomId];
-                VK11.vkCmdBindPipeline(cmd, VK11.VK_PIPELINE_BIND_POINT_GRAPHICS, selectedPipeline.getHandle());
-
-                this.drawModel(cmd, renderer, selectedPipeline, GeneratedAssets.BLUE_PORTAL_MODEL.getId(), idx);
-                this.drawModel(cmd, renderer, selectedPipeline, GeneratedAssets.ORANGE_PORTAL_MODEL.getId(), idx);
-            }
-
-            for(int roomId = 0; roomId <= PORTAL_DEPTH; roomId++) {
-                for(SubRenderProcess process:  this.subRenderProcesses)
-                    process.tmp_setPortalUniform(this.shaderIO, roomId, idx);
-
-                selectedPipeline = this.portalReadPipeline[roomId];
-                VK11.vkCmdBindPipeline(cmd, VK11.VK_PIPELINE_BIND_POINT_GRAPHICS, selectedPipeline.getHandle());
-
-                this.drawNonPortalModels(cmd, renderer, selectedPipeline, idx);
-            }
+            selectedPipeline = this.roomGeometryPipeline;
+            VK11.vkCmdBindPipeline(cmd, VK11.VK_PIPELINE_BIND_POINT_GRAPHICS, selectedPipeline.getHandle());
+            this.drawNonPortalModels(cmd, renderer, selectedPipeline, idx);
 
             //this.drawMeshes(cmd, renderer, selectedPipeline, idx);
 
@@ -417,6 +379,24 @@ public class ForwardRenderer extends RenderProcess {
             VK11.vkCmdEndRenderPass(cmd); // ------------------------------------------------------
             commandBuffer.endRecording();
         }
+    }
+
+    private static VkClearValue.Buffer generateClearValues(MemoryStack stack) {
+        VkClearValue.Buffer clearValues = VkClearValue.calloc(2, stack);
+        Color c = EngineProperties.CLEAR_COLOUR;
+        float[] components = new float[4];
+        c.getComponents(components);
+        clearValues.apply(0, v -> v.color()
+                .float32(0, components[0])
+                .float32(1, components[1])
+                .float32(2, components[2])
+                .float32(3, components[3])
+        );
+        clearValues.apply(1, v -> v.depthStencil()
+                .depth(1.0f)
+                .stencil(0)
+        );
+        return clearValues;
     }
 
     protected void drawMeshes(VkCommandBuffer cmd, Renderer renderer, Pipeline selectedPipeline, int frameIndex) {
@@ -519,9 +499,8 @@ public class ForwardRenderer extends RenderProcess {
 
         this.standardPipeline.cleanup();
         this.wireframePipeline.cleanup();
-        Arrays.stream(this.portalReadPipeline).forEach(Pipeline::cleanup);
-        Arrays.stream(this.portalWritePipeline).forEach(Pipeline::cleanup);
-        Arrays.stream(this.roomWritePipeline).forEach(Pipeline::cleanup);
+        this.roomGeometryPipeline.cleanup();
+        this.portalPipeline.cleanup();
 
         this.shaderProgram.cleanup();
 

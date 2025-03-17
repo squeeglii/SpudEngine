@@ -24,10 +24,6 @@ layout(set = 3, binding = 0) uniform PORTAL_ORIGIN_SET {
     vec4 blue;
 } portalOrigins;
 
-layout(set = 4, binding = 0) uniform ROOM_DEPTH_SET {
-    int roomDepth;
-} depthTarget;
-
 layout(location = 0) out vec2 texCoords;
 layout(location = 1) out vec4 debugColour;
 
@@ -96,11 +92,7 @@ void emitOffsetRoom(mat4 roomTransform, int currentDepth, vec4 debugHighlight) {
 void main() {
     mat4 transform = mat4(1);
 
-    if(depthTarget.roomDepth == 0) {
-        emitOffsetRoom(transform, 0, vec4(1, 1, 1, 1));
-        return;
-    }
-
+    emitOffsetRoom(transform, 0, vec4(1, 1, 1, 1));
 
     //todo: send culling through arrays to shader?
     //      ...or even send the full octree?
@@ -118,9 +110,7 @@ void main() {
         vec4 blueCol = vec4(hsv2rgb(0.5, colFrac, 1), 1);
         vec4 orangeCol = vec4(hsv2rgb(0.05, colFrac, 1), 1);
 
-        if(depthTarget.roomDepth == i) {
-            emitOffsetRoom(blue, i, blueCol);
-            emitOffsetRoom(orange, i, orangeCol);
-        }
+        emitOffsetRoom(blue, i, blueCol);
+        emitOffsetRoom(orange, i, orangeCol);
     }
 }

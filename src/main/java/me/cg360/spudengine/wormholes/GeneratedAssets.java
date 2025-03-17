@@ -11,24 +11,24 @@ import java.util.List;
 public class GeneratedAssets {
 
     private static final float[] PORTAL_POINTS = new float[] {
-            -0.5f,  1.0f, 0.0f,
-             0.5f,  1.0f, 0.0f,
-             0.5f, -1.0f, 0.0f,
-            -0.5f, -1.0f, 0.0f,
-             0.0f,  0.0f, 0.0f,
+            -0.5f,  1.0f, 0.0f,    // left top
+             0.5f,  1.0f, 0.0f,    // right top
+             0.5f, -1.0f, 0.0f,    // right bottom
+            -0.5f, -1.0f, 0.0f,    // left bottom
+             0.0f,  0.0f, 0.0f,    // center
     };
     private static final float[] PORTAL_UVs = new float[] {
             0.0f, 1.0f,
-            1.0f, 0.0f,
+            1.0f, 1.0f,
             1.0f, 0.0f,
             0.0f, 0.0f,
             0.5f, 0.5f
     };
     private static final int[] PORTAL_INDICES = new int[] {
-            0, 1, 4,
-            1, 2, 4,
-            2, 3, 5,
-            3, 0, 5
+            4, 0, 1,
+            4, 1, 2,
+            4, 2, 3,
+            4, 3, 0
     };
 
 
@@ -45,7 +45,9 @@ public class GeneratedAssets {
     }
 
     public static void registerTextures(TextureManager textureManager) {
-        textureManager.newSolidColourTexture(BLUE_PORTAL_MATERIAL.texture(), 512, 512, 1, new Color(50, 100, 255));
-        textureManager.newSolidColourTexture(ORANGE_PORTAL_MATERIAL.texture(), 512, 512, 1, new Color(255, 100, 20));
+        Color nonMask = new Color(255, 255, 255, 0);
+
+        textureManager.newCircleTexture(BLUE_PORTAL_MATERIAL.texture(), 512, 512, 1, 256, new Color(50, 100, 255, 255), nonMask);
+        textureManager.newCircleTexture(ORANGE_PORTAL_MATERIAL.texture(), 512, 512, 1, 256, new Color(255, 100, 0, 255), nonMask);
     }
 }

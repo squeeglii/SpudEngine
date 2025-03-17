@@ -25,7 +25,7 @@ public class EngineProperties {
 
     // Debugging
     public static final boolean USE_DEBUGGING = true;
-    public static final Color CLEAR_COLOUR = new Color(0.05f, 0.05f, 0.05f, 0.00f);
+    public static final Color CLEAR_COLOUR = new Color(0.05f, 0.05f, 0.05f, 1.00f);
 
     // Logic
     public static final Entrypoint GAME = WormholeDemo::new;

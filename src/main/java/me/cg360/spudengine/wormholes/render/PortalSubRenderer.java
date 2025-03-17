@@ -37,10 +37,6 @@ public class PortalSubRenderer implements SubRenderProcess {
     private GeneralBuffer[] uPortalOrigins;
     private VectorHelper portalOriginType;
 
-    private DescriptorSetLayout lRoomDepthTarget;
-    private UniformDescriptorSet[] dRoomDepthTarget;
-    private GeneralBuffer[] uRoomDepthTarget;
-
     public PortalSubRenderer(WormholeDemo game) {
         this.game = game;
 
@@ -58,12 +54,8 @@ public class PortalSubRenderer implements SubRenderProcess {
                                         .enablePerFrameWrites(builder.swapChain());
         this.portalOriginType = DataTypes.VEC4F.asList(2);
 
-        this.lRoomDepthTarget = new UniformDescriptorSetLayout(builder.device(), 0, VK11.VK_SHADER_STAGE_GEOMETRY_BIT)
-                                        .enablePerFrameWrites(builder.swapChain());
-
         builder.addGeometryUniform(this.lPortalTransform);
         builder.addGeometryUniform(this.lPortalOrigins);
-        builder.addGeometryUniform(this.lRoomDepthTarget);
     }
 
     @Override
@@ -73,9 +65,6 @@ public class PortalSubRenderer implements SubRenderProcess {
 
         this.dPortalOrigins = UniformDescriptorSet.create(pool, this.lPortalOrigins, this.portalOriginType, 0);
         this.uPortalOrigins = ShaderIO.collectUniformBuffers(this.dPortalOrigins);
-
-        this.dRoomDepthTarget = UniformDescriptorSet.create(pool, this.lRoomDepthTarget, DataTypes.INT, 0);
-        this.uRoomDepthTarget = ShaderIO.collectUniformBuffers(this.dRoomDepthTarget);
     }
 
     @Override
@@ -104,22 +93,8 @@ public class PortalSubRenderer implements SubRenderProcess {
     }
 
     @Override
-    public void tmp_setPortalUniform(ShaderIO shaderIO, int targetRoomId, int frameIndex) {
-        GeneralBuffer buffer = this.dRoomDepthTarget[frameIndex].getBuffer();
-        buffer.map();
-
-        long mappedMemory = buffer.map();
-        ByteBuffer write = MemoryUtil.memByteBuffer(mappedMemory, (int) buffer.getRequestedSize());
-        write.putInt(targetRoomId);
-        buffer.unmap();
-
-        shaderIO.setUniform(this.lRoomDepthTarget, this.dRoomDepthTarget, frameIndex);
-    }
-
-    @Override
     public void cleanup() {
         Arrays.stream(this.uPortalTransforms).forEach(GeneralBuffer::cleanup);
         Arrays.stream(this.uPortalOrigins).forEach(GeneralBuffer::cleanup);
-        Arrays.stream(this.uRoomDepthTarget).forEach(GeneralBuffer::cleanup);
     }
 }

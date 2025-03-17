@@ -6,6 +6,7 @@ import me.cg360.spudengine.core.render.hardware.LogicalDevice;
 import me.cg360.spudengine.core.render.pipeline.descriptor.layout.DescriptorSetLayout;
 import me.cg360.spudengine.core.render.pipeline.shader.Shader;
 import me.cg360.spudengine.core.render.pipeline.shader.ShaderProgram;
+import me.cg360.spudengine.core.render.pipeline.util.BlendFunc;
 import me.cg360.spudengine.core.render.pipeline.util.stencil.StencilConfig;
 import me.cg360.spudengine.core.util.VkHandleWrapper;
 import me.cg360.spudengine.core.util.VulkanUtil;
@@ -71,8 +72,15 @@ public class Pipeline implements VkHandleWrapper {
                             .rasterizationSamples(VK11.VK_SAMPLE_COUNT_1_BIT); // No multisampling.
 
             VkPipelineColorBlendAttachmentState.Buffer blendAttachmentState = VkPipelineColorBlendAttachmentState.calloc(builder.numColourAttachments, stack);
-            for (int i = 0; i < builder.numColourAttachments; i++)
-                blendAttachmentState.get(i).colorWriteMask(ALL_COLOUR_CHANNELS);
+            for (int i = 0; i < builder.numColourAttachments; i++) {
+                VkPipelineColorBlendAttachmentState state = blendAttachmentState.get(i)
+                        .colorWriteMask(builder.colourWriteMask)
+                        .colorBlendOp(builder.colourBlendOp)
+                        .blendEnable(builder.useBlend);
+
+                if(builder.blendFunc != null)
+                    builder.blendFunc.configure(state);
+            }
 
             VkPipelineColorBlendStateCreateInfo vkColorBlendState = VkPipelineColorBlendStateCreateInfo.calloc(stack)
                             .sType(VK11.VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO)
@@ -230,9 +238,19 @@ public class Pipeline implements VkHandleWrapper {
         private StencilConfig stencilFront;
         private StencilConfig stencilBack;
 
+        private int colourWriteMask;
+
+        private boolean useBlend;
+        private int colourBlendOp;
+        private BlendFunc blendFunc;
+
         public Builder(VertexFormatDefinition format) {
             this.vertexFormatDefinition = format;
             this.descriptorLayouts = null;
+
+            this.colourWriteMask = ALL_COLOUR_CHANNELS;
+            this.colourBlendOp = VK11.VK_BLEND_OP_ADD;
+            this.blendFunc = BlendFunc.DEFAULT;
 
             this.resetDepth();
             this.resetStencil();
@@ -278,6 +296,48 @@ public class Pipeline implements VkHandleWrapper {
 
         public Builder setUsingStencilTest(boolean enableStencilTest) {
             this.enableStencilTest = enableStencilTest;
+            return this;
+        }
+
+        public Builder setColourWriteMask(int colourWriteMask) {
+            this.colourWriteMask = colourWriteMask;
+            return this;
+        }
+
+        public Builder disableColourWrite() {
+            this.colourWriteMask = 0;
+            return this;
+        }
+
+        public Builder enableColourWrite() {
+            this.colourWriteMask = ALL_COLOUR_CHANNELS;
+            return this;
+        }
+
+        public Builder enableAlphaWrite() {
+            this.colourWriteMask |= VK11.VK_COLOR_COMPONENT_A_BIT;
+            return this;
+        }
+
+        public Builder disableAlphaWrite() {
+            this.colourWriteMask &= ~VK11.VK_COLOR_COMPONENT_A_BIT;
+            return this;
+        }
+
+        public Builder setUsingBlend(boolean useBlend) {
+            this.useBlend = useBlend;
+            return this;
+        }
+
+        public Builder setColourBlendOp(int colourBlendOp) {
+            this.colourBlendOp = colourBlendOp;
+            return this;
+        }
+
+        public Builder setBlendFunc(BlendFunc blendFunc) {
+            this.blendFunc = blendFunc == null
+                    ? BlendFunc.DEFAULT
+                    : blendFunc;
             return this;
         }
 
