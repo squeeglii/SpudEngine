@@ -1,10 +1,10 @@
 #version 450
 
-#define RECURSION_DEPTH 5
+#define MAX_RECURSION_DEPTH 5
 #define HOLEPUNCH_DIST 0.2
 
 layout (triangles) in;
-layout (triangle_strip, max_vertices = 3+(3*2*RECURSION_DEPTH)) out; // 3x triangles, 9 vertices. Allows for 2 copies of every model.
+layout (triangle_strip, max_vertices = 3+(3*2*MAX_RECURSION_DEPTH)) out; // 3x triangles, 9 vertices. Allows for 2 copies of every model.
 
 layout(location = 0) in VS_OUT {
     vec3 pos;
@@ -23,6 +23,10 @@ layout(set = 3, binding = 0) uniform PORTAL_ORIGIN_SET {
     vec4 orange;
     vec4 blue;
 } portalOrigins;
+
+layout(set = 4, binding = 0) uniform ROOM_DEPTH_SET {
+    int roomDepth;
+} depthTarget;
 
 layout(location = 0) out vec2 texCoords;
 layout(location = 1) out vec4 debugColour;
@@ -54,7 +58,7 @@ void emitOffsetRoom(mat4 roomTransform, int currentDepth, vec4 debugHighlight) {
     //      and add extra vertex to portal model so it actually cuts out.
 
     // Not yet at max depth. Punch holes through geometry.
-    if(currentDepth < RECURSION_DEPTH) {
+    if(currentDepth < MAX_RECURSION_DEPTH) {
         bool p1Punch = false;
         bool p2Punch = false;
         bool p3Punch = false;
@@ -92,7 +96,11 @@ void emitOffsetRoom(mat4 roomTransform, int currentDepth, vec4 debugHighlight) {
 void main() {
     mat4 transform = mat4(1);
 
-    emitOffsetRoom(transform, 0, vec4(1, 1, 1, 1));
+    if(depthTarget.roomDepth == 0) {
+        emitOffsetRoom(transform, 0, vec4(1, 1, 1, 1));
+        return;
+    }
+
 
     //todo: send culling through arrays to shader?
     //      ...or even send the full octree?
@@ -100,17 +108,19 @@ void main() {
     mat4 blue = mat4(1);
     mat4 orange = mat4(1);
 
-    for(int i = 1; i <= RECURSION_DEPTH; i++) {
+    for(int i = 1; i <= MAX_RECURSION_DEPTH; i++) {
         blue *= portalTransforms.blue;
         orange *= portalTransforms.orange;
 
-        float r = RECURSION_DEPTH;
+        float r = MAX_RECURSION_DEPTH;
         float colFrac = 0.5 + 0.5 * ((i+1) / r);
 
         vec4 blueCol = vec4(hsv2rgb(0.5, colFrac, 1), 1);
         vec4 orangeCol = vec4(hsv2rgb(0.05, colFrac, 1), 1);
 
-        emitOffsetRoom(blue, i, blueCol);
-        emitOffsetRoom(orange, i, orangeCol);
+        if(depthTarget.roomDepth == i) {
+            emitOffsetRoom(blue, i, blueCol);
+            emitOffsetRoom(orange, i, orangeCol);
+        }
     }
 }

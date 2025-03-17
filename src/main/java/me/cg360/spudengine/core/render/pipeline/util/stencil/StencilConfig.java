@@ -1,13 +1,12 @@
 package me.cg360.spudengine.core.render.pipeline.util.stencil;
 
 import org.lwjgl.system.MemoryStack;
-import org.lwjgl.vulkan.VK11;
 import org.lwjgl.vulkan.VkStencilOpState;
 
 public class StencilConfig {
 
-    private final int reference;
-    private final CompareOperation compareOp;
+    private int reference;
+    private CompareOperation compareOp;
 
     private int readMask = 0xFF;
     private int writeMask = 0xFF;
@@ -42,6 +41,16 @@ public class StencilConfig {
         return stencil;
     }
 
+    public StencilConfig setReference(int reference) {
+        this.reference = reference;
+        return this;
+    }
+
+    public StencilConfig setCompareOp(CompareOperation compareOp) {
+        this.compareOp = compareOp;
+        return this;
+    }
+
     public StencilConfig setReadMask(int readMask) {
         this.readMask = readMask;
         return this;
@@ -64,6 +73,13 @@ public class StencilConfig {
 
     public StencilConfig setDepthFailOp(StencilOperation depthFailOp) {
         this.depthFailOp = depthFailOp;
+        return this;
+    }
+
+    public StencilConfig setAllWriteOps(StencilOperation op) {
+        this.passOp = op;
+        this.stencilFailOp = op;
+        this.depthFailOp = op;
         return this;
     }
 }

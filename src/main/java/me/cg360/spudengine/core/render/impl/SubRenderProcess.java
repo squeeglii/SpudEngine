@@ -14,6 +14,8 @@ public interface SubRenderProcess {
     default void renderPreMesh(ShaderIO shaderIO, int frameIndex) {}
     default void renderModel(ShaderIO shaderIO, BufferedModel model, int frameIndex) {}
 
+    default void tmp_setPortalUniform(ShaderIO shaderIO, int targetRoomId, int frameIndex) {}
+
     void cleanup();
 
 }

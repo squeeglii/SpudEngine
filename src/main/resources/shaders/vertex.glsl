@@ -16,11 +16,11 @@ layout(push_constant) uniform PushConstants {
 } pushConstants;
 
 layout(location=0) out VS_OUT {
-    out vec3 pos;
-    out vec2 texCoords;
-    out mat4 projectionMatrix;
-    out mat4 viewMatrix;
-    out mat4 modelTransform;
+    vec3 pos;
+    vec2 texCoords;
+    mat4 projectionMatrix;
+    mat4 viewMatrix;
+    mat4 modelTransform;
 } vs_out;
 
 void main()

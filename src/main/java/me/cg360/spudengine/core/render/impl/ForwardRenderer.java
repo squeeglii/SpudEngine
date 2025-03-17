@@ -55,6 +55,8 @@ public class ForwardRenderer extends RenderProcess {
 
     private static final int DEPTH_ATTACHMENT_FORMAT = VK11.VK_FORMAT_D32_SFLOAT_S8_UINT;
 
+    private static final int PORTAL_DEPTH = 4;
+
     private final LogicalDevice device;
 
     private CommandBuffer[] commandBuffers;
@@ -67,8 +69,9 @@ public class ForwardRenderer extends RenderProcess {
     private PipelineCache pipelineCache;
     private Pipeline standardPipeline;
     private Pipeline wireframePipeline;
-    private Pipeline stencilBuildingPipeline;
-    private Pipeline drawMaskedPipeline;
+    private Pipeline[] portalWritePipeline;
+    private Pipeline[] roomWritePipeline;
+    private Pipeline[] portalReadPipeline;
 
     private ShaderProgram shaderProgram;
 
@@ -228,38 +231,50 @@ public class ForwardRenderer extends RenderProcess {
         this.wireframePipeline = builder.setUsingWireframe(true)
                                         .build(this.pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
 
-        // omg use depth fail.
-        // - run portal on stencil with ref of 1. Increment on writing portal.
-        // - run with stencil test. Depth decrements by 1.
-
-        //TODO: These pipelines are very much for portal. Move these to a seperate renderer.
+        // --------------------------
+        //TODO: These pipelines below are very much for portal. Move these to a seperate renderer.
         builder.setUsingWireframe(false);
 
-        StencilConfig stencilWrite = new StencilConfig(255, CompareOperation.ALWAYS);
-        stencilWrite.setPassOp(StencilOperation.REPLACE);
-        stencilWrite.setDepthFailOp(StencilOperation.REPLACE);
-        stencilWrite.setStencilFailOp(StencilOperation.REPLACE);
+        StencilConfig stencilWrite = new StencilConfig(1, CompareOperation.ALWAYS);
+        stencilWrite.setAllWriteOps(StencilOperation.REPLACE);
 
-        this.stencilBuildingPipeline = builder.resetDepth().resetStencil()
-                .setUsingDepthTest(true)
-                .setUsingDepthWrite(true)
-                .setUsingStencilTest(true)
-                .setStencilFront(stencilWrite)
-                .setStencilBack(stencilWrite)
-                .build(this.pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
+        StencilConfig stencilWriteRoom = new StencilConfig(1, CompareOperation.ALWAYS);
+        stencilWrite.setAllWriteOps(StencilOperation.REPLACE);
 
-        // Renderer everything with a value over or equal to 1.
-        // anywhere that has a failed double render gets stencil'd?
-        StencilConfig stencilRead = new StencilConfig(1, CompareOperation.GREATER_THAN_OR_EQUAL);
+        StencilConfig stencilRead = new StencilConfig(0, CompareOperation.EQUAL);
         stencilRead.setPassOp(StencilOperation.REPLACE);
-        stencilRead.setDepthFailOp(StencilOperation.DECREMENT_AND_CLAMP);
-        stencilRead.setStencilFailOp(StencilOperation.DECREMENT_AND_CLAMP);
+        stencilRead.setDepthFailOp(StencilOperation.KEEP);
+        stencilRead.setStencilFailOp(StencilOperation.KEEP);
         stencilRead.setWriteMask(0x00);
 
-        this.drawMaskedPipeline = builder.resetDepth().resetStencil()
-                .setStencilFront(stencilRead)
-                .setUsingStencilTest(true)
-                .build(this.pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
+        this.portalReadPipeline = new Pipeline[PORTAL_DEPTH+1];
+        this.portalWritePipeline = new Pipeline[PORTAL_DEPTH+1];
+        this.roomWritePipeline = new Pipeline[PORTAL_DEPTH+1];
+
+        // trying to create almost a fake depth buffer?
+        for(int i = 0; i <= PORTAL_DEPTH; i++) {
+            stencilWrite.setReference(i+1);
+            stencilWriteRoom.setReference(i+1);
+            stencilRead.setReference(i);
+
+            builder.resetDepth().resetStencil()
+                    .setUsingDepthTest(false)
+                    .setUsingDepthWrite(false)
+                    .setUsingStencilTest(true);
+
+            this.portalWritePipeline[i] = builder
+                    .setStencilBack(stencilWrite)
+                    .build(this.pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
+
+            this.roomWritePipeline[i] = builder
+                    .setStencilBack(stencilWriteRoom)
+                    .build(this.pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
+
+            this.portalReadPipeline[i] = builder.resetDepth().resetStencil()
+                    .setStencilBack(stencilRead)
+                    .setUsingStencilTest(true)
+                    .build(this.pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
+        }
 
 
         builder.cleanup();
@@ -333,7 +348,7 @@ public class ForwardRenderer extends RenderProcess {
             VK11.vkCmdBeginRenderPass(cmd, renderPassBeginInfo, VK11.VK_SUBPASS_CONTENTS_INLINE); // ----
 
             //Pipeline selectedPipeline = renderer.useWireframe ? this.wireframePipeline : this.standardPipeline;
-            Pipeline selectedPipeline = this.stencilBuildingPipeline;
+            Pipeline selectedPipeline = this.standardPipeline;
             VK11.vkCmdBindPipeline(cmd, VK11.VK_PIPELINE_BIND_POINT_GRAPHICS, selectedPipeline.getHandle());
 
             // Setup view
@@ -370,12 +385,31 @@ public class ForwardRenderer extends RenderProcess {
             // Render the models!
 
             // TODO: Remove these portal-code references.
-            this.drawModel(cmd, renderer, selectedPipeline, GeneratedAssets.BLUE_PORTAL_MODEL.getId(), idx);
-            this.drawModel(cmd, renderer, selectedPipeline, GeneratedAssets.ORANGE_PORTAL_MODEL.getId(), idx);
+            for(int roomId = PORTAL_DEPTH; roomId >= 0; roomId--) {
+                for(SubRenderProcess process:  this.subRenderProcesses)
+                    process.tmp_setPortalUniform(this.shaderIO, roomId, idx);
 
-            selectedPipeline = this.standardPipeline;
-            VK11.vkCmdBindPipeline(cmd, VK11.VK_PIPELINE_BIND_POINT_GRAPHICS, selectedPipeline.getHandle());
-            this.drawNonPortalModels(cmd, renderer, selectedPipeline, idx);
+                selectedPipeline = this.roomWritePipeline[roomId];
+                VK11.vkCmdBindPipeline(cmd, VK11.VK_PIPELINE_BIND_POINT_GRAPHICS, selectedPipeline.getHandle());
+
+                this.drawNonPortalModels(cmd, renderer, selectedPipeline, idx);
+
+                selectedPipeline = this.portalWritePipeline[roomId];
+                VK11.vkCmdBindPipeline(cmd, VK11.VK_PIPELINE_BIND_POINT_GRAPHICS, selectedPipeline.getHandle());
+
+                this.drawModel(cmd, renderer, selectedPipeline, GeneratedAssets.BLUE_PORTAL_MODEL.getId(), idx);
+                this.drawModel(cmd, renderer, selectedPipeline, GeneratedAssets.ORANGE_PORTAL_MODEL.getId(), idx);
+            }
+
+            for(int roomId = 0; roomId <= PORTAL_DEPTH; roomId++) {
+                for(SubRenderProcess process:  this.subRenderProcesses)
+                    process.tmp_setPortalUniform(this.shaderIO, roomId, idx);
+
+                selectedPipeline = this.portalReadPipeline[roomId];
+                VK11.vkCmdBindPipeline(cmd, VK11.VK_PIPELINE_BIND_POINT_GRAPHICS, selectedPipeline.getHandle());
+
+                this.drawNonPortalModels(cmd, renderer, selectedPipeline, idx);
+            }
 
             //this.drawMeshes(cmd, renderer, selectedPipeline, idx);
 
@@ -485,8 +519,9 @@ public class ForwardRenderer extends RenderProcess {
 
         this.standardPipeline.cleanup();
         this.wireframePipeline.cleanup();
-        this.stencilBuildingPipeline.cleanup();
-        this.drawMaskedPipeline.cleanup();
+        Arrays.stream(this.portalReadPipeline).forEach(Pipeline::cleanup);
+        Arrays.stream(this.portalWritePipeline).forEach(Pipeline::cleanup);
+        Arrays.stream(this.roomWritePipeline).forEach(Pipeline::cleanup);
 
         this.shaderProgram.cleanup();
 
