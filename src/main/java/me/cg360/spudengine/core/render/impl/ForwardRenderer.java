@@ -248,9 +248,9 @@ public class ForwardRenderer extends RenderProcess {
                 .disableColourWrite().enableAlphaWrite() // could we do some magic blending
                 .setUsingDepthTest(false)
                 .setUsingDepthWrite(false)
-                .setUsingBlend(true)
-                .setColourBlendOp(VK11.VK_BLEND_OP_ADD)
-                .setBlendFunc(BlendFunc.REPLACE)
+                .setUsingBlend(false)
+                //.setColourBlendOp(VK11.VK_BLEND_OP_ADD)
+                //.setBlendFunc(BlendFunc.REPLACE)
                 //.setUsingStencilTest(true)
                 //.setStencilBack(stencilWrite)
                 .build(this.pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
