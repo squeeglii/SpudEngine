@@ -23,8 +23,8 @@ public record BlendFunc(BlendFactor srcColour, BlendFactor srcAlpha, BlendFactor
     public static final BlendFunc USE_DESTINATION_ALPHA = new BlendFunc(
             BlendFactor.DST_ALPHA,
             BlendFactor.ONE_MINUS_DST_ALPHA,
-            BlendFactor.ONE,
-            BlendFactor.ZERO
+            BlendFactor.ONE_MINUS_DST_ALPHA,
+            BlendFactor.DST_ALPHA
     );
 
     /*

@@ -257,7 +257,8 @@ public class ForwardRenderer extends RenderProcess {
 
         this.roomGeometryPipeline = builder.resetDepth().resetStencil()
                 .enableColourWrite()
-                .setUsingDepthTest(false)
+                .setUsingDepthWrite(true)
+                .setUsingDepthTest(true)
                 .setUsingBlend(true)
                 .setColourBlendOp(VK11.VK_BLEND_OP_ADD)
                 .setBlendFunc(BlendFunc.USE_DESTINATION_ALPHA)
