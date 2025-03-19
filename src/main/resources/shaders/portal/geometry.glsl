@@ -29,7 +29,8 @@ layout(set = 3, binding = 0) uniform PORTAL_ORIGIN_SET {
 
 layout(location = 0) out vec2 texCoords;
 layout(location = 1) out vec2 overlayTexCoords;
-layout(location = 2) out vec4 debugColour;
+layout(location = 2) out vec4 portalColour;
+layout(location = 3) out vec4 debugColour;
 
 // https://gamedev.stackexchange.com/questions/59797/glsl-shader-change-hue-saturation-brightness
 vec3 hsv2rgb(vec3 c)
@@ -44,7 +45,7 @@ vec3 hsv2rgb(float h, float s, float v)
     return hsv2rgb(vec3(h, s, v));
 }
 
-void emitOffsetRoom(vec4[3] worldPos, vec2[3] overlayCoords, mat4 roomTransform, int currentDepth, vec4 debugHighlight) {
+void emitOffsetRoom(vec4[3] worldPos, vec2[3] overlayCoords, vec4[3] generatedPortalColours, mat4 roomTransform, int currentDepth, vec4 debugHighlight) {
     mat4 mP = gs_in[0].projectionMatrix;
     mat4 mV = gs_in[0].viewMatrix;
 
@@ -55,6 +56,7 @@ void emitOffsetRoom(vec4[3] worldPos, vec2[3] overlayCoords, mat4 roomTransform,
     for(int v = 0; v < 3; v++) {
         texCoords = gs_in[v].texCoords;
         overlayTexCoords = overlayCoords[v];
+        portalColour = generatedPortalColours[v];
         gl_Position = mP * mV * roomTransform * worldPos[v];
         EmitVertex();
     }
@@ -70,6 +72,7 @@ void main() {
     );
 
     vec2[3] generatedOverlayCoords = vec2[3]( OVERLAY_UNDEFINED, OVERLAY_UNDEFINED, OVERLAY_UNDEFINED );
+    vec4[3] generatedPortalColours = vec4[3]( vec4(0), vec4(0), vec4(0) );
 
     // Portal overlays
     for(int i = 0; i < 3; i++) {
@@ -81,15 +84,23 @@ void main() {
         if(dBlue > PORTAL_CHECK_RANGE && dOrange > PORTAL_CHECK_RANGE)
             continue;
 
-        vec4 closestPortal = dBlue < dOrange ? portalOrigins.blue : portalOrigins.orange;
+        vec4 closestPortal;
+
+        if(dBlue < dOrange) {
+            closestPortal = portalOrigins.blue;
+            generatedPortalColours[i] = vec4(0.1, 0.4, 1, 1);
+        } else {
+            closestPortal = portalOrigins.orange;
+            generatedPortalColours[i] = vec4(1, 0.4, 0, 1);
+        }
 
         // portal is 1u wide, 2u tall.
         vec2 diffXZ = pos.xz - closestPortal.xz; // 0.5 in world space, is 0.5 in texture space;
         float lenXZ = length(diffXZ);
         float diffY = pos.y - closestPortal.y; // 1 in world space is 0.5 in texture space; squish.
 
-        float u = 0.5 + clamp(-0.5, lenXZ, 0.5);
-        float v = 0.5+ clamp(-0.5, diffY / 2, 0.5);
+        float u = 0.5 + lenXZ; //clamp(-0.5, lenXZ, 0.5);
+        float v = 0.5 + (diffY / 2); //clamp(-0.5, diffY / 2, 0.5);   use clamps to test UVs.
 
         generatedOverlayCoords[i] = vec2(u, v); // origin 0.5 0.5;
     }
@@ -97,7 +108,7 @@ void main() {
     //todo: send culling through arrays to shader?
     //      ...or even send the full octree?
 
-    emitOffsetRoom(worldPositions, generatedOverlayCoords, mat4(1), 0, vec4(1, 1, 1, 1)); // room without portal transform.
+    emitOffsetRoom(worldPositions, generatedOverlayCoords, generatedPortalColours, mat4(1), 0, vec4(1, 1, 1, 1)); // room without portal transform.
 
     // rooms with portal transforms.
     mat4 blue = mat4(1);
@@ -113,7 +124,7 @@ void main() {
         vec4 blueCol = vec4(hsv2rgb(0.5, colFrac, 1), 1);
         vec4 orangeCol = vec4(hsv2rgb(0.05, colFrac, 1), 1);
 
-        emitOffsetRoom(worldPositions, generatedOverlayCoords, blue, i, blueCol);
-        emitOffsetRoom(worldPositions, generatedOverlayCoords, orange, i, orangeCol);
+        emitOffsetRoom(worldPositions, generatedOverlayCoords, generatedPortalColours, blue, i, blueCol);
+        emitOffsetRoom(worldPositions, generatedOverlayCoords, generatedPortalColours, orange, i, orangeCol);
     }
 }

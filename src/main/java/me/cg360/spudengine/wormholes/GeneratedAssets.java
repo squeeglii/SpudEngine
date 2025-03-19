@@ -49,17 +49,19 @@ public class GeneratedAssets {
 
     public static void registerTextures(TextureManager textureManager) {
         Color nonMask = new Color(255, 255, 255, 0);
+        Color portalBorder = new Color(255, 255, 255, 255);
         Color mask = new Color(0, 0, 0, 0);
 
         // opaque portals
         Color blueCol = new Color(50, 100, 255, 255);
         Color orangeCol = new Color(255, 100, 0, 255);
 
-        Texture blue = textureManager.newCircleTexture(BLUE_PORTAL_MATERIAL.texture(), 512, 512, 1, 256, nonMask, blueCol);
-        Texture orange = textureManager.newCircleTexture(ORANGE_PORTAL_MATERIAL.texture(), 512, 512, 1, 256, nonMask, orangeCol);
-        Texture blank = textureManager.newCircleTexture(PORTAL_CUTOUT.texture(), 512, 512, 1, 256, nonMask, mask);
+        Texture blue = textureManager.newCircleTexture(BLUE_PORTAL_MATERIAL.texture(), 512, 512, 1, 256, 0, nonMask, nonMask, blueCol);
+        Texture orange = textureManager.newCircleTexture(ORANGE_PORTAL_MATERIAL.texture(), 512, 512, 1, 256, 0, nonMask, nonMask, orangeCol);
+
+        Texture cutout = textureManager.newCircleTexture(PORTAL_CUTOUT.texture(), 512, 512, 1, 248, 5,  nonMask, portalBorder, mask);
 
         // reuploads textures to overlay samplers.
-        textureManager.markAsOverlays(blank);
+        textureManager.markAsOverlays(cutout);
     }
 }

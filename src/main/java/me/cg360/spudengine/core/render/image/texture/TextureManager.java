@@ -185,11 +185,11 @@ public class TextureManager implements Registry {
     }
 
     /** Creates and registers a border texture. */
-    public CircleTexture newCircleTexture(String resourceName, int width, int height, int mipLevels, int radius, Color baseColour, Color circleColour) {
+    public CircleTexture newCircleTexture(String resourceName, int width, int height, int mipLevels, int radius, int outerBorder, Color baseColour, Color borderColour, Color innerColour) {
         if(this.textures.containsKey(resourceName))
             throw new DuplicateException(this, resourceName);
 
-        CircleTexture texture = new CircleTexture(this.device, resourceName, width, height, mipLevels, radius, baseColour, circleColour);
+        CircleTexture texture = new CircleTexture(this.device, resourceName, width, height, mipLevels, radius, outerBorder, baseColour, borderColour, innerColour);
         this.registerTexture(texture);
 
         return texture;

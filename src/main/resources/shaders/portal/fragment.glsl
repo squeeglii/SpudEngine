@@ -2,10 +2,12 @@
 
 #define IS_DEFINED_OVERLAY [0] > -512
 #define BLACK 0.1
+#define WHITE 0.9
 
 layout(location = 0) in vec2 texCoords;
 layout(location = 1) in vec2 overlayTexCoords;
 layout(location = 2) in vec4 debugColour;
+layout(location = 3) in vec4 portalColour;
 
 layout(location = 0) out vec4 uFragColor;
 
@@ -35,9 +37,12 @@ void main()
         col.a = overlay.a;
 
         // if overlay is white, use this like a cutout mode?
-        if (overlay.x < BLACK && overlay.y < BLACK && overlay.z < BLACK && col.a < 0.1)
+        if (overlay.x < BLACK && overlay.y < BLACK && overlay.z < BLACK && col.a < 0.1) {
             discard;
+        } else if (overlay.x > WHITE && overlay.y > WHITE && overlay.z > WHITE && col.a > 0.9) {
+            col = portalColour;
+        }
     }
 
-    uFragColor = col * debugColour;
+    uFragColor = col; //* debugColour;
 }

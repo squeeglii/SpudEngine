@@ -11,7 +11,7 @@ import java.nio.ByteBuffer;
 
 public class CircleTexture extends Texture {
 
-    public CircleTexture(LogicalDevice device, String resourceName, int width, int height, int mipLevels, int radius, Color baseColour, Color circleColour) {
+    public CircleTexture(LogicalDevice device, String resourceName, int width, int height, int mipLevels, int radius, int outerBorder, Color baseColour, Color borderColour, Color innerColour) {
         super(resourceName, true);
 
         this.width = width;
@@ -26,6 +26,7 @@ public class CircleTexture extends Texture {
         ByteBuffer imageData = ByteBuffer.allocate(componentCount);
 
         int radiusSquared = radius * radius;
+        int borderRadiusSquared = (radius + outerBorder) * (radius + outerBorder);
 
         for(int x = 0; x < width; x++) {
             for(int y = 0; y < height; y++) {
@@ -33,9 +34,17 @@ public class CircleTexture extends Texture {
                 int centeredY = y - (height / 2);
 
                 Vector2f offset = new Vector2f(centeredX, centeredY);
-                Color colour = offset.lengthSquared() < radiusSquared
-                        ? circleColour
-                        : baseColour;
+
+                Color colour;
+                float lengthSq = offset.lengthSquared();
+
+                if(lengthSq < radiusSquared) {
+                    colour = innerColour;
+                } else if(lengthSq < borderRadiusSquared) {
+                    colour = borderColour;
+                } else {
+                    colour = baseColour;
+                }
 
                 imageData.put((byte) colour.getRed());
                 imageData.put((byte) colour.getGreen());
