@@ -48,11 +48,12 @@ public class CommandBuffer {
         this.endRecording();
     }
 
-    public void beginRecording() {
+    public VkCommandBuffer beginRecording() {
         this.beginRecording(null);
+        return this.asVk();
     }
 
-    public void beginRecording(SecondaryInheritance inheritanceInfo) {
+    public VkCommandBuffer beginRecording(SecondaryInheritance inheritanceInfo) {
         try (MemoryStack stack = MemoryStack.stackPush()) {
             VkCommandBufferBeginInfo cmdBufInfo = VkCommandBufferBeginInfo.calloc(stack)
                         .sType(VK11.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO);
@@ -78,6 +79,8 @@ public class CommandBuffer {
             int errCreate = VK11.vkBeginCommandBuffer(this.commandBuffer, cmdBufInfo);
             VulkanUtil.checkErrorCode(errCreate, "Failed to begin command buffer recording");
         }
+
+        return this.asVk();
     }
 
     public void endRecording() {

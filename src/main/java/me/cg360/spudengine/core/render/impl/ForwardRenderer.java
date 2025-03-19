@@ -321,13 +321,12 @@ public class ForwardRenderer extends RenderProcess {
                     .renderArea(a -> a.extent().set(width, height))
                     .framebuffer(frameBuffer.getHandle());
 
-            commandBuffer.beginRecording();
-            VkCommandBuffer cmd = commandBuffer.asVk();
+            VkCommandBuffer cmd = commandBuffer.beginRecording();
             VK11.vkCmdBeginRenderPass(cmd, renderPassBeginInfo, VK11.VK_SUBPASS_CONTENTS_INLINE); // ----
 
-            Pipeline selectedPipeline = renderer.useWireframe ? this.wireframePipeline : this.standardPipeline;
-            //Pipeline selectedPipeline = this.standardPipeline;
-            VK11.vkCmdBindPipeline(cmd, VK11.VK_PIPELINE_BIND_POINT_GRAPHICS, selectedPipeline.getHandle());
+            Pipeline selectedPipeline = renderer.useWireframe
+                    ? this.wireframePipeline.bind(cmd)
+                    :this.standardPipeline.bind(cmd);
 
             // Setup view
             VkViewport.Buffer viewport = VkViewport.calloc(1, stack)
@@ -364,14 +363,11 @@ public class ForwardRenderer extends RenderProcess {
 
             // TODO: Remove these portal-code references.
 
-            selectedPipeline = this.portalPipeline;
-            VK11.vkCmdBindPipeline(cmd, VK11.VK_PIPELINE_BIND_POINT_GRAPHICS, selectedPipeline.getHandle());
-
+            selectedPipeline = this.portalPipeline.bind(cmd);
             this.drawModel(cmd, renderer, selectedPipeline, GeneratedAssets.BLUE_PORTAL_MODEL.getId(), idx);
             this.drawModel(cmd, renderer, selectedPipeline, GeneratedAssets.ORANGE_PORTAL_MODEL.getId(), idx);
 
-            selectedPipeline = this.roomGeometryPipeline;
-            VK11.vkCmdBindPipeline(cmd, VK11.VK_PIPELINE_BIND_POINT_GRAPHICS, selectedPipeline.getHandle());
+            selectedPipeline = this.roomGeometryPipeline.bind(cmd);
             this.drawNonPortalModels(cmd, renderer, selectedPipeline, idx);
 
             //this.drawMeshes(cmd, renderer, selectedPipeline, idx);

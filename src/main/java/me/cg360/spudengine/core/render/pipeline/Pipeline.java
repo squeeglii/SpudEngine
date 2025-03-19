@@ -182,6 +182,14 @@ public class Pipeline implements VkHandleWrapper {
         }
     }
 
+    public Pipeline bind(VkCommandBuffer cmd) {
+        return this.bind(cmd, VK11.VK_PIPELINE_BIND_POINT_GRAPHICS);
+    }
+
+    public Pipeline bind(VkCommandBuffer cmd, int bindPoint) {
+        VK11.vkCmdBindPipeline(cmd, bindPoint, this.getHandle());
+        return this;
+    }
 
     public void cleanup() {
         Logger.debug("Destroying pipeline");
