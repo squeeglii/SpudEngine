@@ -6,6 +6,9 @@
 #define MAX_RECURSION_DEPTH 5
 #define PORTAL_CHECK_RANGE 3
 
+#define BLUE_PORTAL vec4(0.02, 0.25, 1, 1)
+#define ORANGE_PORTAL vec4(1, 0.25, 0, 1)
+
 layout (triangles) in;
 layout (triangle_strip, max_vertices = 3+(3*2*MAX_RECURSION_DEPTH)) out; // 3x triangles, 9 vertices. Allows for 2 copies of every model.
 
@@ -29,7 +32,7 @@ layout(set = 3, binding = 0) uniform PORTAL_ORIGIN_SET {
 
 layout(location = 0) out vec2 texCoords;
 layout(location = 1) out vec2 overlayTexCoords;
-layout(location = 2) out vec4 portalColour;
+layout(location = 2) out vec4 portalBorderColour;
 layout(location = 3) out vec4 debugColour;
 
 // https://gamedev.stackexchange.com/questions/59797/glsl-shader-change-hue-saturation-brightness
@@ -45,7 +48,7 @@ vec3 hsv2rgb(float h, float s, float v)
     return hsv2rgb(vec3(h, s, v));
 }
 
-void emitOffsetRoom(vec4[3] worldPos, vec2[3] overlayCoords, vec4[3] generatedPortalColours, mat4 roomTransform, int currentDepth, vec4 debugHighlight) {
+void emitOffsetRoom(vec4[3] worldPos, vec2[3] overlayCoords, vec4 portalColour, mat4 roomTransform, int currentDepth, vec4 debugHighlight) {
     mat4 mP = gs_in[0].projectionMatrix;
     mat4 mV = gs_in[0].viewMatrix;
 
@@ -56,7 +59,7 @@ void emitOffsetRoom(vec4[3] worldPos, vec2[3] overlayCoords, vec4[3] generatedPo
     for(int v = 0; v < 3; v++) {
         texCoords = gs_in[v].texCoords;
         overlayTexCoords = overlayCoords[v];
-        portalColour = generatedPortalColours[v];
+        portalBorderColour = portalColour;
         gl_Position = mP * mV * roomTransform * worldPos[v];
         EmitVertex();
     }
@@ -72,7 +75,7 @@ void main() {
     );
 
     vec2[3] generatedOverlayCoords = vec2[3]( OVERLAY_UNDEFINED, OVERLAY_UNDEFINED, OVERLAY_UNDEFINED );
-    vec4[3] generatedPortalColours = vec4[3]( vec4(0), vec4(0), vec4(0) );
+    vec4 portalColour;
 
     // Portal overlays
     for(int i = 0; i < 3; i++) {
@@ -88,10 +91,10 @@ void main() {
 
         if(dBlue < dOrange) {
             closestPortal = portalOrigins.blue;
-            generatedPortalColours[i] = vec4(0.1, 0.4, 1, 1);
+            portalColour = BLUE_PORTAL;
         } else {
             closestPortal = portalOrigins.orange;
-            generatedPortalColours[i] = vec4(1, 0.4, 0, 1);
+            portalColour = ORANGE_PORTAL;
         }
 
         // portal is 1u wide, 2u tall.
@@ -108,7 +111,7 @@ void main() {
     //todo: send culling through arrays to shader?
     //      ...or even send the full octree?
 
-    emitOffsetRoom(worldPositions, generatedOverlayCoords, generatedPortalColours, mat4(1), 0, vec4(1, 1, 1, 1)); // room without portal transform.
+    emitOffsetRoom(worldPositions, generatedOverlayCoords, portalColour, mat4(1), 0, vec4(1, 1, 1, 1)); // room without portal transform.
 
     // rooms with portal transforms.
     mat4 blue = mat4(1);
@@ -124,7 +127,7 @@ void main() {
         vec4 blueCol = vec4(hsv2rgb(0.5, colFrac, 1), 1);
         vec4 orangeCol = vec4(hsv2rgb(0.05, colFrac, 1), 1);
 
-        emitOffsetRoom(worldPositions, generatedOverlayCoords, generatedPortalColours, blue, i, blueCol);
-        emitOffsetRoom(worldPositions, generatedOverlayCoords, generatedPortalColours, orange, i, orangeCol);
+        emitOffsetRoom(worldPositions, generatedOverlayCoords, portalColour, blue, i, blueCol);
+        emitOffsetRoom(worldPositions, generatedOverlayCoords, portalColour, orange, i, orangeCol);
     }
 }

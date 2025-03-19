@@ -59,7 +59,7 @@ public class GeneratedAssets {
         Texture blue = textureManager.newCircleTexture(BLUE_PORTAL_MATERIAL.texture(), 512, 512, 1, 256, 0, nonMask, nonMask, blueCol);
         Texture orange = textureManager.newCircleTexture(ORANGE_PORTAL_MATERIAL.texture(), 512, 512, 1, 256, 0, nonMask, nonMask, orangeCol);
 
-        Texture cutout = textureManager.newCircleTexture(PORTAL_CUTOUT.texture(), 512, 512, 1, 248, 5,  nonMask, portalBorder, mask);
+        Texture cutout = textureManager.newCircleTexture(PORTAL_CUTOUT.texture(), 512, 512, 1, 220, 25,  nonMask, portalBorder, mask);
 
         // reuploads textures to overlay samplers.
         textureManager.markAsOverlays(cutout);

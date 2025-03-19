@@ -6,8 +6,8 @@
 
 layout(location = 0) in vec2 texCoords;
 layout(location = 1) in vec2 overlayTexCoords;
-layout(location = 2) in vec4 debugColour;
-layout(location = 3) in vec4 portalColour;
+layout(location = 2) in vec4 portalColour;
+layout(location = 3) in vec4 debugColour;
 
 layout(location = 0) out vec4 uFragColor;
 
