@@ -1,5 +1,6 @@
 package me.cg360.spudengine.core.render.command;
 
+import me.cg360.spudengine.core.render.sync.Fence;
 import me.cg360.spudengine.core.util.VulkanUtil;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
@@ -36,16 +37,18 @@ public class CommandBuffer {
 
     }
 
-    public void record(Runnable runnable) {
+    public CommandBuffer record(Runnable runnable) {
         this.beginRecording();
         runnable.run();
         this.endRecording();
+        return this;
     }
 
-    public void record(SecondaryInheritance inheritanceInfo, Runnable runnable) {
+    public CommandBuffer record(SecondaryInheritance inheritanceInfo, Runnable runnable) {
         this.beginRecording(inheritanceInfo);
         runnable.run();
         this.endRecording();
+        return this;
     }
 
     public VkCommandBuffer beginRecording() {
@@ -83,13 +86,26 @@ public class CommandBuffer {
         return this.asVk();
     }
 
-    public void endRecording() {
+    public CommandBuffer endRecording() {
         int errClear = VK11.vkEndCommandBuffer(this.commandBuffer);
         VulkanUtil.checkErrorCode(errClear, "Failed to end command buffer recording");
+        return this;
     }
 
     public void reset() {
         VK11.vkResetCommandBuffer(this.commandBuffer, VK11.VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
+    }
+
+    public void submitAndWait(CommandQueue queue) {
+        Fence fence = new Fence(this.commandPool.getDevice(), true).reset();
+
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            queue.submit(stack.pointers(this.asVk()), null, null, null, fence);
+        }
+
+        fence.fenceWait();
+        fence.cleanup();
+        this.cleanup();
     }
 
     public void cleanup() {

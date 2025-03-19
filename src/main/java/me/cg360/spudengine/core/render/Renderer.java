@@ -10,6 +10,7 @@ import me.cg360.spudengine.core.render.hardware.Surface;
 import me.cg360.spudengine.core.render.command.GraphicsQueue;
 import me.cg360.spudengine.core.render.image.Attachment;
 import me.cg360.spudengine.core.render.image.SwapChain;
+import me.cg360.spudengine.core.render.image.texture.Texture;
 import me.cg360.spudengine.core.render.image.texture.TextureManager;
 import me.cg360.spudengine.core.render.impl.ForwardRenderer;
 import me.cg360.spudengine.core.render.impl.RenderProcess;
@@ -20,6 +21,8 @@ import me.cg360.spudengine.core.world.Scene;
 import org.joml.Vector3f;
 import org.tinylog.Logger;
 import org.tinylog.Supplier;
+
+import java.util.List;
 
 public class Renderer {
 
@@ -78,6 +81,11 @@ public class Renderer {
             scene.getProjection().resize(window.getWidth(), window.getHeight());
 
             imageIndex = this.swapChain.acquireNextImage();
+        }
+
+        if(this.textureManager.hasPendingOverlays()) {
+            List<Texture> overlaysToUpload = this.textureManager.getPendingOverlays();
+            this.renderProcess.processOverlays(this.commandPool, this.graphicsQueue, overlaysToUpload);
         }
 
         this.renderProcess.recordDraw(this);

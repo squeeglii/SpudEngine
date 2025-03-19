@@ -43,6 +43,7 @@ public class EngineProperties {
     public static final float NEAR_PLANE = 0.1f;
     public static final float FAR_PLANE = 100.0f;
     public static final int MAX_TEXTURES = 1024;
+    public static final int MAX_OVERLAY_TEXTURES = 1024;
     public static final BinaryShaderFile[] shaders = new BinaryShaderFile[] {
             new BinaryShaderFile(ShaderType.VERTEX, "shaders/vertex"),
             new BinaryShaderFile(ShaderType.GEOMETRY, "shaders/portal/geometry"),

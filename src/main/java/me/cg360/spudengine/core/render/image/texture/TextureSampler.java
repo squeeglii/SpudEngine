@@ -17,6 +17,14 @@ public class TextureSampler implements VkHandleWrapper {
     private final long textureSampler;
 
     public TextureSampler(LogicalDevice device, int mipLevels, boolean enableAnisotrophy) {
+        this(device, mipLevels, enableAnisotrophy, VK11.VK_SAMPLER_ADDRESS_MODE_REPEAT);
+    }
+
+    public TextureSampler(LogicalDevice device, int mipLevels, boolean enableAnisotrophy, int sampleMode) {
+        this(device, mipLevels, enableAnisotrophy, sampleMode, sampleMode, sampleMode);
+    }
+
+    public TextureSampler(LogicalDevice device, int mipLevels, boolean enableAnisotrophy, int uMode, int vMode, int wMode) {
         this.device = device;
 
         try (MemoryStack stack = MemoryStack.stackPush()) {
@@ -24,9 +32,9 @@ public class TextureSampler implements VkHandleWrapper {
                     .sType(VK11.VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO)
                     .magFilter(VK11.VK_FILTER_LINEAR)
                     .minFilter(VK11.VK_FILTER_LINEAR)
-                    .addressModeU(VK11.VK_SAMPLER_ADDRESS_MODE_REPEAT)
-                    .addressModeV(VK11.VK_SAMPLER_ADDRESS_MODE_REPEAT)
-                    .addressModeW(VK11.VK_SAMPLER_ADDRESS_MODE_REPEAT)
+                    .addressModeU(uMode)
+                    .addressModeV(vMode)
+                    .addressModeW(wMode)
                     .borderColor(VK11.VK_BORDER_COLOR_INT_OPAQUE_BLACK)
                     .unnormalizedCoordinates(false)
                     .compareEnable(false)

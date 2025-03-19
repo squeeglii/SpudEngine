@@ -3,6 +3,7 @@ package me.cg360.spudengine.wormholes;
 import me.cg360.spudengine.core.render.geometry.model.Material;
 import me.cg360.spudengine.core.render.geometry.model.Mesh;
 import me.cg360.spudengine.core.render.geometry.model.Model;
+import me.cg360.spudengine.core.render.image.texture.Texture;
 import me.cg360.spudengine.core.render.image.texture.TextureManager;
 
 import java.awt.*;
@@ -40,14 +41,25 @@ public class GeneratedAssets {
     public static final Material ORANGE_PORTAL_MATERIAL = new Material("generated/portal/orange", Material.WHITE);
     public static final Model ORANGE_PORTAL_MODEL = new Model("generated/portal/orange", ORANGE_PORTAL_MATERIAL, PORTAL_MESH);
 
+    public static final Material PORTAL_CUTOUT = new Material("generated/portal/cutout", Material.WHITE);
+
     public static List<Model> getAllModels() {
         return List.of(BLUE_PORTAL_MODEL, ORANGE_PORTAL_MODEL);
     }
 
     public static void registerTextures(TextureManager textureManager) {
         Color nonMask = new Color(255, 255, 255, 0);
+        Color mask = new Color(0, 0, 0, 0);
 
-        textureManager.newCircleTexture(BLUE_PORTAL_MATERIAL.texture(), 512, 512, 1, 256, new Color(50, 100, 255, 255), nonMask);
-        textureManager.newCircleTexture(ORANGE_PORTAL_MATERIAL.texture(), 512, 512, 1, 256, new Color(255, 100, 0, 255), nonMask);
+        // opaque portals
+        Color blueCol = new Color(50, 100, 255, 255);
+        Color orangeCol = new Color(255, 100, 0, 255);
+
+        Texture blue = textureManager.newCircleTexture(BLUE_PORTAL_MATERIAL.texture(), 512, 512, 1, 256, nonMask, blueCol);
+        Texture orange = textureManager.newCircleTexture(ORANGE_PORTAL_MATERIAL.texture(), 512, 512, 1, 256, nonMask, orangeCol);
+        Texture blank = textureManager.newCircleTexture(PORTAL_CUTOUT.texture(), 512, 512, 1, 256, nonMask, mask);
+
+        // reuploads textures to overlay samplers.
+        textureManager.markAsOverlays(blank);
     }
 }

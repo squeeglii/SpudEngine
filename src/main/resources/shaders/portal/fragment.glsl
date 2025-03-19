@@ -1,11 +1,16 @@
 #version 450
 
+#define IS_DEFINED_OVERLAY [0] > -512
+#define BLACK 0.1
+
 layout(location = 0) in vec2 texCoords;
-layout(location = 1) in vec4 debugColour;
+layout(location = 1) in vec2 overlayTexCoords;
+layout(location = 2) in vec4 debugColour;
 
 layout(location = 0) out vec4 uFragColor;
 
 layout(set = 4, binding = 0) uniform sampler2D textureSampler;
+layout(set = 5, binding = 0) uniform sampler2D overlaySampler;
 
 // https://gamedev.stackexchange.com/questions/59797/glsl-shader-change-hue-saturation-brightness
 vec3 hsv2rgb(vec3 c)
@@ -19,10 +24,20 @@ vec3 hsv2rgb(vec3 c)
 void main()
 {
     //uFragColor = vec4(gl_FragDepth, gl_FragDepth, gl_FragDepth, 1);
-    vec4 col = texture(textureSampler, texCoords) * debugColour;
 
-    //if(col.a < 0.2)
-    //    discard;
+    vec4 col = texture(textureSampler, texCoords);
 
-    uFragColor = col;
+    if(overlayTexCoords IS_DEFINED_OVERLAY) {
+        vec4 overlay = texture(overlaySampler, overlayTexCoords);
+
+        //col = vec4(overlayTexCoords.x, overlayTexCoords.y, 0, 1);
+
+        col.a = overlay.a;
+
+        // if overlay is white, use this like a cutout mode?
+        if (overlay.x < BLACK && overlay.y < BLACK && overlay.z < BLACK && col.a < 0.1)
+            discard;
+    }
+
+    uFragColor = col * debugColour;
 }

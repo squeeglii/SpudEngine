@@ -1,10 +1,12 @@
 package me.cg360.spudengine.core.render.impl;
 
 import me.cg360.spudengine.core.render.Renderer;
+import me.cg360.spudengine.core.render.command.CommandPool;
 import me.cg360.spudengine.core.render.command.CommandQueue;
 import me.cg360.spudengine.core.render.geometry.model.BufferedModel;
 import me.cg360.spudengine.core.render.image.Attachment;
 import me.cg360.spudengine.core.render.image.SwapChain;
+import me.cg360.spudengine.core.render.image.texture.Texture;
 
 import java.util.List;
 
@@ -20,6 +22,7 @@ public abstract class RenderProcess {
     public abstract void submit(CommandQueue queue);
 
     public abstract void processModelBatch(List<BufferedModel> models);
+    public abstract void processOverlays(CommandPool uploadPool, CommandQueue queue, List<Texture> overlayTextures);
 
     public abstract void waitTillFree(); // should this be generalized?
 

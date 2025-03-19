@@ -11,6 +11,7 @@ import me.cg360.spudengine.core.render.geometry.VertexFormats;
 import me.cg360.spudengine.core.render.geometry.model.BufferedMesh;
 import me.cg360.spudengine.core.render.geometry.model.BufferedModel;
 import me.cg360.spudengine.core.render.geometry.model.BundledMaterial;
+import me.cg360.spudengine.core.render.geometry.model.Material;
 import me.cg360.spudengine.core.render.hardware.LogicalDevice;
 import me.cg360.spudengine.core.render.image.Attachment;
 import me.cg360.spudengine.core.render.image.FrameBuffer;
@@ -92,6 +93,10 @@ public class ForwardRenderer extends RenderProcess {
     private DescriptorSetLayout lSampler;
     private Map<String, SamplerDescriptorSet> dSampler;
     private TextureSampler uSampler;
+
+    private DescriptorSetLayout lOverlaySampler;
+    private Map<String, SamplerDescriptorSet> dOverlaySampler;
+    private TextureSampler uOverlaySampler;
 
     private final ShaderIO shaderIO; // #reset(...) whenever new draw call
 
@@ -186,6 +191,7 @@ public class ForwardRenderer extends RenderProcess {
         return layout;
     }
 
+    // Extend definitions here.
     protected void buildDescriptorSets() {
         this.dProjectionMatrix = UniformDescriptorSet.create(this.descriptorPool, this.lProjectionMatrix, DataTypes.MAT4X4F, 0)[0];
         this.uProjectionMatrix = this.dProjectionMatrix.getBuffer();
@@ -195,6 +201,9 @@ public class ForwardRenderer extends RenderProcess {
 
         this.dSampler = new HashMap<>();
         this.uSampler = new TextureSampler(this.device, 1, true);
+
+        this.dOverlaySampler = new HashMap<>();
+        this.uOverlaySampler = new TextureSampler(this.device, 1, true, VK11.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
         for(SubRenderProcess process: this.subRenderProcesses)
             process.createDescriptorSets(this.descriptorPool);
@@ -206,9 +215,12 @@ public class ForwardRenderer extends RenderProcess {
                 .enablePerFrameWrites(this.swapChain);
         this.lSampler = new SamplerDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_FRAGMENT_BIT)
                 .setCount(EngineProperties.MAX_TEXTURES);
+        this.lOverlaySampler = new SamplerDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_FRAGMENT_BIT)
+                .setCount(EngineProperties.MAX_OVERLAY_TEXTURES);
 
         bundle.addVertexUniforms(this.lProjectionMatrix, this.lViewMatrix);
         bundle.addFragmentUniforms(this.lSampler);
+        bundle.addFragmentUniforms(this.lOverlaySampler);
 
         for(SubRenderProcess process: this.subRenderProcesses)
             process.buildUniformLayout(bundle);
@@ -259,20 +271,18 @@ public class ForwardRenderer extends RenderProcess {
                 .enableColourWrite()
                 .setUsingDepthWrite(true)
                 .setUsingDepthTest(true)
-                .setUsingBlend(true)
+                .setUsingBlend(false)
                 .setColourBlendOp(VK11.VK_BLEND_OP_ADD)
-                .setBlendFunc(BlendFunc.USE_DESTINATION_ALPHA)
+                .setBlendFunc(BlendFunc.DEFAULT)
                 //.setUsingStencilTest(true)
                 //.setStencilBack(stencilRead)
                 .build(this.pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
-
-
 
         builder.cleanup();
         Logger.debug("Built pipelines!");
     }
 
-    protected void addTextureToShader(Texture texture) {
+    public void addTextureToShader(Texture texture) {
         String textureFileName = texture.getResourceName();
         SamplerDescriptorSet samplerDescriptorSet = this.dSampler.get(textureFileName);
 
@@ -282,6 +292,19 @@ public class ForwardRenderer extends RenderProcess {
 
             samplerDescriptorSet = new SamplerDescriptorSet(this.descriptorPool, this.lSampler, 0, texture, this.uSampler);
             this.dSampler.put(textureFileName, samplerDescriptorSet);
+        }
+    }
+
+    public void addOverlayToShader(Texture texture) {
+        String textureFileName = texture.getResourceName();
+        SamplerDescriptorSet overlaySamplerDescriptorSet = this.dOverlaySampler.get(textureFileName);
+
+        if (overlaySamplerDescriptorSet == null) {
+            if(this.dOverlaySampler.size() >= EngineProperties.MAX_OVERLAY_TEXTURES)
+                throw new EngineLimitExceededException("MAX_OVERLAY_TEXTURES", EngineProperties.MAX_OVERLAY_TEXTURES, this.dOverlaySampler.size()+1);
+
+            overlaySamplerDescriptorSet = new SamplerDescriptorSet(this.descriptorPool, this.lOverlaySampler, 0, texture, this.uOverlaySampler);
+            this.dOverlaySampler.put(textureFileName, overlaySamplerDescriptorSet);
         }
     }
 
@@ -326,7 +349,7 @@ public class ForwardRenderer extends RenderProcess {
 
             Pipeline selectedPipeline = renderer.useWireframe
                     ? this.wireframePipeline.bind(cmd)
-                    :this.standardPipeline.bind(cmd);
+                    : this.standardPipeline.bind(cmd);
 
             // Setup view
             VkViewport.Buffer viewport = VkViewport.calloc(1, stack)
@@ -360,14 +383,15 @@ public class ForwardRenderer extends RenderProcess {
                 process.renderPreMesh(this.shaderIO, idx);
 
             // Render the models!
-
             // TODO: Remove these portal-code references.
 
-            selectedPipeline = this.portalPipeline.bind(cmd);
-            this.drawModel(cmd, renderer, selectedPipeline, GeneratedAssets.BLUE_PORTAL_MODEL.getId(), idx);
-            this.drawModel(cmd, renderer, selectedPipeline, GeneratedAssets.ORANGE_PORTAL_MODEL.getId(), idx);
+            this.setOverlayMaterial(GeneratedAssets.PORTAL_CUTOUT);
 
-            selectedPipeline = this.roomGeometryPipeline.bind(cmd);
+            //selectedPipeline = this.portalPipeline.bind(cmd);
+            //this.drawModel(cmd, renderer, selectedPipeline, GeneratedAssets.BLUE_PORTAL_MODEL.getId(), idx);
+            //this.drawModel(cmd, renderer, selectedPipeline, GeneratedAssets.ORANGE_PORTAL_MODEL.getId(), idx);
+
+            //selectedPipeline = this.roomGeometryPipeline.bind(cmd);
             this.drawNonPortalModels(cmd, renderer, selectedPipeline, idx);
 
             //this.drawMeshes(cmd, renderer, selectedPipeline, idx);
@@ -419,11 +443,10 @@ public class ForwardRenderer extends RenderProcess {
             process.renderModel(this.shaderIO, model, frameIndex);
 
         for(BundledMaterial material: model.getMaterials()) {
-            if (material.meshes().isEmpty()) continue;
+            if (material.meshes().isEmpty())
+                continue;
 
-            // Swap texture descriptor out when the material changes.
-            SamplerDescriptorSet samplerDescriptorSet = this.dSampler.get(material.texture().getResourceName());
-            this.shaderIO.setUniform(this.lSampler, samplerDescriptorSet);
+            this.setMaterial(material);
 
             for(BufferedMesh mesh: material.meshes()) {
                 this.shaderIO.bindMesh(cmd, mesh);
@@ -437,6 +460,17 @@ public class ForwardRenderer extends RenderProcess {
                 }
             }
         }
+    }
+
+    protected void setMaterial(BundledMaterial material) {
+        SamplerDescriptorSet samplerDescriptorSet = this.dSampler.get(material.texture().getResourceName());
+        this.shaderIO.setUniform(this.lSampler, samplerDescriptorSet);
+    }
+
+    // todo: get some checks on this - make sure there's always a texture available.
+    protected void setOverlayMaterial(Material material) {
+        SamplerDescriptorSet samplerDescriptorSet = this.dOverlaySampler.get(material.texture());
+        this.shaderIO.setUniform(this.lOverlaySampler, samplerDescriptorSet);
     }
 
     @Override
@@ -461,6 +495,7 @@ public class ForwardRenderer extends RenderProcess {
     @Override
     public void processModelBatch(List<BufferedModel> models) {
         this.device.waitIdle();
+        Logger.debug("Processing {} models", models.size());
 
         for (BufferedModel vulkanModel : models) {
             for (BundledMaterial vulkanMaterial : vulkanModel.getMaterials()) {
@@ -471,6 +506,26 @@ public class ForwardRenderer extends RenderProcess {
             }
         }
     }
+
+    @Override
+    public void processOverlays(CommandPool uploadPool, CommandQueue queue, List<Texture> overlayTextures) {
+        this.device.waitIdle();
+        Logger.debug("Processing {} overlay textures", overlayTextures.size());
+
+        CommandBuffer cmd = new CommandBuffer(uploadPool, true, true);
+
+        cmd.record(() -> {
+            for(Texture texture: overlayTextures) {
+                texture.upload(cmd);
+            }
+        }).submitAndWait(queue);
+
+        // all textures transformed, use!
+        for(Texture texture : overlayTextures) {
+            this.addOverlayToShader(texture);
+        }
+    }
+
 
     @Override
     public void onResize(SwapChain newSwapChain) {
@@ -491,6 +546,7 @@ public class ForwardRenderer extends RenderProcess {
         this.uProjectionMatrix.cleanup();
         Arrays.stream(this.uViewMatrix).forEach(GeneralBuffer::cleanup);
         this.uSampler.cleanup();
+        this.uOverlaySampler.cleanup();
 
         this.descriptorPool.cleanup(); // descriptor sets cleaned up here.
 

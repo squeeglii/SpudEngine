@@ -11,7 +11,10 @@ import java.awt.*;
 import java.io.File;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class TextureManager implements Registry {
 
@@ -20,22 +23,32 @@ public class TextureManager implements Registry {
 
     public static final String TEX_MISSING = "missing";
     public static final String TEX_BLANK = "blank";
+    public static final String TEX_TRANSPARENT = "transparent";
 
     public static final String BASE_PATH = "assets/textures/";
 
     private final LogicalDevice device;
     private final IndexedLinkedHashMap<String, Texture> textures;
 
-    private Texture missingTexture; // id0 // these get cleaned up automatically but make sure to null them in #cleanup()
+    private final ConcurrentLinkedQueue<Texture> overlayBindQueue;
+
+    // these get cleaned up automatically but make sure to null them in #cleanup()
+    private Texture missingTexture; // id0
     private Texture blankTexture;   // id1
+    private Texture transparentTexture; // id2 -- for overlays.
 
     public TextureManager(LogicalDevice device) {
         this.device = device;
         this.textures = new IndexedLinkedHashMap<>();
         this.missingTexture = new CheckerboardTexture(device, TEX_MISSING, 512, 512, 1, 32, TILE_A, TILE_B);
         this.blankTexture = new SolidColourTexture(device, TEX_BLANK, 64, 64, 1, Color.WHITE);
+        this.transparentTexture = new SolidColourTexture(device, TEX_TRANSPARENT, 64, 64, 1, new Color(255, 255, 255, 0));
+
+        this.overlayBindQueue = new ConcurrentLinkedQueue<>();
+
         this.addToMap(this.missingTexture);
         this.addToMap(this.blankTexture);
+        this.addToMap(this.transparentTexture);
 
         Logger.info("Initialized Texture Manager");
     }
@@ -88,10 +101,32 @@ public class TextureManager implements Registry {
         return texture;
     }
 
+    public void markAsOverlays(List<Texture> overlayTextures) {
+        this.overlayBindQueue.addAll(overlayTextures);
+    }
+
+    public void markAsOverlays(Texture... overlayTextures) {
+        this.overlayBindQueue.addAll(Arrays.asList(overlayTextures));
+    }
+
+    public boolean hasPendingOverlays() {
+        return !this.overlayBindQueue.isEmpty();
+    }
+
+    public List<Texture> getPendingOverlays() {
+        List<Texture> textures = new LinkedList<>();
+
+        while(this.hasPendingOverlays())
+            textures.add(this.overlayBindQueue.remove());
+
+        return textures;
+    }
+
     public void cleanup() {
         this.textures.values().forEach(Texture::cleanup);
         this.missingTexture = null; // missing texture = texture id 0.
         this.blankTexture = null; // missing texture = texture id 1.
+        this.transparentTexture = null; // transparent texture = texture id 2;
         this.textures.clear();
     }
 

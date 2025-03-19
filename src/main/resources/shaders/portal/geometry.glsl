@@ -1,7 +1,10 @@
 #version 450
 
+// fragment shader uses threshold of -512 - overshoot it for sanity?
+#define OVERLAY_UNDEFINED vec2(-1024, -1024)
+
 #define MAX_RECURSION_DEPTH 5
-#define HOLEPUNCH_DIST 0.2
+#define PORTAL_CHECK_RANGE 3
 
 layout (triangles) in;
 layout (triangle_strip, max_vertices = 3+(3*2*MAX_RECURSION_DEPTH)) out; // 3x triangles, 9 vertices. Allows for 2 copies of every model.
@@ -25,7 +28,8 @@ layout(set = 3, binding = 0) uniform PORTAL_ORIGIN_SET {
 } portalOrigins;
 
 layout(location = 0) out vec2 texCoords;
-layout(location = 1) out vec4 debugColour;
+layout(location = 1) out vec2 overlayTexCoords;
+layout(location = 2) out vec4 debugColour;
 
 // https://gamedev.stackexchange.com/questions/59797/glsl-shader-change-hue-saturation-brightness
 vec3 hsv2rgb(vec3 c)
@@ -40,63 +44,62 @@ vec3 hsv2rgb(float h, float s, float v)
     return hsv2rgb(vec3(h, s, v));
 }
 
-void emitOffsetRoom(mat4 roomTransform, int currentDepth, vec4 debugHighlight) {
+void emitOffsetRoom(vec4[3] worldPos, vec2[3] overlayCoords, mat4 roomTransform, int currentDepth, vec4 debugHighlight) {
     mat4 mP = gs_in[0].projectionMatrix;
     mat4 mV = gs_in[0].viewMatrix;
 
+    // debugging
     debugColour = debugHighlight;
 
-    vec4 worldPos_0 = gs_in[0].modelTransform * vec4(gs_in[0].pos, 1);
-    vec4 worldPos_1 = gs_in[1].modelTransform * vec4(gs_in[1].pos, 1);
-    vec4 worldPos_2 = gs_in[2].modelTransform * vec4(gs_in[2].pos, 1);
-
-    //TODO: Transform points to check double holepunch.
-    //      and add extra vertex to portal model so it actually cuts out.
-
-    // Not yet at max depth. Punch holes through geometry.
-    if(currentDepth < MAX_RECURSION_DEPTH) {
-        bool p1Punch = false;
-        bool p2Punch = false;
-        bool p3Punch = false;
-
-        if (distance(worldPos_0, portalOrigins.blue) <= HOLEPUNCH_DIST) p1Punch = true;
-        if (distance(worldPos_0, portalOrigins.orange) <= HOLEPUNCH_DIST) p1Punch = true;
-
-        if (distance(worldPos_1, portalOrigins.blue) <= HOLEPUNCH_DIST) p2Punch = true;
-        if (distance(worldPos_1, portalOrigins.orange) <= HOLEPUNCH_DIST) p2Punch = true;
-
-        if (distance(worldPos_2, portalOrigins.blue) <= HOLEPUNCH_DIST) p3Punch = true;
-        if (distance(worldPos_2, portalOrigins.orange) <= HOLEPUNCH_DIST) p3Punch = true;
-
-        if (p1Punch || p2Punch || p3Punch) {
-            //debugColour = vec4(1, 0, 0, 0); // Entire triangle within range, cut.
-            //return;
-        }
+    // copy the points!
+    for(int v = 0; v < 3; v++) {
+        texCoords = gs_in[v].texCoords;
+        overlayTexCoords = overlayCoords[v];
+        gl_Position = mP * mV * roomTransform * worldPos[v];
+        EmitVertex();
     }
-
-    texCoords = gs_in[0].texCoords;
-    gl_Position = mP * mV * roomTransform * worldPos_0;
-    EmitVertex();
-
-    texCoords = gs_in[1].texCoords;
-    gl_Position = mP * mV * roomTransform * worldPos_1;
-    EmitVertex();
-
-    texCoords = gs_in[2].texCoords;
-    gl_Position = mP * mV * roomTransform * worldPos_2;
-    EmitVertex();
 
     EndPrimitive();
 }
 
 void main() {
-    mat4 transform = mat4(1);
+    vec4[3] worldPositions = vec4[3](
+            gs_in[0].modelTransform * vec4(gs_in[0].pos, 1),
+            gs_in[1].modelTransform * vec4(gs_in[1].pos, 1),
+            gs_in[2].modelTransform * vec4(gs_in[2].pos, 1)
+    );
 
-    emitOffsetRoom(transform, 0, vec4(1, 1, 1, 1));
+    vec2[3] generatedOverlayCoords = vec2[3]( OVERLAY_UNDEFINED, OVERLAY_UNDEFINED, OVERLAY_UNDEFINED );
+
+    // Portal overlays
+    for(int i = 0; i < 3; i++) {
+        vec4 pos = worldPositions[i];
+
+        float dBlue = distance(pos, portalOrigins.blue);
+        float dOrange = distance(pos, portalOrigins.orange);
+
+        if(dBlue > PORTAL_CHECK_RANGE && dOrange > PORTAL_CHECK_RANGE)
+            continue;
+
+        vec4 closestPortal = dBlue < dOrange ? portalOrigins.blue : portalOrigins.orange;
+
+        // portal is 1u wide, 2u tall.
+        vec2 diffXZ = pos.xz - closestPortal.xz; // 0.5 in world space, is 0.5 in texture space;
+        float lenXZ = length(diffXZ);
+        float diffY = pos.y - closestPortal.y; // 1 in world space is 0.5 in texture space; squish.
+
+        float u = 0.5 + clamp(-0.5, lenXZ, 0.5);
+        float v = 0.5+ clamp(-0.5, diffY / 2, 0.5);
+
+        generatedOverlayCoords[i] = vec2(u, v); // origin 0.5 0.5;
+    }
 
     //todo: send culling through arrays to shader?
     //      ...or even send the full octree?
 
+    emitOffsetRoom(worldPositions, generatedOverlayCoords, mat4(1), 0, vec4(1, 1, 1, 1)); // room without portal transform.
+
+    // rooms with portal transforms.
     mat4 blue = mat4(1);
     mat4 orange = mat4(1);
 
@@ -110,7 +113,7 @@ void main() {
         vec4 blueCol = vec4(hsv2rgb(0.5, colFrac, 1), 1);
         vec4 orangeCol = vec4(hsv2rgb(0.05, colFrac, 1), 1);
 
-        emitOffsetRoom(blue, i, blueCol);
-        emitOffsetRoom(orange, i, orangeCol);
+        emitOffsetRoom(worldPositions, generatedOverlayCoords, blue, i, blueCol);
+        emitOffsetRoom(worldPositions, generatedOverlayCoords, orange, i, orangeCol);
     }
 }

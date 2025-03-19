@@ -99,7 +99,7 @@ public class ModelManager implements Registry {
                 bufferedModels.add(model);
 
                 for(Material material : modelData.getMaterials()) {
-                    BundledMaterial mat = this.transformMaterial(cmd, material, this.graphicsDevice, stagedTextures);
+                    BundledMaterial mat = this.transformMaterialInternal(cmd, material, this.graphicsDevice, stagedTextures);
                     model.getMaterials().add(mat);
                 }
 
@@ -139,18 +139,7 @@ public class ModelManager implements Registry {
                     model.getMaterials().get(matIndex).meshes().add(bufferedMesh);
                 }
             }
-        });
-
-        // Wait for execution.
-        Fence fence = new Fence(device, true);
-        fence.reset();
-        try (MemoryStack stack = MemoryStack.stackPush()) {
-            queue.submit(stack.pointers(cmd.asVk()), null, null, null, fence);
-        }
-
-        fence.fenceWait();
-        fence.cleanup();
-        cmd.cleanup();
+        }).submitAndWait(queue);
 
         stagingBufferList.forEach(GeneralBuffer::cleanup);
         stagedTextures.forEach(Texture::cleanupStagingBuffer);
@@ -170,7 +159,7 @@ public class ModelManager implements Registry {
         return bufferedModels;
     }
 
-    private BundledMaterial transformMaterial(CommandBuffer cmd, Material material, LogicalDevice device, Set<Texture> uploadedTextures) {
+    private BundledMaterial transformMaterialInternal(CommandBuffer cmd, Material material, LogicalDevice device, Set<Texture> uploadedTextures) {
         // If texture is null, it loads the default texture.
         Texture texture = this.textureManager.loadTexture(device, material.texture(), VK11.VK_FORMAT_R8G8B8A8_SRGB);
         texture.upload(cmd);
@@ -180,7 +169,7 @@ public class ModelManager implements Registry {
     }
 
     private BundledMaterial getFallbackMaterial(CommandBuffer cmd, LogicalDevice device, Set<Texture> uploadedTextures) {
-        return this.transformMaterial(cmd, this.fallbackMaterial, device, uploadedTextures);
+        return this.transformMaterialInternal(cmd, this.fallbackMaterial, device, uploadedTextures);
     }
 
     public BufferedModel getModel(String id) {

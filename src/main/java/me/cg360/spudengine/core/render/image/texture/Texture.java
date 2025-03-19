@@ -65,7 +65,6 @@ public abstract class Texture {
                 .aspectMask(VK11.VK_IMAGE_ASPECT_COLOR_BIT).build(device, this.image.getHandle());
     }
 
-
     public void upload(CommandBuffer cmd) {
         if(this.stagingBuffer == null || this.recordedTransition) {
             Logger.debug("Texture '{}' has already been uploaded", this.resourceName);

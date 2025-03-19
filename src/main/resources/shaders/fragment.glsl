@@ -5,6 +5,7 @@ layout(location = 0) in vec2 texCoords;
 layout(location = 0) out vec4 uFragColor;
 
 layout(set = 3, binding = 0) uniform sampler2D textureSampler;
+layout(set = 4, binding = 0) uniform sampler2D overlaySampler;
 
 // https://gamedev.stackexchange.com/questions/59797/glsl-shader-change-hue-saturation-brightness
 vec3 hsv2rgb(vec3 c)
