@@ -20,15 +20,19 @@ layout(location = 0) in VS_OUT {
     mat4 modelTransform;
 } gs_in[];
 
-layout(set = 2, binding = 0) uniform PORTAL_TRANSFORM_SET {
-    mat4 blue;
-    mat4 orange;
-} portalTransforms;
+layout(set = 2, binding = 0) uniform BLUE_PORTAL_DATA {
+    vec3 worldPos;
+    vec3 up;
+    vec3 normal;
+    mat4 stitchTransform;
+} bluePortal;
 
-layout(set = 3, binding = 0) uniform PORTAL_ORIGIN_SET {
-    vec4 orange;
-    vec4 blue;
-} portalOrigins;
+layout(set = 3, binding = 0) uniform ORANGE_PORTAL_DATA {
+    vec3 worldPos;
+    vec3 up;
+    vec3 normal;
+    mat4 stitchTransform;
+} orangePortal;
 
 layout(location = 0) out vec2 texCoords;
 layout(location = 1) out vec2 overlayTexCoords;
@@ -77,35 +81,67 @@ void main() {
     vec2[3] generatedOverlayCoords = vec2[3]( OVERLAY_UNDEFINED, OVERLAY_UNDEFINED, OVERLAY_UNDEFINED );
     vec4 portalColour;
 
+    bool missingBlue = bluePortal.stitchTransform == mat4(0);
+    bool missingOrange = orangePortal.stitchTransform == mat4(0);
+
+    // then this is just a basic shader. Just emit one room
+    if(missingBlue && missingOrange) {
+        emitOffsetRoom(worldPositions, generatedOverlayCoords, vec4(1, 1, 1, 1), mat4(1), 0, vec4(1, 1, 1, 1)); // room without portal transform.
+        return;
+    }
+
     // Portal overlays
     for(int i = 0; i < 3; i++) {
-        vec4 pos = worldPositions[i];
+        vec3 pos = worldPositions[i].xyz;
 
-        float dBlue = distance(pos, portalOrigins.blue);
-        float dOrange = distance(pos, portalOrigins.orange);
+        float dBlue = missingBlue ? PORTAL_CHECK_RANGE : distance(pos, bluePortal.worldPos);
+        float dOrange = missingOrange ? PORTAL_CHECK_RANGE : distance(pos, orangePortal.worldPos);
 
-        if(dBlue > PORTAL_CHECK_RANGE && dOrange > PORTAL_CHECK_RANGE)
+        if(dBlue >= PORTAL_CHECK_RANGE && dOrange >= PORTAL_CHECK_RANGE) {
+            portalColour = vec4(1, 1, 1, 1);
             continue;
+        }
 
-        vec4 closestPortal;
+        vec3 closestPortal;
+        vec3 closestUp;
+        vec3 closestNormal;
 
         if(dBlue < dOrange) {
-            closestPortal = portalOrigins.blue;
+            closestPortal = bluePortal.worldPos;
+            closestUp = bluePortal.up;
+            closestNormal = bluePortal.normal;
             portalColour = BLUE_PORTAL;
         } else {
-            closestPortal = portalOrigins.orange;
+            closestPortal = orangePortal.worldPos;
+            closestUp = orangePortal.up;
+            closestNormal = orangePortal.normal;
             portalColour = ORANGE_PORTAL;
         }
 
+        // check the vertex is actually on the same wall as the portal. Otherwise a portal
+        // can gobble up a corridor.
+        vec3 diffPortal = pos - closestPortal;
+        if(length(diffPortal * closestNormal) > 0.1)
+            continue;
+
+       vec3 closestCross = cross(closestUp, closestNormal);
+
         // portal is 1u wide, 2u tall.
-        vec2 diffXZ = pos.xz - closestPortal.xz; // 0.5 in world space, is 0.5 in texture space;
-        float lenXZ = length(diffXZ);
-        float diffY = pos.y - closestPortal.y; // 1 in world space is 0.5 in texture space; squish.
+        vec3 diffWide = diffPortal * closestCross;
+        float lenWide = length(diffWide);
+        vec3 diffTall = (diffPortal * closestUp) / 2;
+        float lenTall = length(diffTall);
 
-        float u = 0.5 + lenXZ; //clamp(-0.5, lenXZ, 0.5);
-        float v = 0.5 + (diffY / 2); //clamp(-0.5, diffY / 2, 0.5);   use clamps to test UVs.
+        vec2 scaledDiff = vec2(lenWide, lenTall);
+        vec2 rotatedScaledDiff = scaledDiff + vec2(0.5, 0.5);
+        //todo: ^ maths here is broken somewhere. Portals snapped to 90 degrees look fine.
+        //        portals at other rotations gain sharp edges.
 
-        generatedOverlayCoords[i] = vec2(u, v); // origin 0.5 0.5;
+        // if debugging uvs, clamp values to UV range of 0-1
+        generatedOverlayCoords[i] = rotatedScaledDiff; // origin 0.5 0.5;
+
+        //generatedOverlayCoords[i].x = clamp(0, generatedOverlayCoords[i].x, 1);
+        //generatedOverlayCoords[i].y = clamp(0, generatedOverlayCoords[i].y, 1);
     }
 
     //todo: send culling through arrays to shader?
@@ -113,17 +149,21 @@ void main() {
 
     emitOffsetRoom(worldPositions, generatedOverlayCoords, portalColour, mat4(1), 0, vec4(1, 1, 1, 1)); // room without portal transform.
 
+    // don't use portal transforms if there isn't even a link.
+    if(missingBlue || missingOrange)
+        return;
+
     // rooms with portal transforms.
     mat4 blue = mat4(1);
     mat4 orange = mat4(1);
 
     for(int i = 1; i <= MAX_RECURSION_DEPTH; i++) {
-        blue *= portalTransforms.blue;
-        orange *= portalTransforms.orange;
+        blue *= bluePortal.stitchTransform;
+        orange *= orangePortal.stitchTransform;
 
+        // calc debug colour tint.
         float r = MAX_RECURSION_DEPTH;
         float colFrac = 0.5 + 0.5 * ((i+1) / r);
-
         vec4 blueCol = vec4(hsv2rgb(0.5, colFrac, 1), 1);
         vec4 orangeCol = vec4(hsv2rgb(0.05, colFrac, 1), 1);
 

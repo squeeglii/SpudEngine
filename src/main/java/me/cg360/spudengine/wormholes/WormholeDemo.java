@@ -78,7 +78,7 @@ public class WormholeDemo extends GameComponent {
                 Vectors.toRadians(0, 180, 0)
         );
 
-        this.scene().addEntities(bluePortal, orangePortal);
+        this.scene().addEntities(orangePortal, bluePortal);
     }
 
     public void testVertical() {

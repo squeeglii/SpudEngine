@@ -38,6 +38,10 @@ public abstract class RenderedEntity {
     public abstract String getModelId();
     public abstract Matrix4f getTransform();
 
+    public boolean shouldDraw() {
+        return true;
+    }
+
     public final UUID getEntityId() {
         return this.entityId;
     }

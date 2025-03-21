@@ -17,6 +17,7 @@ public class PortalEntity extends SimpleEntity {
     // If portals can be moved (which is a colossal task)
     // make sure this gets updated.
     private Vector3f up;
+    private Vector3f normal;
 
     public PortalEntity(PortalType type, Vector3f position, Vector3f rotation) {
         super(UUID.randomUUID(), type.modelId());
@@ -24,6 +25,7 @@ public class PortalEntity extends SimpleEntity {
         this.portalType = type;
         this.position = position.add(0, 1, 0); // Spawn portal at bottom.
         this.up = new Vector3f(0, 1, 0);
+        this.normal = new Vector3f(0, 1, 0);
 
         this.rotation.rotateXYZ(rotation.x(), rotation.y(), rotation.z());
         this.up.rotate(this.rotation);
@@ -82,5 +84,17 @@ public class PortalEntity extends SimpleEntity {
         mat.translateLocal(this.position);
 
         return mat;
+    }
+
+    public Vector3f getUp() {
+        return this.up;
+    }
+
+    @Override
+    public boolean shouldDraw() {
+        // Entity has a model for debugging, but it blocks the portal effect.
+        // The portal effect passes this entity's properties to a shader, which
+        // uses overlay textures for the effect, instead of the model.
+        return false;
     }
 }

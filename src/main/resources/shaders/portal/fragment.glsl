@@ -22,7 +22,6 @@ vec3 hsv2rgb(vec3 c)
     return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
-
 void main()
 {
     //uFragColor = vec4(gl_FragDepth, gl_FragDepth, gl_FragDepth, 1);
@@ -32,16 +31,16 @@ void main()
     if(overlayTexCoords IS_DEFINED_OVERLAY) {
         vec4 overlay = texture(overlaySampler, overlayTexCoords);
 
-        //col = vec4(overlayTexCoords.x, overlayTexCoords.y, 0, 1);
-
-        col.a = overlay.a;
-
-        // if overlay is white, use this like a cutout mode?
-        if (overlay.x < BLACK && overlay.y < BLACK && overlay.z < BLACK && col.a < 0.1) {
+        // if overlay is black, use this like a cutout mode?
+        if (overlay.x < BLACK && overlay.y < BLACK && overlay.z < BLACK && overlay.a < 0.1) {
             discard;
-        } else if (overlay.x > WHITE && overlay.y > WHITE && overlay.z > WHITE && col.a > 0.9) {
-            col = portalColour;
+
+        // use overlay, but tint it.
+        } else if (overlay.a > 0.9) {
+            col.rgb = overlay.rgb * portalColour.rgb;
         }
+
+        //col = vec4(overlayTexCoords.x, overlayTexCoords.y, 0, 1);
     }
 
     uFragColor = col; //* debugColour;

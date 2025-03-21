@@ -11,37 +11,28 @@ import me.cg360.spudengine.core.render.geometry.VertexFormats;
 import me.cg360.spudengine.core.render.geometry.model.BufferedMesh;
 import me.cg360.spudengine.core.render.geometry.model.BufferedModel;
 import me.cg360.spudengine.core.render.geometry.model.BundledMaterial;
-import me.cg360.spudengine.core.render.geometry.model.Material;
 import me.cg360.spudengine.core.render.hardware.LogicalDevice;
 import me.cg360.spudengine.core.render.image.Attachment;
 import me.cg360.spudengine.core.render.image.FrameBuffer;
 import me.cg360.spudengine.core.render.image.ImageView;
 import me.cg360.spudengine.core.render.image.SwapChain;
 import me.cg360.spudengine.core.render.image.texture.Texture;
-import me.cg360.spudengine.core.render.image.texture.TextureSampler;
 import me.cg360.spudengine.core.render.pipeline.Pipeline;
 import me.cg360.spudengine.core.render.pipeline.PipelineCache;
 import me.cg360.spudengine.core.render.pipeline.descriptor.DescriptorPool;
-import me.cg360.spudengine.core.render.pipeline.descriptor.active.SamplerDescriptorSet;
 import me.cg360.spudengine.core.render.pipeline.descriptor.active.UniformDescriptorSet;
 import me.cg360.spudengine.core.render.pipeline.descriptor.layout.DescriptorSetLayout;
-import me.cg360.spudengine.core.render.pipeline.descriptor.layout.SamplerDescriptorSetLayout;
 import me.cg360.spudengine.core.render.pipeline.descriptor.layout.UniformDescriptorSetLayout;
 import me.cg360.spudengine.core.render.pipeline.pass.SwapChainRenderPass;
 import me.cg360.spudengine.core.render.pipeline.shader.DescriptorSetLayoutBundle;
 import me.cg360.spudengine.core.render.pipeline.shader.ShaderIO;
 import me.cg360.spudengine.core.render.pipeline.shader.ShaderProgram;
-import me.cg360.spudengine.core.render.pipeline.util.BlendFunc;
-import me.cg360.spudengine.core.render.pipeline.util.stencil.CompareOperation;
-import me.cg360.spudengine.core.render.pipeline.util.stencil.StencilConfig;
-import me.cg360.spudengine.core.render.pipeline.util.stencil.StencilOperation;
+import me.cg360.spudengine.core.render.pipeline.shader.StandardSamplers;
 import me.cg360.spudengine.core.render.sync.Fence;
 import me.cg360.spudengine.core.render.sync.SyncSemaphores;
-import me.cg360.spudengine.core.exception.EngineLimitExceededException;
 import me.cg360.spudengine.core.world.entity.RenderedEntity;
 import me.cg360.spudengine.core.world.Scene;
 import me.cg360.spudengine.core.world.entity.StaticModelEntity;
-import me.cg360.spudengine.wormholes.GeneratedAssets;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Matrix4f;
 import org.lwjgl.system.MemoryStack;
@@ -57,8 +48,6 @@ public class ForwardRenderer extends RenderProcess {
 
     private static final int DEPTH_ATTACHMENT_FORMAT = VK11.VK_FORMAT_D32_SFLOAT_S8_UINT;
 
-    private static final int PORTAL_DEPTH = 4;
-
     private final LogicalDevice device;
 
     private CommandBuffer[] commandBuffers;
@@ -71,8 +60,6 @@ public class ForwardRenderer extends RenderProcess {
     private PipelineCache pipelineCache;
     private Pipeline standardPipeline;
     private Pipeline wireframePipeline;
-    private Pipeline portalPipeline;
-    private Pipeline roomGeometryPipeline;
 
     private ShaderProgram shaderProgram;
 
@@ -90,13 +77,7 @@ public class ForwardRenderer extends RenderProcess {
     private UniformDescriptorSet[] dViewMatrix;
     private GeneralBuffer[] uViewMatrix;
 
-    private DescriptorSetLayout lSampler;
-    private Map<String, SamplerDescriptorSet> dSampler;
-    private TextureSampler uSampler;
-
-    private DescriptorSetLayout lOverlaySampler;
-    private Map<String, SamplerDescriptorSet> dOverlaySampler;
-    private TextureSampler uOverlaySampler;
+    private StandardSamplers standardSamplers;
 
     private final ShaderIO shaderIO; // #reset(...) whenever new draw call
 
@@ -191,7 +172,21 @@ public class ForwardRenderer extends RenderProcess {
         return layout;
     }
 
-    // Extend definitions here.
+    protected DescriptorSetLayoutBundle buildUniformLayout(DescriptorSetLayoutBundle bundle) {
+        this.lProjectionMatrix = new UniformDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_VERTEX_BIT);
+        this.lViewMatrix = new UniformDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_VERTEX_BIT)
+                .enablePerFrameWrites(this.swapChain);
+
+        bundle.addVertexUniforms(this.lProjectionMatrix, this.lViewMatrix);
+
+        this.standardSamplers = new StandardSamplers(this.shaderIO, bundle);
+
+        for(SubRenderProcess process: this.subRenderProcesses)
+            process.buildUniformLayout(bundle);
+
+        return bundle;
+    }
+
     protected void buildDescriptorSets() {
         this.dProjectionMatrix = UniformDescriptorSet.create(this.descriptorPool, this.lProjectionMatrix, DataTypes.MAT4X4F, 0)[0];
         this.uProjectionMatrix = this.dProjectionMatrix.getBuffer();
@@ -199,33 +194,10 @@ public class ForwardRenderer extends RenderProcess {
         this.dViewMatrix = UniformDescriptorSet.create(this.descriptorPool, this.lViewMatrix, DataTypes.MAT4X4F, 0);
         this.uViewMatrix = ShaderIO.collectUniformBuffers(this.dViewMatrix);
 
-        this.dSampler = new HashMap<>();
-        this.uSampler = new TextureSampler(this.device, 1, true);
-
-        this.dOverlaySampler = new HashMap<>();
-        this.uOverlaySampler = new TextureSampler(this.device, 1, true, VK11.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+        this.standardSamplers.buildSets(this.descriptorPool);
 
         for(SubRenderProcess process: this.subRenderProcesses)
             process.createDescriptorSets(this.descriptorPool);
-    }
-
-    protected DescriptorSetLayoutBundle buildUniformLayout(DescriptorSetLayoutBundle bundle) {
-        this.lProjectionMatrix = new UniformDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_VERTEX_BIT);
-        this.lViewMatrix = new UniformDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_VERTEX_BIT)
-                .enablePerFrameWrites(this.swapChain);
-        this.lSampler = new SamplerDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_FRAGMENT_BIT)
-                .setCount(EngineProperties.MAX_TEXTURES);
-        this.lOverlaySampler = new SamplerDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_FRAGMENT_BIT)
-                .setCount(EngineProperties.MAX_OVERLAY_TEXTURES);
-
-        bundle.addVertexUniforms(this.lProjectionMatrix, this.lViewMatrix);
-        bundle.addFragmentUniforms(this.lSampler);
-        bundle.addFragmentUniforms(this.lOverlaySampler);
-
-        for(SubRenderProcess process: this.subRenderProcesses)
-            process.buildUniformLayout(bundle);
-
-        return bundle;
     }
 
     protected void buildPipelines(DescriptorSetLayout[] descriptorSetLayouts) {
@@ -240,72 +212,12 @@ public class ForwardRenderer extends RenderProcess {
                 .setCullMode(VK11.VK_CULL_MODE_FRONT_BIT); // uhhhh, right. Sure. This works but
 
         this.standardPipeline = builder.build(this.pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
-        this.wireframePipeline = builder.setUsingWireframe(true)
-                                        .build(this.pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
-
-        // --------------------------
-        //TODO: These pipelines below are very much for portal. Move these to a seperate renderer.
-        builder.setUsingWireframe(false);
-
-        StencilConfig stencilWrite = new StencilConfig(1, CompareOperation.ALWAYS);
-        stencilWrite.setAllWriteOps(StencilOperation.REPLACE);
-
-        StencilConfig stencilRead = new StencilConfig(0, CompareOperation.EQUAL);
-        stencilRead.setPassOp(StencilOperation.KEEP);
-        stencilRead.setDepthFailOp(StencilOperation.KEEP);
-        stencilRead.setStencilFailOp(StencilOperation.KEEP);
-        stencilRead.setWriteMask(0x00);
-
-        this.portalPipeline = builder.resetDepth().resetStencil()
-                .disableColourWrite().enableAlphaWrite() // could we do some magic blending
-                .setUsingDepthTest(false)
-                .setUsingDepthWrite(false)
-                .setUsingBlend(false)
-                //.setColourBlendOp(VK11.VK_BLEND_OP_ADD)
-                //.setBlendFunc(BlendFunc.REPLACE)
-                //.setUsingStencilTest(true)
-                //.setStencilBack(stencilWrite)
-                .build(this.pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
-
-        this.roomGeometryPipeline = builder.resetDepth().resetStencil()
-                .enableColourWrite()
-                .setUsingDepthWrite(true)
-                .setUsingDepthTest(true)
-                .setUsingBlend(false)
-                .setColourBlendOp(VK11.VK_BLEND_OP_ADD)
-                .setBlendFunc(BlendFunc.DEFAULT)
-                //.setUsingStencilTest(true)
-                //.setStencilBack(stencilRead)
+        this.wireframePipeline = builder
+                .setUsingWireframe(true)
                 .build(this.pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
 
         builder.cleanup();
         Logger.debug("Built pipelines!");
-    }
-
-    public void addTextureToShader(Texture texture) {
-        String textureFileName = texture.getResourceName();
-        SamplerDescriptorSet samplerDescriptorSet = this.dSampler.get(textureFileName);
-
-        if (samplerDescriptorSet == null) {
-            if(this.dSampler.size() >= EngineProperties.MAX_TEXTURES)
-                throw new EngineLimitExceededException("MAX_TEXTURES", EngineProperties.MAX_TEXTURES, this.dSampler.size()+1);
-
-            samplerDescriptorSet = new SamplerDescriptorSet(this.descriptorPool, this.lSampler, 0, texture, this.uSampler);
-            this.dSampler.put(textureFileName, samplerDescriptorSet);
-        }
-    }
-
-    public void addOverlayToShader(Texture texture) {
-        String textureFileName = texture.getResourceName();
-        SamplerDescriptorSet overlaySamplerDescriptorSet = this.dOverlaySampler.get(textureFileName);
-
-        if (overlaySamplerDescriptorSet == null) {
-            if(this.dOverlaySampler.size() >= EngineProperties.MAX_OVERLAY_TEXTURES)
-                throw new EngineLimitExceededException("MAX_OVERLAY_TEXTURES", EngineProperties.MAX_OVERLAY_TEXTURES, this.dOverlaySampler.size()+1);
-
-            overlaySamplerDescriptorSet = new SamplerDescriptorSet(this.descriptorPool, this.lOverlaySampler, 0, texture, this.uOverlaySampler);
-            this.dOverlaySampler.put(textureFileName, overlaySamplerDescriptorSet);
-        }
     }
 
     protected void setConstantUniforms() {
@@ -380,21 +292,9 @@ public class ForwardRenderer extends RenderProcess {
             this.shaderIO.setUniform(this.lViewMatrix, this.dViewMatrix, idx);
 
             for(SubRenderProcess process:  this.subRenderProcesses)
-                process.renderPreMesh(this.shaderIO, idx);
+                process.renderPreMesh(this.shaderIO, this.standardSamplers, idx);
 
-            // Render the models!
-            // TODO: Remove these portal-code references.
-
-            this.setOverlayMaterial(GeneratedAssets.PORTAL_CUTOUT);
-
-            //selectedPipeline = this.portalPipeline.bind(cmd);
-            //this.drawModel(cmd, renderer, selectedPipeline, GeneratedAssets.BLUE_PORTAL_MODEL.getId(), idx);
-            //this.drawModel(cmd, renderer, selectedPipeline, GeneratedAssets.ORANGE_PORTAL_MODEL.getId(), idx);
-
-            //selectedPipeline = this.roomGeometryPipeline.bind(cmd);
-            this.drawNonPortalModels(cmd, renderer, selectedPipeline, idx);
-
-            //this.drawMeshes(cmd, renderer, selectedPipeline, idx);
+            this.drawAllSceneModels(cmd, renderer, selectedPipeline, idx);
 
             this.shaderIO.free(); // free buffers from stack.
             VK11.vkCmdEndRenderPass(cmd); // ------------------------------------------------------
@@ -420,17 +320,8 @@ public class ForwardRenderer extends RenderProcess {
         return clearValues;
     }
 
-    protected void drawMeshes(VkCommandBuffer cmd, Renderer renderer, Pipeline selectedPipeline, int frameIndex) {
+    protected void drawAllSceneModels(VkCommandBuffer cmd, Renderer renderer, Pipeline selectedPipeline, int frameIndex) {
         for (String modelId: this.scene.getUsedModelIds()) {
-            this.drawModel(cmd, renderer, selectedPipeline, modelId, frameIndex);
-        }
-    }
-
-    protected void drawNonPortalModels(VkCommandBuffer cmd, Renderer renderer, Pipeline selectedPipeline, int frameIndex) {
-        for (String modelId: this.scene.getUsedModelIds()) {
-            if(modelId.equalsIgnoreCase(GeneratedAssets.BLUE_PORTAL_MODEL.getId())) continue;
-            if(modelId.equalsIgnoreCase(GeneratedAssets.ORANGE_PORTAL_MODEL.getId())) continue;
-
             this.drawModel(cmd, renderer, selectedPipeline, modelId, frameIndex);
         }
     }
@@ -440,18 +331,20 @@ public class ForwardRenderer extends RenderProcess {
         List<StaticModelEntity> entities = this.scene.getEntitiesWithModel(modelId);
 
         for(SubRenderProcess process: this.subRenderProcesses)
-            process.renderModel(this.shaderIO, model, frameIndex);
+            process.renderModel(this.shaderIO, this.standardSamplers, model, frameIndex);
 
         for(BundledMaterial material: model.getMaterials()) {
             if (material.meshes().isEmpty())
                 continue;
 
-            this.setMaterial(material);
+            this.standardSamplers.setMaterial(material);
 
             for(BufferedMesh mesh: material.meshes()) {
                 this.shaderIO.bindMesh(cmd, mesh);
 
                 for(RenderedEntity entity: entities) {
+                    if(!entity.shouldDraw()) continue;
+
                     long layoutHandle = selectedPipeline.getPipelineLayoutHandle();
                     this.shaderIO.bindDescriptorSets(cmd, layoutHandle);
                     this.shaderIO.applyVertexPushConstants(cmd, layoutHandle, entity.getTransform());
@@ -460,17 +353,6 @@ public class ForwardRenderer extends RenderProcess {
                 }
             }
         }
-    }
-
-    protected void setMaterial(BundledMaterial material) {
-        SamplerDescriptorSet samplerDescriptorSet = this.dSampler.get(material.texture().getResourceName());
-        this.shaderIO.setUniform(this.lSampler, samplerDescriptorSet);
-    }
-
-    // todo: get some checks on this - make sure there's always a texture available.
-    protected void setOverlayMaterial(Material material) {
-        SamplerDescriptorSet samplerDescriptorSet = this.dOverlaySampler.get(material.texture());
-        this.shaderIO.setUniform(this.lOverlaySampler, samplerDescriptorSet);
     }
 
     @Override
@@ -502,7 +384,7 @@ public class ForwardRenderer extends RenderProcess {
                 if (vulkanMaterial.meshes().isEmpty())
                     continue;
 
-                this.addTextureToShader(vulkanMaterial.texture());
+                this.standardSamplers.registerTexture(vulkanMaterial.texture());
             }
         }
     }
@@ -522,7 +404,7 @@ public class ForwardRenderer extends RenderProcess {
 
         // all textures transformed, use!
         for(Texture texture : overlayTextures) {
-            this.addOverlayToShader(texture);
+            this.standardSamplers.registerOverlay(texture);
         }
     }
 
@@ -545,15 +427,12 @@ public class ForwardRenderer extends RenderProcess {
 
         this.uProjectionMatrix.cleanup();
         Arrays.stream(this.uViewMatrix).forEach(GeneralBuffer::cleanup);
-        this.uSampler.cleanup();
-        this.uOverlaySampler.cleanup();
+        this.standardSamplers.cleanup();
 
         this.descriptorPool.cleanup(); // descriptor sets cleaned up here.
 
         this.standardPipeline.cleanup();
         this.wireframePipeline.cleanup();
-        this.roomGeometryPipeline.cleanup();
-        this.portalPipeline.cleanup();
 
         this.shaderProgram.cleanup();
 
