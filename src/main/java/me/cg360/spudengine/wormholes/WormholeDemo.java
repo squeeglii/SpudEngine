@@ -111,6 +111,36 @@ public class WormholeDemo extends GameComponent {
     protected void onInputEvent(Window window, int key, int action, int modifiers) {
         if(key == GLFW.GLFW_KEY_F1 && action == GLFW.GLFW_RELEASE)
             this.getEngine().getRenderer().useWireframe = !this.getEngine().getRenderer().useWireframe;
+
+        if(key == GLFW.GLFW_KEY_9 && action == GLFW.GLFW_RELEASE) {
+
+            if(this.getPortalTracker().hasBluePortal()) {
+                this.getPortalTracker().removeBluePortal();
+            } else {
+                PortalEntity bluePortal = new PortalEntity(
+                        PortalType.BLUE,
+                        new Vector3f(-6f, 0f, -1.00f),
+                        Vectors.toRadians(0, 0, 0)
+                );
+
+                this.scene().addEntity(bluePortal);
+            }
+        }
+
+        if(key == GLFW.GLFW_KEY_0 && action == GLFW.GLFW_RELEASE) {
+            if(this.getPortalTracker().hasOrangePortal()) {
+                this.getPortalTracker().removeOrangePortal();
+
+            } else {
+                PortalEntity orangePortal = new PortalEntity(
+                        PortalType.ORANGE,
+                        new Vector3f(0, 2.0f, -4.0f),
+                        Vectors.toRadians(0, 180, 0)
+                );
+
+                this.scene().addEntity(orangePortal);
+            }
+        }
     }
 
     public PortalTracker getPortalTracker() {

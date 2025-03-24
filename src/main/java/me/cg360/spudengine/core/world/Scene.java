@@ -52,6 +52,8 @@ public class Scene {
     }
 
     public void removeEntity(RenderedEntity entity) {
+        if(entity == null)
+            throw new IllegalArgumentException("Entity cannot be null");
         this.removeEntity(entity.getEntityId());
     }
 

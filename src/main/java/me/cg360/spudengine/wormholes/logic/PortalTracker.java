@@ -71,6 +71,14 @@ public class PortalTracker extends GameComponent {
         }
     }
 
+    public void removeBluePortal() {
+        this.scene().removeEntity(this.bluePortal);
+    }
+
+    public void removeOrangePortal() {
+        this.scene().removeEntity(this.orangePortal);
+    }
+
     public boolean hasBluePortal() {
         return this.bluePortal != null;
     }

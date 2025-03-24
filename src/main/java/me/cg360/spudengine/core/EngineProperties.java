@@ -38,7 +38,7 @@ public class EngineProperties {
     public static final int STARTING_WIDTH = 1600;
     public static final int STARTING_HEIGHT = 900;
     public static final int SWAP_CHAIN_IMAGES = 3;
-    public static final boolean VSYNC = true;
+    public static final boolean VSYNC = false;
     public static final float FOV = 70.5f;
     public static final float NEAR_PLANE = 0.1f;
     public static final float FAR_PLANE = 100.0f;
