@@ -2,7 +2,6 @@ package me.cg360.spudengine.core;
 
 import me.cg360.spudengine.core.render.Renderer;
 import me.cg360.spudengine.core.render.Window;
-import me.cg360.spudengine.core.render.impl.RenderProcessInitialiser;
 import me.cg360.spudengine.core.render.impl.SubRenderProcess;
 import me.cg360.spudengine.core.world.Scene;
 

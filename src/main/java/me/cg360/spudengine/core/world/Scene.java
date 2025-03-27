@@ -3,6 +3,7 @@ package me.cg360.spudengine.core.world;
 import me.cg360.spudengine.core.render.Window;
 import me.cg360.spudengine.core.world.entity.RenderedEntity;
 import me.cg360.spudengine.core.world.entity.StaticModelEntity;
+import me.cg360.spudengine.core.world.entity.trait.InputTicked;
 
 import java.util.*;
 
@@ -11,16 +12,29 @@ public class Scene {
     private HashMap<UUID, StaticModelEntity> entities;
     private HashMap<String, List<StaticModelEntity>> modelSets;
 
+    private HashMap<UUID, InputTicked> inputTickedEntities;
+
+    private Camera fallbackCamera;
     private Camera mainCamera;
     private Projection projection;
 
     public Scene(Window window) {
         this.entities = new HashMap<>();
         this.modelSets = new HashMap<>();
+        this.inputTickedEntities = new HashMap<>();
+
         this.projection = new Projection();
-        this.mainCamera = new Camera(true);
+
+        this.fallbackCamera = new Camera(true);
+        this.mainCamera = this.fallbackCamera;
 
         this.projection.resize(window.getWidth(), window.getHeight());
+    }
+
+    public void passInputTick(Window window, Scene scene, long delta) {
+        for(InputTicked input : this.inputTickedEntities.values()) {
+            input.consumeInputTick(window, scene, delta);
+        }
     }
 
     public void addEntities(StaticModelEntity... entities) {
@@ -46,6 +60,10 @@ public class Scene {
 
         } else groupedEntities = this.modelSets.get(modelId);
 
+        if(entity instanceof InputTicked inpTickAcceptor) {
+            this.inputTickedEntities.put(entityId, inpTickAcceptor);
+        }
+
         groupedEntities.add(entity);
 
         entity.markAddedToScene(this);
@@ -65,6 +83,8 @@ public class Scene {
 
         removedEntity.markRemovedFromScene(this);
 
+        this.inputTickedEntities.remove(removedEntity.getEntityId());
+
         List<StaticModelEntity> modelList = this.getEntitiesWithModel(removedEntity.getModelId());
         modelList.remove(removedEntity);
 
@@ -82,7 +102,9 @@ public class Scene {
     }
 
     public Scene setMainCamera(Camera mainCamera) {
-        this.mainCamera = mainCamera;
+        this.mainCamera = this.mainCamera == null
+                ? this.fallbackCamera
+                : mainCamera;
         return this;
     }
 

@@ -111,7 +111,11 @@ public class SpudEngine {
     }
 
     private void inputTick(Window window, Scene scene, long delta) {
+        // Game Logic Tick
         this.gameInstance.passInputTick(window, scene, delta);
+
+        // Entity Tick
+        this.scene.passInputTick(window, scene, delta);
     }
 
     private void inputEvent(long windowHandle, int key, int scanCode, int action, int modifiers) {

@@ -2,12 +2,14 @@ package me.cg360.spudengine.wormholes;
 
 import me.cg360.spudengine.core.GameComponent;
 import me.cg360.spudengine.core.SpudEngine;
+import me.cg360.spudengine.core.component.CursorCapture;
 import me.cg360.spudengine.core.component.FlyCameraController;
 import me.cg360.spudengine.core.render.Renderer;
 import me.cg360.spudengine.core.render.Window;
 import me.cg360.spudengine.core.util.Vectors;
 import me.cg360.spudengine.core.world.Scene;
 import me.cg360.spudengine.core.world.entity.impl.EnvironmentGeometry;
+import me.cg360.spudengine.core.world.entity.impl.LocalPlayerEntity;
 import me.cg360.spudengine.wormholes.logic.AssetInitialisationStage;
 import me.cg360.spudengine.wormholes.logic.PortalTracker;
 import me.cg360.spudengine.wormholes.render.PortalSubRenderer;
@@ -23,7 +25,7 @@ public class WormholeDemo extends GameComponent {
     private final PortalTracker portalTracker;
 
     private EnvironmentGeometry levelGeometry;
-
+    private LocalPlayerEntity playerEntity;
 
     public WormholeDemo(SpudEngine engineInstance) {
         super("Wormhole Demo", engineInstance);
@@ -32,7 +34,7 @@ public class WormholeDemo extends GameComponent {
             throw new IllegalStateException("Wormhole Game Instance already running");
 
         this.addSubListener(new AssetInitialisationStage(this, engineInstance));
-        this.addSubListener(new FlyCameraController(this, engineInstance));
+        this.addSubListener(new CursorCapture(this, engineInstance));
         this.portalTracker = this.addSubListener(new PortalTracker(this, engineInstance));
 
         this.addRenderProcess(new PortalSubRenderer(this));
@@ -46,55 +48,10 @@ public class WormholeDemo extends GameComponent {
         this.levelGeometry = new EnvironmentGeometry("env/chamber01");
         this.scene().addEntity(this.levelGeometry);
 
-        this.testTranslation();
-    }
+        this.playerEntity = new LocalPlayerEntity(GeneratedAssets.PLAYER_MODEL);
+        this.scene().addEntity(this.playerEntity);
 
-    private void testRotation() {
-        PortalEntity bluePortal = new PortalEntity(
-                PortalType.BLUE,
-                new Vector3f(1.0f, 0, 3.5f),
-                Vectors.toRadians(0, 45, 0)
-        );
-
-        PortalEntity orangePortal = new PortalEntity(
-                PortalType.ORANGE,
-                new Vector3f(0, 2.0f, -4.0f),
-                Vectors.toRadians(0, 180, 0)
-        );
-
-        this.scene().addEntities(bluePortal, orangePortal);
-    }
-
-    public void testTranslation() {
-        PortalEntity bluePortal = new PortalEntity(
-                PortalType.BLUE,
-                new Vector3f(-6f, 0f, -1.00f),
-                Vectors.toRadians(0, 0, 0)
-        );
-
-        PortalEntity orangePortal = new PortalEntity(
-                PortalType.ORANGE,
-                new Vector3f(0, 2.0f, -4.0f),
-                Vectors.toRadians(0, 180, 0)
-        );
-
-        this.scene().addEntities(orangePortal, bluePortal);
-    }
-
-    public void testVertical() {
-        PortalEntity bluePortal = new PortalEntity(
-                PortalType.BLUE,
-                new Vector3f(-6f, 0f, -1.0f),
-                Vectors.toRadians(0, 0, 90)
-        );
-
-        PortalEntity orangePortal = new PortalEntity(
-                PortalType.ORANGE,
-                new Vector3f(0, 2.0f, -4.00f),
-                Vectors.toRadians(0, 180, 0)
-        );
-
-        this.scene().addEntities(bluePortal, orangePortal);
+        //this.testTranslation();
     }
 
     @Override

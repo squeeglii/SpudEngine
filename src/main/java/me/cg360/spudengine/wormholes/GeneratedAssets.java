@@ -5,6 +5,7 @@ import me.cg360.spudengine.core.render.geometry.model.Mesh;
 import me.cg360.spudengine.core.render.geometry.model.Model;
 import me.cg360.spudengine.core.render.image.texture.Texture;
 import me.cg360.spudengine.core.render.image.texture.TextureManager;
+import me.cg360.spudengine.core.util.Vectors;
 
 import java.awt.*;
 import java.util.List;
@@ -32,6 +33,45 @@ public class GeneratedAssets {
             4, 3, 0
     };
 
+    private static final Mesh MESH_CUBE = new Mesh(
+            Vectors.scaleAll(new float[]{
+                    -0.5f, 0.5f, 0.5f,
+                    -0.5f, -0.5f, 0.5f,
+                    0.5f, -0.5f, 0.5f,
+                    0.5f, 0.5f, 0.5f,
+                    -0.5f, 0.5f, -0.5f,
+                    0.5f, 0.5f, -0.5f,
+                    -0.5f, -0.5f, -0.5f,
+                    0.5f, -0.5f, -0.5f,
+            }, 0.4f),
+            new float[]{
+                    0.0f, 0.0f,
+                    1.0f, 0.0f,
+                    2.0f, 0.0f,
+                    2.0f, 1.0f,
+                    2.0f, 2.0f,
+                    1.0f, 2.0f,
+                    0.0f, 2.0f,
+                    0.0f, 1.0f,
+            },
+            new int[]{
+                    // Front face
+                    0, 1, 3, 3, 1, 2,
+                    // Top Face
+                    4, 0, 3, 5, 4, 3,
+                    // Right face
+                    3, 2, 7, 5, 3, 7,
+                    // Left face
+                    6, 1, 0, 6, 0, 4,
+                    // Bottom face
+                    2, 1, 6, 2, 6, 7,
+                    // Back face
+                    7, 6, 4, 7, 4, 5,
+            },
+            0 // Default material.
+    );
+
+    public static final Model PLAYER_MODEL = new Model("generated/player", MESH_CUBE);
 
     public static final Mesh PORTAL_MESH = new Mesh(PORTAL_POINTS, PORTAL_UVs, PORTAL_INDICES, 0);
 
@@ -45,7 +85,7 @@ public class GeneratedAssets {
     public static final Material PORTAL_INCOMPLETE = new Material("generated/portal/incomplete", Material.WHITE);
 
     public static List<Model> getAllModels() {
-        return List.of(BLUE_PORTAL_MODEL, ORANGE_PORTAL_MODEL);
+        return List.of(PLAYER_MODEL, BLUE_PORTAL_MODEL, ORANGE_PORTAL_MODEL);
     }
 
     public static void registerTextures(TextureManager textureManager) {

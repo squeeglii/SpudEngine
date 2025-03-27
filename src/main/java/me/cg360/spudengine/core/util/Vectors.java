@@ -2,6 +2,8 @@ package me.cg360.spudengine.core.util;
 
 import org.joml.Vector3f;
 
+import java.util.Arrays;
+
 public class Vectors {
 
     public static Vector3f formatRadians(Vector3f vec) {
@@ -25,6 +27,15 @@ public class Vectors {
                 (float) Math.toRadians(y),
                 (float) Math.toRadians(z)
         );
+    }
+
+    public static float[] scaleAll(float[] floats, float scale) {
+        float[] result = new float[floats.length];
+
+        for (int i = 0; i < floats.length; i++)
+            result[i] = floats[i] * scale;
+
+        return result;
     }
 
 }
