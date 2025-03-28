@@ -11,8 +11,8 @@ layout(location = 3) in vec4 debugColour;
 
 layout(location = 0) out vec4 uFragColor;
 
-layout(set = 4, binding = 0) uniform sampler2D textureSampler;
-layout(set = 5, binding = 0) uniform sampler2D overlaySampler;
+layout(set = 5, binding = 0) uniform sampler2D textureSampler;
+layout(set = 6, binding = 0) uniform sampler2D overlaySampler;
 
 // https://gamedev.stackexchange.com/questions/59797/glsl-shader-change-hue-saturation-brightness
 vec3 hsv2rgb(vec3 c)

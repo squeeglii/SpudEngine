@@ -30,9 +30,13 @@ public class Pipeline implements VkHandleWrapper {
     private final int pushConstantStage;
     private final int pushConstantSize;
 
+    private final String nickname;
+
     public Pipeline(PipelineCache pipelineCache, Builder builder) {
-        Logger.debug("Creating pipeline");
+        this.nickname = builder.debugNickname == null ? "anonymous" : builder.debugNickname;
         this.device = pipelineCache.getDevice();
+
+        Logger.debug("Constructing pipeline [{}] ...", nickname);
 
         try (MemoryStack stack = MemoryStack.stackPush()) {
             LongBuffer lp = stack.mallocLong(1);
@@ -170,12 +174,14 @@ public class Pipeline implements VkHandleWrapper {
                     .pDynamicState(vkDynamicStates)
                     .layout(this.pipelineLayout)
                     .renderPass(builder.renderPass)
+                    .subpass(builder.subpass)
                     .pDepthStencilState(vkDepthStencilState);
 
             int errCreate = VK11.vkCreateGraphicsPipelines(this.device.asVk(), pipelineCache.getHandle(), pipeline, null, lp);
             VulkanUtil.checkErrorCode(errCreate, "Error creating graphics pipeline");
             this.pipeline = lp.get(0);
-            Logger.debug("Created Pipeline {} (with layout {})",
+            Logger.debug("Created Pipeline [{}] (id: 0x{}, layout: 0x{})!",
+                    this.nickname,
                     HexFormat.of().toHexDigits(this.pipeline),
                     HexFormat.of().toHexDigits(this.pipelineLayout)
             );
@@ -187,12 +193,13 @@ public class Pipeline implements VkHandleWrapper {
     }
 
     public Pipeline bind(VkCommandBuffer cmd, int bindPoint) {
+        //Logger.trace("Binding pipeline [{}]", this.nickname);
         VK11.vkCmdBindPipeline(cmd, bindPoint, this.getHandle());
         return this;
     }
 
     public void cleanup() {
-        Logger.debug("Destroying pipeline");
+        Logger.debug("Destroying pipeline [{}]", this.nickname);
         VK11.vkDestroyPipelineLayout(this.device.asVk(), this.pipelineLayout, null);
         VK11.vkDestroyPipeline(this.device.asVk(), this.pipeline, null);
     }
@@ -225,7 +232,9 @@ public class Pipeline implements VkHandleWrapper {
     public static class Builder {
 
         // Essential
+        private String debugNickname;
         private long renderPass;
+        private int subpass;
         private ShaderProgram shaderProgram;
         private int numColourAttachments;
         private VertexFormatDefinition vertexFormatDefinition;
@@ -264,8 +273,14 @@ public class Pipeline implements VkHandleWrapper {
             this.resetStencil();
         }
 
-        public Pipeline build(PipelineCache pipelineCache, long renderPass, ShaderProgram shaderProgram, int numColorAttachments) {
+        public Pipeline build(PipelineCache pipelineCache, String nickname, long renderPass, ShaderProgram shaderProgram, int numColorAttachments) {
+            return this.build(pipelineCache, nickname, renderPass, 0, shaderProgram, numColorAttachments);
+        }
+
+        public Pipeline build(PipelineCache pipelineCache, String nickname, long renderPass, int subpass, ShaderProgram shaderProgram, int numColorAttachments) {
+            this.debugNickname = nickname;
             this.renderPass = renderPass;
+            this.subpass = subpass;
             this.shaderProgram = shaderProgram;
             this.numColourAttachments = numColorAttachments;
 

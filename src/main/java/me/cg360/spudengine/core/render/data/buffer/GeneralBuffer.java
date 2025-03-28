@@ -11,7 +11,9 @@ import org.lwjgl.vulkan.VkBufferCreateInfo;
 import org.lwjgl.vulkan.VkMemoryAllocateInfo;
 import org.lwjgl.vulkan.VkMemoryRequirements;
 
+import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
+import java.util.function.Consumer;
 
 public class GeneralBuffer implements VkHandleWrapper {
 
@@ -63,6 +65,13 @@ public class GeneralBuffer implements VkHandleWrapper {
             int errBind = VK11.vkBindBufferMemory(device.asVk(), this.buffer, this.memory, 0);
             VulkanUtil.checkErrorCode(errBind, "Failed to bind buffer memory");
         }
+    }
+
+    public void runMapped(Consumer<ByteBuffer> buf) {
+        long memLoc = this.map();
+        ByteBuffer memAccess = MemoryUtil.memByteBuffer(memLoc, (int) this.getRequestedSize());
+        buf.accept(memAccess);
+        this.unmap();
     }
 
     public long map() {

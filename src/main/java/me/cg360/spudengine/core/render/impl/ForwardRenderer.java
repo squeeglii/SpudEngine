@@ -14,6 +14,7 @@ import me.cg360.spudengine.core.render.geometry.model.BundledMaterial;
 import me.cg360.spudengine.core.render.hardware.LogicalDevice;
 import me.cg360.spudengine.core.render.image.Attachment;
 import me.cg360.spudengine.core.render.image.FrameBuffer;
+import me.cg360.spudengine.core.render.image.Image;
 import me.cg360.spudengine.core.render.image.ImageView;
 import me.cg360.spudengine.core.render.image.SwapChain;
 import me.cg360.spudengine.core.render.image.texture.Texture;
@@ -30,9 +31,11 @@ import me.cg360.spudengine.core.render.pipeline.shader.ShaderProgram;
 import me.cg360.spudengine.core.render.pipeline.shader.StandardSamplers;
 import me.cg360.spudengine.core.render.sync.Fence;
 import me.cg360.spudengine.core.render.sync.SyncSemaphores;
+import me.cg360.spudengine.core.util.VkHandleWrapper;
 import me.cg360.spudengine.core.world.entity.RenderedEntity;
 import me.cg360.spudengine.core.world.Scene;
 import me.cg360.spudengine.core.world.entity.StaticModelEntity;
+import me.cg360.spudengine.wormholes.render.pass.PortalLayeredRenderPass;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Matrix4f;
 import org.lwjgl.system.MemoryStack;
@@ -60,6 +63,8 @@ public class ForwardRenderer extends RenderProcess {
     private PipelineCache pipelineCache;
     private Pipeline standardPipeline;
     private Pipeline wireframePipeline;
+
+    private Pipeline[] subpassStandardPipeline;
 
     private ShaderProgram shaderProgram;
 
@@ -93,7 +98,7 @@ public class ForwardRenderer extends RenderProcess {
 
         int numImages = swapChain.getImageViews().length;
         this.createDepthImages();
-        this.renderPass = new SwapChainRenderPass(swapChain, this.depthAttachments[0].getImage().getFormat());
+        this.createRenderPass(swapChain, this.depthAttachments[0].getImage().getFormat());
         this.createFrameBuffers();
 
         Logger.info("Loading Shader Program...");
@@ -116,6 +121,11 @@ public class ForwardRenderer extends RenderProcess {
                 this.device,
                 EngineProperties.shaders
         );
+    }
+
+    protected void createRenderPass(SwapChain swapChain, int depthImageFormat) {
+        this.renderPass = new PortalLayeredRenderPass(swapChain, depthImageFormat);
+        //this.renderPass = new SwapChainRenderPass(swapChain, depthImageFormat);
     }
 
     protected void createCommandBuffers(CommandPool commandPool, int numImages) {
@@ -211,10 +221,18 @@ public class ForwardRenderer extends RenderProcess {
                 )
                 .setCullMode(VK11.VK_CULL_MODE_FRONT_BIT); // uhhhh, right. Sure. This works but
 
-        this.standardPipeline = builder.build(this.pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
+        this.standardPipeline = builder.build(this.pipelineCache, "standard", this.renderPass.getHandle(), this.shaderProgram, 1);
+        this.subpassStandardPipeline = new Pipeline[PortalLayeredRenderPass.MAX_PORTAL_DEPTH];
+
+        //TODO: REMOVE IF SUBPASSES DON'T WORK.
+        for(int i = 0; i < PortalLayeredRenderPass.MAX_PORTAL_DEPTH; i++) {
+            String name = "subpassStandard[%s]".formatted(i);
+            this.subpassStandardPipeline[i] = builder.build(this.pipelineCache, name, this.renderPass.getHandle(), i, this.shaderProgram, 1);
+        }
+
         this.wireframePipeline = builder
                 .setUsingWireframe(true)
-                .build(this.pipelineCache, this.renderPass.getHandle(), this.shaderProgram, 1);
+                .build(this.pipelineCache, "wireframe", this.renderPass.getHandle(), this.shaderProgram, 1);
 
         builder.cleanup();
         Logger.debug("Built pipelines!");
@@ -257,11 +275,14 @@ public class ForwardRenderer extends RenderProcess {
                     .framebuffer(frameBuffer.getHandle());
 
             VkCommandBuffer cmd = commandBuffer.beginRecording();
-            VK11.vkCmdBeginRenderPass(cmd, renderPassBeginInfo, VK11.VK_SUBPASS_CONTENTS_INLINE); // ----
 
-            Pipeline selectedPipeline = renderer.useWireframe
-                    ? this.wireframePipeline.bind(cmd)
-                    : this.standardPipeline.bind(cmd);
+            //Pipeline selectedPipeline = renderer.useWireframe
+            //        ? this.wireframePipeline
+            //        : this.standardPipeline;
+
+            Pipeline selectedPipeline = this.subpassStandardPipeline[0];
+
+            this.startRenderPass(cmd, renderPassBeginInfo, selectedPipeline, stack); // ------------------
 
             // Setup view
             VkViewport.Buffer viewport = VkViewport.calloc(1, stack)
@@ -282,21 +303,30 @@ public class ForwardRenderer extends RenderProcess {
                             .y(0));
             VK11.vkCmdSetScissor(cmd, 0, scissor);
 
-            // Populate Uniforms
-            this.shaderIO.reset(stack, selectedPipeline, this.descriptorPool);
+            //TODO: Remove Portal References.
+            // count backwards as portals are rendered on top of eachother.
+            for(int i = 0; i < PortalLayeredRenderPass.MAX_PORTAL_DEPTH; i++) {
+                this.shaderIO.reset(stack, selectedPipeline, this.descriptorPool);
 
-            Matrix4f view = this.scene.getMainCamera().getViewMatrix();
-            DataTypes.MAT4X4F.copyToBuffer(this.uViewMatrix[idx], view);
+                Matrix4f view = this.scene.getMainCamera().getViewMatrix();
+                DataTypes.MAT4X4F.copyToBuffer(this.uViewMatrix[idx], view);
 
-            this.shaderIO.setUniform(this.lProjectionMatrix, this.dProjectionMatrix);
-            this.shaderIO.setUniform(this.lViewMatrix, this.dViewMatrix, idx);
+                this.shaderIO.setUniform(this.lProjectionMatrix, this.dProjectionMatrix);
+                this.shaderIO.setUniform(this.lViewMatrix, this.dViewMatrix, idx);
 
-            for(SubRenderProcess process:  this.subRenderProcesses)
-                process.renderPreMesh(this.shaderIO, this.standardSamplers, idx);
+                for(SubRenderProcess process:  this.subRenderProcesses)
+                    process.renderPreMesh(this.shaderIO, this.standardSamplers, idx, i);
 
-            this.drawAllSceneModels(cmd, renderer, selectedPipeline, idx);
+                this.drawAllSceneModels(cmd, renderer, selectedPipeline, idx);
 
-            this.shaderIO.free(); // free buffers from stack.
+                this.shaderIO.free(); // free buffers from stack.
+
+                if(i != 0) {
+                    selectedPipeline = this.subpassStandardPipeline[i];
+                    this.nextSubPass(cmd, selectedPipeline, stack);
+                }
+            }
+
             VK11.vkCmdEndRenderPass(cmd); // ------------------------------------------------------
             commandBuffer.endRecording();
         }
@@ -374,6 +404,16 @@ public class ForwardRenderer extends RenderProcess {
         }
     }
 
+    protected void startRenderPass(VkCommandBuffer cmd, VkRenderPassBeginInfo renderPassBeginInfo, Pipeline pipeline, MemoryStack stack) {
+        VK11.vkCmdBeginRenderPass(cmd, renderPassBeginInfo, VK11.VK_SUBPASS_CONTENTS_INLINE);
+        this.shaderIO.reset(stack, pipeline.bind(cmd), this.descriptorPool);
+    }
+
+    protected void nextSubPass(VkCommandBuffer cmd, Pipeline pipeline, MemoryStack stack) {
+        VK11.vkCmdNextSubpass(cmd, VK11.VK_SUBPASS_CONTENTS_INLINE);
+        this.shaderIO.reset(stack, pipeline.bind(cmd), this.descriptorPool);
+    }
+
     @Override
     public void processModelBatch(List<BufferedModel> models) {
         this.device.waitIdle();
@@ -433,6 +473,7 @@ public class ForwardRenderer extends RenderProcess {
 
         this.standardPipeline.cleanup();
         this.wireframePipeline.cleanup();
+        Arrays.asList(this.subpassStandardPipeline).forEach(VkHandleWrapper::cleanup);
 
         this.shaderProgram.cleanup();
 

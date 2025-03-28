@@ -12,7 +12,7 @@ public interface SubRenderProcess {
 
     default void createDescriptorSets(DescriptorPool pool) {}
 
-    default void renderPreMesh(ShaderIO shaderIO, StandardSamplers samplers, int frameIndex) {}
+    default void renderPreMesh(ShaderIO shaderIO, StandardSamplers samplers, int frameIndex, int subPass) {}
     default void renderModel(ShaderIO shaderIO, StandardSamplers samplers, BufferedModel model, int frameIndex) {}
 
     void cleanup();

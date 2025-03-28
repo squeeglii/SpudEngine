@@ -34,6 +34,10 @@ layout(set = 3, binding = 0) uniform ORANGE_PORTAL_DATA {
     mat4 stitchTransform;
 } orangePortal;
 
+layout(set = 4, binding = 0) uniform PORTAL_LAYER {
+    int num;
+} portalLayer;
+
 layout(location = 0) out vec2 texCoords;
 layout(location = 1) out vec2 overlayTexCoords;
 layout(location = 2) out vec4 portalBorderColour;
@@ -147,7 +151,10 @@ void main() {
     //todo: send culling through arrays to shader?
     //      ...or even send the full octree?
 
-    emitOffsetRoom(worldPositions, generatedOverlayCoords, portalColour, mat4(1), 0, vec4(1, 1, 1, 1)); // room without portal transform.
+    if(portalLayer.num == 0) {
+        emitOffsetRoom(worldPositions, generatedOverlayCoords, portalColour, mat4(1), 0, vec4(1, 1, 1, 1));// room without portal transform.
+        return;
+    }
 
     // don't use portal transforms if there isn't even a link.
     if(missingBlue || missingOrange)
@@ -160,6 +167,9 @@ void main() {
     for(int i = 1; i <= MAX_RECURSION_DEPTH; i++) {
         blue *= bluePortal.stitchTransform;
         orange *= orangePortal.stitchTransform;
+
+        if(i != portalLayer.num)
+            continue;
 
         // calc debug colour tint.
         float r = MAX_RECURSION_DEPTH;
