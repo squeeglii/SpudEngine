@@ -1,5 +1,7 @@
 package me.cg360.spudengine.core.world.entity;
 
+import me.cg360.spudengine.core.render.context.RenderContext;
+import me.cg360.spudengine.core.render.context.RenderGoal;
 import me.cg360.spudengine.core.world.Scene;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
@@ -38,7 +40,7 @@ public abstract class RenderedEntity {
     public abstract String getModelId();
     public abstract Matrix4f getTransform();
 
-    public boolean shouldDraw() {
+    public boolean shouldDraw(RenderContext renderContext) {
         return true;
     }
 

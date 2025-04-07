@@ -76,7 +76,7 @@ public class WormholeDemo extends GameComponent {
             } else {
                 PortalEntity bluePortal = new PortalEntity(
                         PortalType.BLUE,
-                        new Vector3f(-6f, 0f, -1.00f),
+                        new Vector3f(-6f, 0f, -1.01f),
                         Vectors.toRadians(0, 0, 0)
                 );
 
@@ -91,7 +91,7 @@ public class WormholeDemo extends GameComponent {
             } else {
                 PortalEntity orangePortal = new PortalEntity(
                         PortalType.ORANGE,
-                        new Vector3f(0, 2.0f, -4.0f),
+                        new Vector3f(0, 2.0f, -3.99f),
                         Vectors.toRadians(0, 180, 0)
                 );
 

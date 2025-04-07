@@ -224,6 +224,10 @@ public class Pipeline implements VkHandleWrapper {
         return (this.pushConstantStage & VK11.VK_SHADER_STAGE_VERTEX_BIT) > 0;
     }
 
+    public String getNickname() {
+        return this.nickname;
+    }
+
     public static Builder builder(VertexFormatDefinition vertexFormatDefinition) {
         return new Builder(vertexFormatDefinition);
     }

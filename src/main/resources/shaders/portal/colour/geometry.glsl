@@ -41,27 +41,16 @@ layout(set = 4, binding = 0) uniform PORTAL_LAYER {
 layout(location = 0) out vec2 texCoords;
 layout(location = 1) out vec2 overlayTexCoords;
 layout(location = 2) out vec4 portalBorderColour;
-layout(location = 3) out vec4 debugColour;
 
-// https://gamedev.stackexchange.com/questions/59797/glsl-shader-change-hue-saturation-brightness
-vec3 hsv2rgb(vec3 c)
-{
-    vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
-    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
-}
-
-vec3 hsv2rgb(float h, float s, float v)
-{
-    return hsv2rgb(vec3(h, s, v));
-}
-
-void emitOffsetRoom(vec4[3] worldPos, vec2[3] overlayCoords, vec4 portalColour, mat4 roomTransform, int currentDepth, vec4 debugHighlight) {
+// Creates a copy of the primitive and transforms (roomTransform) it.
+// This is used to stitch rooms together at portal boundaries provided using the stitchTransform provided by both portals.
+// vec4[3] worldPos       -  tri primitive vertex positions
+// vec4[3] overlayCoords  -  overlay UVs, used by portal/colour/fragment to cutout the portal hole.
+// vec4    portalColour   -  colour used to tint the portal edge. This is just passed through.
+// mat4    roomTransform  -  transform applied on top of worldPos transform. Places the primitive in position for a room further down the portal scope.
+void emitOffsetRoom(vec4[3] worldPos, vec2[3] overlayCoords, vec4 portalColour, mat4 roomTransform) {
     mat4 mP = gs_in[0].projectionMatrix;
     mat4 mV = gs_in[0].viewMatrix;
-
-    // debugging
-    debugColour = debugHighlight;
 
     // copy the points!
     for(int v = 0; v < 3; v++) {
@@ -75,6 +64,11 @@ void emitOffsetRoom(vec4[3] worldPos, vec2[3] overlayCoords, vec4 portalColour, 
     EndPrimitive();
 }
 
+// Process per-primitive:
+// - check both portals are provided
+// - find the closest portal to a primitive and adopt it with that portal
+// - calculate overlay UVs for how the portal would cover that primitive
+//
 void main() {
     vec4[3] worldPositions = vec4[3](
             gs_in[0].modelTransform * vec4(gs_in[0].pos, 1),
@@ -88,9 +82,12 @@ void main() {
     bool missingBlue = bluePortal.stitchTransform == mat4(0);
     bool missingOrange = orangePortal.stitchTransform == mat4(0);
 
-    // then this is just a basic shader. Just emit one room
+    // Then this is just a basic shader. Just emit one room provided that
+    // we're in the right renderpass for it (as passed by portalLayer.num) - this fixes no portals being weirdly laggy.
     if(missingBlue && missingOrange) {
-        emitOffsetRoom(worldPositions, generatedOverlayCoords, vec4(1, 1, 1, 1), mat4(1), 0, vec4(1, 1, 1, 1)); // room without portal transform.
+        if(portalLayer.num == 0) {
+            emitOffsetRoom(worldPositions, generatedOverlayCoords, vec4(1, 1, 1, 1), mat4(1));// room without portal transform.
+        }
         return;
     }
 
@@ -152,7 +149,7 @@ void main() {
     //      ...or even send the full octree?
 
     if(portalLayer.num == 0) {
-        emitOffsetRoom(worldPositions, generatedOverlayCoords, portalColour, mat4(1), 0, vec4(1, 1, 1, 1));// room without portal transform.
+        emitOffsetRoom(worldPositions, generatedOverlayCoords, portalColour, mat4(1));// room without portal transform.
         return;
     }
 
@@ -171,13 +168,7 @@ void main() {
         if(i != portalLayer.num)
             continue;
 
-        // calc debug colour tint.
-        float r = MAX_RECURSION_DEPTH;
-        float colFrac = 0.5 + 0.5 * ((i+1) / r);
-        vec4 blueCol = vec4(hsv2rgb(0.5, colFrac, 1), 1);
-        vec4 orangeCol = vec4(hsv2rgb(0.05, colFrac, 1), 1);
-
-        emitOffsetRoom(worldPositions, generatedOverlayCoords, portalColour, blue, i, blueCol);
-        emitOffsetRoom(worldPositions, generatedOverlayCoords, portalColour, orange, i, orangeCol);
+        emitOffsetRoom(worldPositions, generatedOverlayCoords, portalColour, blue);
+        emitOffsetRoom(worldPositions, generatedOverlayCoords, portalColour, orange);
     }
 }

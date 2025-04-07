@@ -4,6 +4,8 @@ import me.cg360.spudengine.core.render.hardware.PhysicalDevice;
 import org.lwjgl.vulkan.*;
 import org.tinylog.Logger;
 
+import java.util.Arrays;
+
 public class VulkanUtil {
 
     public static final Runnable NO_ACTION = () -> {};
@@ -78,6 +80,10 @@ public class VulkanUtil {
             throw new RuntimeException("Failed to find memoryType");
 
         return result;
+    }
+
+    public static void cleanupAll(VkHandleWrapper[] vkObjects) {
+        Arrays.stream(vkObjects).forEach(VkHandleWrapper::cleanup);
     }
 
 }

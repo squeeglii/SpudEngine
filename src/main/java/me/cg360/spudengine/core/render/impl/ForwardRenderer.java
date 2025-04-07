@@ -102,9 +102,17 @@ public class ForwardRenderer extends RenderProcess {
         this.createFrameBuffers();
 
         Logger.info("Loading Shader Program...");
-        this.shaderProgram = this.buildShaderProgram();
-        this.shaderIO = new ShaderIO();
+        this.standardShaderProgram = this.buildStandardShaderProgram();
+        //TODO: PORTAL REFERENCE REMOVAL.
+        this.stencilShaderProgram = ShaderProgram.attemptCompile(this.device,
+                new BinaryShaderFile(ShaderType.VERTEX, "shaders/vertex"),
+                new BinaryShaderFile(ShaderType.GEOMETRY, "shaders/portal/colour/geometry"),
+                new BinaryShaderFile(ShaderType.FRAGMENT, "shaders/portal/stencil_cutout/fragment")
+        );
         Logger.info("Successfully loaded shader program!");
+
+        this.shaderIO = new ShaderIO();
+        this.renderContext = new InternalRenderContext();
 
         DescriptorSetLayout[] descriptorSetLayouts = this.initDescriptorSets();
 
@@ -116,7 +124,7 @@ public class ForwardRenderer extends RenderProcess {
     }
 
     @NotNull
-    private ShaderProgram buildShaderProgram() {
+    private ShaderProgram buildStandardShaderProgram() {
         return ShaderProgram.attemptCompile(
                 this.device,
                 EngineProperties.shaders
@@ -251,6 +259,8 @@ public class ForwardRenderer extends RenderProcess {
 
     @Override
     public void recordDraw(Renderer renderer) {
+        this.renderContext.reset();
+
         try (MemoryStack stack = MemoryStack.stackPush()) {
             VkExtent2D swapChainExtent = this.swapChain.getSwapChainExtent();
             int width = swapChainExtent.width();
@@ -373,7 +383,7 @@ public class ForwardRenderer extends RenderProcess {
                 this.shaderIO.bindMesh(cmd, mesh);
 
                 for(RenderedEntity entity: entities) {
-                    if(!entity.shouldDraw()) continue;
+                    if(!entity.shouldDraw(this.renderContext)) continue;
 
                     long layoutHandle = selectedPipeline.getPipelineLayoutHandle();
                     this.shaderIO.bindDescriptorSets(cmd, layoutHandle);
@@ -407,6 +417,15 @@ public class ForwardRenderer extends RenderProcess {
     protected void startRenderPass(VkCommandBuffer cmd, VkRenderPassBeginInfo renderPassBeginInfo, Pipeline pipeline, MemoryStack stack) {
         VK11.vkCmdBeginRenderPass(cmd, renderPassBeginInfo, VK11.VK_SUBPASS_CONTENTS_INLINE);
         this.shaderIO.reset(stack, pipeline.bind(cmd), this.descriptorPool);
+    }
+
+    protected void doRenderPass(VkCommandBuffer cmd, VkRenderPassBeginInfo renderPassBeginInfo, Pipeline pipeline, MemoryStack stack, int pass, Consumer<RenderContext> passActions) {
+        VK11.vkCmdBeginRenderPass(cmd, renderPassBeginInfo, VK11.VK_SUBPASS_CONTENTS_INLINE);
+        this.shaderIO.reset(stack, pipeline.bind(cmd), this.descriptorPool);
+        this.renderContext.setPass(pass);
+        this.renderContext.setCurrentPipeline(pipeline);
+        passActions.accept(this.renderContext);
+        VK11.vkCmdEndRenderPass(cmd);
     }
 
     protected void nextSubPass(VkCommandBuffer cmd, Pipeline pipeline, MemoryStack stack) {
@@ -475,7 +494,8 @@ public class ForwardRenderer extends RenderProcess {
         this.wireframePipeline.cleanup();
         Arrays.asList(this.subpassStandardPipeline).forEach(VkHandleWrapper::cleanup);
 
-        this.shaderProgram.cleanup();
+        this.standardShaderProgram.cleanup();
+        this.stencilShaderProgram.cleanup();
 
         Arrays.asList(this.frameBuffers).forEach(FrameBuffer::cleanup);
         Arrays.asList(this.depthAttachments).forEach(Attachment::cleanup);
@@ -493,6 +513,32 @@ public class ForwardRenderer extends RenderProcess {
     @Override
     public int getDepthFormat() {
         return DEPTH_ATTACHMENT_FORMAT;
+    }
+
+    @Override
+    public RenderContext getCurrentContext() {
+        return this.renderContext;
+    }
+
+    public static class InternalRenderContext extends RenderContext {
+
+        protected void reset() {
+            this.pass = -1;
+            this.renderGoal = RenderGoal.NONE;
+            this.currentPipeline = null;
+        }
+
+        protected void setPass(int pass) {
+            this.pass = pass;
+        }
+
+        protected void setRenderGoal(RenderGoal renderGoal) {
+            this.renderGoal = renderGoal;
+        }
+
+        protected void setCurrentPipeline(Pipeline currentPipeline) {
+            this.currentPipeline = currentPipeline;
+        }
     }
 
 }

@@ -3,6 +3,7 @@ package me.cg360.spudengine.core.render.impl;
 import me.cg360.spudengine.core.render.Renderer;
 import me.cg360.spudengine.core.render.command.CommandPool;
 import me.cg360.spudengine.core.render.command.CommandQueue;
+import me.cg360.spudengine.core.render.context.RenderContext;
 import me.cg360.spudengine.core.render.geometry.model.BufferedModel;
 import me.cg360.spudengine.core.render.image.Attachment;
 import me.cg360.spudengine.core.render.image.SwapChain;
@@ -32,4 +33,6 @@ public abstract class RenderProcess {
 
     public abstract Attachment getDepthAttachment(int index);
     public abstract int getDepthFormat();
+
+    public abstract RenderContext getCurrentContext();
 }

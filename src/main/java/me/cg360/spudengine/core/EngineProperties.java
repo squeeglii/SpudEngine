@@ -46,8 +46,8 @@ public class EngineProperties {
     public static final int MAX_OVERLAY_TEXTURES = 1024;
     public static final BinaryShaderFile[] shaders = new BinaryShaderFile[] {
             new BinaryShaderFile(ShaderType.VERTEX, "shaders/vertex"),
-            new BinaryShaderFile(ShaderType.GEOMETRY, "shaders/portal/geometry"),
-            new BinaryShaderFile(ShaderType.FRAGMENT, "shaders/portal/fragment"),
+            new BinaryShaderFile(ShaderType.GEOMETRY, "shaders/portal/colour/geometry"),
+            new BinaryShaderFile(ShaderType.FRAGMENT, "shaders/portal/colour/fragment"),
     };
 
     // -- End of properties --
