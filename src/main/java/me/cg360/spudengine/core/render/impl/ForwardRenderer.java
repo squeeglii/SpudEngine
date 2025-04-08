@@ -2,6 +2,8 @@ package me.cg360.spudengine.core.render.impl;
 
 import me.cg360.spudengine.core.EngineProperties;
 import me.cg360.spudengine.core.render.Renderer;
+import me.cg360.spudengine.core.render.context.RenderContext;
+import me.cg360.spudengine.core.render.context.RenderGoal;
 import me.cg360.spudengine.core.render.data.DataTypes;
 import me.cg360.spudengine.core.render.data.buffer.GeneralBuffer;
 import me.cg360.spudengine.core.render.command.CommandBuffer;
@@ -14,7 +16,6 @@ import me.cg360.spudengine.core.render.geometry.model.BundledMaterial;
 import me.cg360.spudengine.core.render.hardware.LogicalDevice;
 import me.cg360.spudengine.core.render.image.Attachment;
 import me.cg360.spudengine.core.render.image.FrameBuffer;
-import me.cg360.spudengine.core.render.image.Image;
 import me.cg360.spudengine.core.render.image.ImageView;
 import me.cg360.spudengine.core.render.image.SwapChain;
 import me.cg360.spudengine.core.render.image.texture.Texture;
@@ -25,17 +26,19 @@ import me.cg360.spudengine.core.render.pipeline.descriptor.active.UniformDescrip
 import me.cg360.spudengine.core.render.pipeline.descriptor.layout.DescriptorSetLayout;
 import me.cg360.spudengine.core.render.pipeline.descriptor.layout.UniformDescriptorSetLayout;
 import me.cg360.spudengine.core.render.pipeline.pass.SwapChainRenderPass;
-import me.cg360.spudengine.core.render.pipeline.shader.DescriptorSetLayoutBundle;
-import me.cg360.spudengine.core.render.pipeline.shader.ShaderIO;
-import me.cg360.spudengine.core.render.pipeline.shader.ShaderProgram;
-import me.cg360.spudengine.core.render.pipeline.shader.StandardSamplers;
+import me.cg360.spudengine.core.render.pipeline.shader.*;
+import me.cg360.spudengine.core.render.pipeline.util.stencil.CompareOperation;
+import me.cg360.spudengine.core.render.pipeline.util.stencil.StencilConfig;
+import me.cg360.spudengine.core.render.pipeline.util.stencil.StencilOperation;
 import me.cg360.spudengine.core.render.sync.Fence;
 import me.cg360.spudengine.core.render.sync.SyncSemaphores;
-import me.cg360.spudengine.core.util.VkHandleWrapper;
+import me.cg360.spudengine.core.util.VulkanUtil;
 import me.cg360.spudengine.core.world.entity.RenderedEntity;
 import me.cg360.spudengine.core.world.Scene;
 import me.cg360.spudengine.core.world.entity.StaticModelEntity;
-import me.cg360.spudengine.wormholes.render.pass.PortalLayeredRenderPass;
+import me.cg360.spudengine.wormholes.render.pass.PortalLayerColourRenderPass;
+import me.cg360.spudengine.wormholes.render.pass.PortalLayerColourStartRenderPass;
+import me.cg360.spudengine.wormholes.render.pass.PortalLayerStencilRenderPass;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Matrix4f;
 import org.lwjgl.system.MemoryStack;
@@ -46,6 +49,7 @@ import java.awt.*;
 import java.nio.LongBuffer;
 import java.util.*;
 import java.util.List;
+import java.util.function.Consumer;
 
 public class ForwardRenderer extends RenderProcess {
 
@@ -55,18 +59,19 @@ public class ForwardRenderer extends RenderProcess {
 
     private CommandBuffer[] commandBuffers;
     private Fence[] fences;
-    private SwapChainRenderPass renderPass;
+    private SwapChainRenderPass[] renderPasses;
 
     private SwapChain swapChain;
     private FrameBuffer[] frameBuffers;
 
     private PipelineCache pipelineCache;
-    private Pipeline standardPipeline;
-    private Pipeline wireframePipeline;
+    private Pipeline[] standardPipeline;
+    private Pipeline[] wireframePipeline;
+    private Pipeline[] stencilEnvironmentPipeline;
+    private Pipeline[] stencilPortalPipeline;
 
-    private Pipeline[] subpassStandardPipeline;
-
-    private ShaderProgram shaderProgram;
+    private ShaderProgram standardShaderProgram;
+    private ShaderProgram stencilShaderProgram;
 
     private final Scene scene;
 
@@ -84,6 +89,7 @@ public class ForwardRenderer extends RenderProcess {
 
     private StandardSamplers standardSamplers;
 
+    private final InternalRenderContext renderContext;
     private final ShaderIO shaderIO; // #reset(...) whenever new draw call
 
 
@@ -98,7 +104,7 @@ public class ForwardRenderer extends RenderProcess {
 
         int numImages = swapChain.getImageViews().length;
         this.createDepthImages();
-        this.createRenderPass(swapChain, this.depthAttachments[0].getImage().getFormat());
+        this.createRenderPasses(swapChain, this.depthAttachments[0].getImage().getFormat());
         this.createFrameBuffers();
 
         Logger.info("Loading Shader Program...");
@@ -131,9 +137,25 @@ public class ForwardRenderer extends RenderProcess {
         );
     }
 
-    protected void createRenderPass(SwapChain swapChain, int depthImageFormat) {
-        this.renderPass = new PortalLayeredRenderPass(swapChain, depthImageFormat);
-        //this.renderPass = new SwapChainRenderPass(swapChain, depthImageFormat);
+    protected void createRenderPasses(SwapChain swapChain, int depthImageFormat) {
+        //TODO: Remove portal references
+        int passLimit = PortalLayerColourRenderPass.MAX_PORTAL_DEPTH * 2;
+        int colourPassesStart = PortalLayerColourRenderPass.MAX_PORTAL_DEPTH;
+        this.renderPasses = new SwapChainRenderPass[passLimit];
+
+        // Initial pass, clears all values
+        this.renderPasses[0] = new SwapChainRenderPass(swapChain, depthImageFormat);
+
+        // stenciling render passes.
+        for(int pass = 1; pass < colourPassesStart; pass++) {
+            this.renderPasses[pass] = new PortalLayerStencilRenderPass(swapChain, depthImageFormat);
+        }
+
+        // colour render passes
+        this.renderPasses[colourPassesStart] = new PortalLayerColourStartRenderPass(swapChain, depthImageFormat);
+        for(int pass = colourPassesStart + 1; pass < passLimit; pass++) {
+            this.renderPasses[pass] = new PortalLayerColourRenderPass(swapChain, depthImageFormat);
+        }
     }
 
     protected void createCommandBuffers(CommandPool commandPool, int numImages) {
@@ -170,8 +192,9 @@ public class ForwardRenderer extends RenderProcess {
                 pAttachments.put(0, imageViews[i].getHandle());
                 pAttachments.put(1, depthView.getHandle());
 
+                // pass random render pass. They're all compatible.
                 this.frameBuffers[i] = new FrameBuffer(this.device, swapChainExtent.width(), swapChainExtent.height(),
-                                        pAttachments, this.renderPass.getHandle());
+                                        pAttachments, this.renderPasses[0].getHandle());
             }
         }
     }
@@ -224,23 +247,67 @@ public class ForwardRenderer extends RenderProcess {
         Pipeline.Builder builder = Pipeline.builder(VertexFormats.POSITION_UV.getDefinition())
                 .setDescriptorLayouts(descriptorSetLayouts)
                 .setPushConstantLayout(  // @see ForwardRenderer#applyPushConstants(...) for how this is filled.
-                        //DataTypes.MAT4X4F, // proj
                         DataTypes.MAT4X4F // transform
                 )
                 .setCullMode(VK11.VK_CULL_MODE_FRONT_BIT); // uhhhh, right. Sure. This works but
 
-        this.standardPipeline = builder.build(this.pipelineCache, "standard", this.renderPass.getHandle(), this.shaderProgram, 1);
-        this.subpassStandardPipeline = new Pipeline[PortalLayeredRenderPass.MAX_PORTAL_DEPTH];
+        this.standardPipeline = new Pipeline[this.renderPasses.length];
+        this.wireframePipeline = new Pipeline[this.renderPasses.length];
+        this.stencilEnvironmentPipeline = new Pipeline[this.renderPasses.length];
+        this.stencilPortalPipeline = new Pipeline[this.renderPasses.length];
 
-        //TODO: REMOVE IF SUBPASSES DON'T WORK.
-        for(int i = 0; i < PortalLayeredRenderPass.MAX_PORTAL_DEPTH; i++) {
-            String name = "subpassStandard[%s]".formatted(i);
-            this.subpassStandardPipeline[i] = builder.build(this.pipelineCache, name, this.renderPass.getHandle(), i, this.shaderProgram, 1);
+        //builder.setUsingStencilTest(true);
+        for(int pass = 0; pass < this.renderPasses.length; pass++) {
+            int val = pass % PortalLayerColourRenderPass.MAX_PORTAL_DEPTH;
+            Logger.debug("Standard #{}: read {}", pass, val);
+
+            StencilConfig maskComp = new StencilConfig(val, CompareOperation.EQUAL)
+                    .setPassOp(StencilOperation.REPLACE)
+                    .setStencilFailOp(StencilOperation.KEEP)
+                    .setDepthFailOp(StencilOperation.KEEP)
+                    .setWriteMask(0x00);
+
+            this.standardPipeline[pass] = builder
+                    //.setStencilBack(maskComp)
+                    .build(this.pipelineCache, "standard", this.renderPasses[pass].getHandle(), this.standardShaderProgram, 1);
         }
 
-        this.wireframePipeline = builder
-                .setUsingWireframe(true)
-                .build(this.pipelineCache, "wireframe", this.renderPass.getHandle(), this.shaderProgram, 1);
+        builder.setUsingWireframe(true)
+                .setUsingStencilTest(false);
+        for(int pass = 0; pass < this.renderPasses.length; pass++)
+            this.wireframePipeline[pass] = builder
+                    .build(this.pipelineCache, "wireframe", this.renderPasses[pass].getHandle(), this.standardShaderProgram, 1);
+
+
+
+        builder.setUsingWireframe(false)
+                .setUsingStencilTest(true);
+        for(int pass = 0; pass < this.renderPasses.length; pass++) {
+            StencilConfig sSimpleWrite = new StencilConfig(pass, CompareOperation.ALWAYS)
+                    .setAllWriteOps(StencilOperation.REPLACE)
+                    .setDepthFailOp(StencilOperation.KEEP);
+
+            Logger.info("Stencil-env #{}: write {}", pass, pass);
+
+            this.stencilEnvironmentPipeline[pass] = builder
+                    .setStencilBack(sSimpleWrite)
+                    .build(this.pipelineCache, "stencil-environment", this.renderPasses[pass].getHandle(), this.stencilShaderProgram, 1);
+        }
+
+
+        builder.setUsingWireframe(false)
+                .setUsingStencilTest(true);
+        for(int pass = 0; pass < this.renderPasses.length; pass++) {
+            StencilConfig sSimpleWrite = new StencilConfig(pass+1, CompareOperation.ALWAYS)
+                    .setAllWriteOps(StencilOperation.REPLACE)
+                    .setDepthFailOp(StencilOperation.KEEP);
+
+            Logger.info("Stencil-portal #{}: write {}", pass, pass+1);
+
+            this.stencilPortalPipeline[pass] = builder
+                    .setStencilBack(sSimpleWrite)
+                    .build(this.pipelineCache, "stencil-portal", this.renderPasses[pass].getHandle(), this.stencilShaderProgram, 1);
+        }
 
         builder.cleanup();
         Logger.debug("Built pipelines!");
@@ -275,71 +342,104 @@ public class ForwardRenderer extends RenderProcess {
             //fence.reset();
             commandBuffer.reset();
 
-            VkClearValue.Buffer clearValues = generateClearValues(stack);
-
-            VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.calloc(stack)
-                    .sType(VK11.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO)
-                    .renderPass(this.renderPass.getHandle())
-                    .pClearValues(clearValues)
-                    .renderArea(a -> a.extent().set(width, height))
-                    .framebuffer(frameBuffer.getHandle());
-
             VkCommandBuffer cmd = commandBuffer.beginRecording();
+            VkClearValue.Buffer clearValues = generateClearValues(stack); // initial
 
-            //Pipeline selectedPipeline = renderer.useWireframe
-            //        ? this.wireframePipeline
-            //        : this.standardPipeline;
+            // todo: remove portal references
+            for(int pass = 0; pass < PortalLayerColourRenderPass.MAX_PORTAL_DEPTH; pass++) {
+                this.renderContext.setRenderGoal(RenderGoal.STENCIL_WRITING);
 
-            Pipeline selectedPipeline = this.subpassStandardPipeline[0];
+                VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.calloc(stack)
+                        .sType(VK11.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO)
+                        .renderPass(this.renderPasses[pass].getHandle())
+                        .pClearValues(clearValues)
+                        .renderArea(a -> a.extent().set(width, height))
+                        .framebuffer(frameBuffer.getHandle());
 
-            this.startRenderPass(cmd, renderPassBeginInfo, selectedPipeline, stack); // ------------------
+                Pipeline selectedPipeline = this.stencilEnvironmentPipeline[pass];
 
-            // Setup view
-            VkViewport.Buffer viewport = VkViewport.calloc(1, stack)
-                    .x(0)
-                    .y(height)
-                    .height(-height)         // flip viewport - opengl's coordinate system is nicer.
-                    .width(width)
-                    .minDepth(0.0f)
-                    .maxDepth(1.0f);
-            VK11.vkCmdSetViewport(cmd, 0, viewport);
+                // stencil pass.
+                this.doRenderPass(cmd, renderPassBeginInfo, selectedPipeline, stack, pass, context -> {
+                    this.setupView(cmd, stack, width, height);
+                    this.shaderIO.reset(stack, selectedPipeline, this.descriptorPool);
 
-            VkRect2D.Buffer scissor = VkRect2D.calloc(1, stack)
-                    .extent(it -> it
-                            .width(width)
-                            .height(height))
-                    .offset(it -> it
-                            .x(0)
-                            .y(0));
-            VK11.vkCmdSetScissor(cmd, 0, scissor);
+                    Matrix4f view = this.scene.getMainCamera().getViewMatrix();
+                    DataTypes.MAT4X4F.copyToBuffer(this.uViewMatrix[idx], view);
 
-            //TODO: Remove Portal References.
-            // count backwards as portals are rendered on top of eachother.
-            for(int i = 0; i < PortalLayeredRenderPass.MAX_PORTAL_DEPTH; i++) {
-                this.shaderIO.reset(stack, selectedPipeline, this.descriptorPool);
+                    this.shaderIO.setUniform(this.lProjectionMatrix, this.dProjectionMatrix);
+                    this.shaderIO.setUniform(this.lViewMatrix, this.dViewMatrix, idx);
 
-                Matrix4f view = this.scene.getMainCamera().getViewMatrix();
-                DataTypes.MAT4X4F.copyToBuffer(this.uViewMatrix[idx], view);
+                    for (SubRenderProcess process : this.subRenderProcesses)
+                        process.renderPreMesh(this.shaderIO, this.standardSamplers, idx, context.getPass());
 
-                this.shaderIO.setUniform(this.lProjectionMatrix, this.dProjectionMatrix);
-                this.shaderIO.setUniform(this.lViewMatrix, this.dViewMatrix, idx);
+                    this.drawAllSceneModels(cmd, renderer, selectedPipeline, idx);
 
-                for(SubRenderProcess process:  this.subRenderProcesses)
-                    process.renderPreMesh(this.shaderIO, this.standardSamplers, idx, i);
+                    // redraw portal models.
+                    //this.renderContext.setRenderGoal(RenderGoal.STENCIL_ADJUSTMENT);
+                    //this.stencilPortalPipeline[context.getPass()].bind(cmd);
+                    //this.drawAllSceneModels(cmd, renderer, selectedPipeline, idx);
 
-                this.drawAllSceneModels(cmd, renderer, selectedPipeline, idx);
-
-                this.shaderIO.free(); // free buffers from stack.
-
-                if(i != 0) {
-                    selectedPipeline = this.subpassStandardPipeline[i];
-                    this.nextSubPass(cmd, selectedPipeline, stack);
-                }
+                    this.shaderIO.free(); // free buffers from stack.
+                });
             }
 
-            VK11.vkCmdEndRenderPass(cmd); // ------------------------------------------------------
+            // standard pass.
+            this.renderContext.setRenderGoal(RenderGoal.STANDARD_DRAWING);
+            for(int pass = PortalLayerColourRenderPass.MAX_PORTAL_DEPTH; pass < this.renderPasses.length; pass++) {
+                int virtualPass = pass - PortalLayerColourRenderPass.MAX_PORTAL_DEPTH;
+
+                VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.calloc(stack)
+                        .sType(VK11.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO)
+                        .renderPass(this.renderPasses[pass].getHandle())
+                        .pClearValues(clearValues)
+                        .renderArea(a -> a.extent().set(width, height))
+                        .framebuffer(frameBuffer.getHandle());
+
+                Pipeline selectedPipeline = renderer.useWireframe
+                        ? this.wireframePipeline[pass]
+                        : this.standardPipeline[pass];
+
+                this.doRenderPass(cmd, renderPassBeginInfo, selectedPipeline, stack, pass, context -> {
+                    this.setupView(cmd, stack, width, height);
+                    this.shaderIO.reset(stack, selectedPipeline, this.descriptorPool);
+
+                    Matrix4f view = this.scene.getMainCamera().getViewMatrix();
+                    DataTypes.MAT4X4F.copyToBuffer(this.uViewMatrix[idx], view);
+
+                    this.shaderIO.setUniform(this.lProjectionMatrix, this.dProjectionMatrix);
+                    this.shaderIO.setUniform(this.lViewMatrix, this.dViewMatrix, idx);
+
+                    for (SubRenderProcess process : this.subRenderProcesses)
+                        process.renderPreMesh(this.shaderIO, this.standardSamplers, idx, virtualPass);
+
+                    this.drawAllSceneModels(cmd, renderer, selectedPipeline, idx);
+
+                    this.shaderIO.free(); // free buffers from stack.
+                });
+            }
+
             commandBuffer.endRecording();
         }
+    }
+
+    private void setupView(VkCommandBuffer cmd, MemoryStack stack, int width, int height) {
+        VkViewport.Buffer viewport = VkViewport.calloc(1, stack)
+                .x(0)
+                .y(height)
+                .height(-height)         // flip viewport - opengl's coordinate system is nicer.
+                .width(width)
+                .minDepth(0.0f)
+                .maxDepth(1.0f);
+        VK11.vkCmdSetViewport(cmd, 0, viewport);
+
+        VkRect2D.Buffer scissor = VkRect2D.calloc(1, stack)
+                .extent(it -> it
+                        .width(width)
+                        .height(height))
+                .offset(it -> it
+                        .x(0)
+                        .y(0));
+        VK11.vkCmdSetScissor(cmd, 0, scissor);
     }
 
     private static VkClearValue.Buffer generateClearValues(MemoryStack stack) {
@@ -490,16 +590,17 @@ public class ForwardRenderer extends RenderProcess {
 
         this.descriptorPool.cleanup(); // descriptor sets cleaned up here.
 
-        this.standardPipeline.cleanup();
-        this.wireframePipeline.cleanup();
-        Arrays.asList(this.subpassStandardPipeline).forEach(VkHandleWrapper::cleanup);
+        VulkanUtil.cleanupAll(this.standardPipeline);
+        VulkanUtil.cleanupAll(this.wireframePipeline);
+        VulkanUtil.cleanupAll(this.stencilEnvironmentPipeline);
+        VulkanUtil.cleanupAll(this.stencilPortalPipeline);
 
         this.standardShaderProgram.cleanup();
         this.stencilShaderProgram.cleanup();
 
         Arrays.asList(this.frameBuffers).forEach(FrameBuffer::cleanup);
         Arrays.asList(this.depthAttachments).forEach(Attachment::cleanup);
-        this.renderPass.cleanup();
+        VulkanUtil.cleanupAll(this.renderPasses);
 
         Arrays.asList(this.commandBuffers).forEach(CommandBuffer::cleanup);
         Arrays.asList(this.fences).forEach(Fence::cleanup);

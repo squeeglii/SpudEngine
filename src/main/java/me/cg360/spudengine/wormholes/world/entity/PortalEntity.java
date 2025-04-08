@@ -1,5 +1,7 @@
 package me.cg360.spudengine.wormholes.world.entity;
 
+import me.cg360.spudengine.core.render.context.RenderContext;
+import me.cg360.spudengine.core.render.context.RenderGoal;
 import me.cg360.spudengine.core.world.Scene;
 import me.cg360.spudengine.core.world.entity.SimpleEntity;
 import me.cg360.spudengine.wormholes.WormholeDemo;
@@ -91,10 +93,13 @@ public class PortalEntity extends SimpleEntity {
     }
 
     @Override
-    public boolean shouldDraw() {
-        // Entity has a model for debugging, but it blocks the portal effect.
+    public boolean shouldDraw(RenderContext renderContext) {
         // The portal effect passes this entity's properties to a shader, which
         // uses overlay textures for the effect, instead of the model.
-        return false;
+        // The model would usually get in the way if rendered in addition, but is
+        // useful when rendering to the stencil buffer to make a cutout.
+
+        //return false;
+        return renderContext.getRenderGoal() == RenderGoal.STENCIL_ADJUSTMENT;
     }
 }

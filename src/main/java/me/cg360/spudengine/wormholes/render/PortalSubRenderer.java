@@ -13,7 +13,7 @@ import me.cg360.spudengine.core.render.pipeline.shader.StandardSamplers;
 import me.cg360.spudengine.wormholes.GeneratedAssets;
 import me.cg360.spudengine.wormholes.WormholeDemo;
 import me.cg360.spudengine.wormholes.logic.PortalTracker;
-import me.cg360.spudengine.wormholes.render.pass.PortalLayeredRenderPass;
+import me.cg360.spudengine.wormholes.render.pass.PortalLayerColourRenderPass;
 import me.cg360.spudengine.wormholes.world.entity.PortalEntity;
 import org.joml.Matrix4f;
 import org.lwjgl.vulkan.VK11;
@@ -53,7 +53,7 @@ public class PortalSubRenderer implements SubRenderProcess {
         this.lOrangePortal = new UniformDescriptorSetLayout(builder.device(), 0, VK11.VK_SHADER_STAGE_GEOMETRY_BIT)
                 .enablePerFrameWrites(builder.swapChain());
         this.lPortalLayer = new UniformDescriptorSetLayout(builder.device(), 0, VK11.VK_SHADER_STAGE_GEOMETRY_BIT)
-                .setCount(PortalLayeredRenderPass.MAX_PORTAL_DEPTH); // fixed values that can be swapped out like textures.
+                .setCount(PortalLayerColourRenderPass.MAX_PORTAL_DEPTH); // fixed values that can be swapped out like textures.
 
         builder.addGeometryUniform(this.lBluePortal);
         builder.addGeometryUniform(this.lOrangePortal);
@@ -71,7 +71,7 @@ public class PortalSubRenderer implements SubRenderProcess {
         this.dPortalLayer = UniformDescriptorSet.create(pool, this.lPortalLayer, DataTypes.INT, 0);
         this.uPortalLayer = ShaderIO.collectUniformBuffers(this.dPortalLayer);
 
-        for(int i = 0; i < PortalLayeredRenderPass.MAX_PORTAL_DEPTH; i++) {
+        for(int i = 0; i < PortalLayerColourRenderPass.MAX_PORTAL_DEPTH; i++) {
             final int layerOrd = i;
             this.uPortalLayer[i].runMapped(buf -> buf.putInt(layerOrd));
         }
@@ -82,9 +82,8 @@ public class PortalSubRenderer implements SubRenderProcess {
         PortalTracker pTrack = this.game.getPortalTracker();
 
         // last subpass == closest room copy. invert using max depth.
-        int layer = (PortalLayeredRenderPass.MAX_PORTAL_DEPTH - 1) - subPass;
-
-        //Logger.trace("Layer: {}", layer);
+        //Logger.info("Rendering Portal PreMesh {}", subPass);
+        int layer = PortalLayerColourRenderPass.MAX_PORTAL_DEPTH - 1 - subPass;
 
         if (pTrack.hasPortalPair()) {
             PortalEntity bluePortal =  pTrack.getBluePortal();

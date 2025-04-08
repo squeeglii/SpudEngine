@@ -14,32 +14,17 @@ import java.nio.LongBuffer;
  */
 public class SwapChainRenderPass implements VkHandleWrapper {
 
-    private final SwapChain swapChain;
-    private final long renderPassHandle;
+    protected final SwapChain swapChain;
+    protected final long renderPassHandle;
 
     public SwapChainRenderPass(SwapChain swapChain, int depthImageFormat) {
         this.swapChain = swapChain;   //TODO: Does this need re-creating onResize?
 
         try(MemoryStack stack = MemoryStack.stackPush()) {
-
             // Attachment
             VkAttachmentDescription.Buffer attachments = VkAttachmentDescription.calloc(2, stack);
-            attachments.get(0) // Colour.
-                       .format(this.swapChain.getSurfaceFormat().format())
-                       .samples(VK11.VK_SAMPLE_COUNT_1_BIT)
-                       .loadOp(VK11.VK_ATTACHMENT_LOAD_OP_CLEAR)
-                       .storeOp(VK11.VK_ATTACHMENT_STORE_OP_STORE)
-                       .initialLayout(VK11.VK_IMAGE_LAYOUT_UNDEFINED)
-                       .finalLayout(KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-            attachments.get(1) // Depth
-                    .format(depthImageFormat)
-                    .samples(VK11.VK_SAMPLE_COUNT_1_BIT)
-                    .loadOp(VK11.VK_ATTACHMENT_LOAD_OP_CLEAR)
-                    .storeOp(VK11.VK_ATTACHMENT_STORE_OP_DONT_CARE)
-                    .stencilLoadOp(VK11.VK_ATTACHMENT_LOAD_OP_CLEAR)
-                    .stencilStoreOp(VK11.VK_ATTACHMENT_STORE_OP_STORE)
-                    .initialLayout(VK11.VK_IMAGE_LAYOUT_UNDEFINED)
-                    .finalLayout(VK11.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+            this.configureColourAttachment(attachments.get(0));
+            this.configureDepthAttachment(attachments.get(1), depthImageFormat); // Depth
 
             // Subpass Attachments.
             VkAttachmentReference.Buffer colourReference = VkAttachmentReference.calloc(1, stack)
@@ -62,6 +47,28 @@ public class SwapChainRenderPass implements VkHandleWrapper {
             VulkanUtil.checkErrorCode(errCreatePass, "Failed to create render pass");
             this.renderPassHandle = lp.get(0);
         }
+    }
+
+    protected void configureColourAttachment(VkAttachmentDescription colourAttachment) {
+        colourAttachment // Colour.
+        .format(this.swapChain.getSurfaceFormat().format())
+        .samples(VK11.VK_SAMPLE_COUNT_1_BIT)
+        .loadOp(VK11.VK_ATTACHMENT_LOAD_OP_CLEAR)
+        .storeOp(VK11.VK_ATTACHMENT_STORE_OP_STORE)
+        .initialLayout(VK11.VK_IMAGE_LAYOUT_UNDEFINED)
+        .finalLayout(KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    }
+
+    protected void configureDepthAttachment(VkAttachmentDescription depthAttachment, int depthImageFormat) {
+        depthAttachment // Colour.
+                .format(depthImageFormat)
+                .samples(VK11.VK_SAMPLE_COUNT_1_BIT)
+                .loadOp(VK11.VK_ATTACHMENT_LOAD_OP_CLEAR)
+                .storeOp(VK11.VK_ATTACHMENT_STORE_OP_DONT_CARE)
+                .stencilLoadOp(VK11.VK_ATTACHMENT_LOAD_OP_CLEAR)
+                .stencilStoreOp(VK11.VK_ATTACHMENT_STORE_OP_STORE)
+                .initialLayout(VK11.VK_IMAGE_LAYOUT_UNDEFINED)
+                .finalLayout(VK11.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
     }
 
     protected void configureSubpasses(VkRenderPassCreateInfo builder, MemoryStack stack, VkAttachmentReference.Buffer colourRef, VkAttachmentReference depthRef) {
