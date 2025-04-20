@@ -6,20 +6,44 @@ import org.joml.Matrix4f;
 public class Projection {
 
     private final Matrix4f projectionMatrix;
+    private int width;
+    private int height;
+    private float near;
+    private float far;
 
     public Projection() {
         this.projectionMatrix = new Matrix4f();
+        this.near = EngineProperties.NEAR_PLANE;
+        this.far = EngineProperties.FAR_PLANE;
     }
 
     public void resize(int width, int height) {
         this.projectionMatrix.identity();
 
+        this.width = width;
+        this.height = height;
+
         float aspectRatio = (float) width / (float) height;
-        this.projectionMatrix.perspective(EngineProperties.FOV, aspectRatio, EngineProperties.NEAR_PLANE, EngineProperties.FAR_PLANE, true);
+        this.projectionMatrix.perspective(EngineProperties.FOV, aspectRatio, this.near, this.far, true);
     }
 
     public Matrix4f asMatrix() {
         return this.projectionMatrix;
     }
 
+    public int getWidth() {
+        return this.width;
+    }
+
+    public int getHeight() {
+        return this.height;
+    }
+
+    public float getNearPlane() {
+        return this.near;
+    }
+
+    public float getFarPlane() {
+        return this.far;
+    }
 }

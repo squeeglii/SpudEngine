@@ -3,9 +3,9 @@ package me.cg360.spudengine.wormholes;
 import me.cg360.spudengine.core.GameComponent;
 import me.cg360.spudengine.core.SpudEngine;
 import me.cg360.spudengine.core.component.CursorCapture;
-import me.cg360.spudengine.core.component.FlyCameraController;
 import me.cg360.spudengine.core.render.Renderer;
 import me.cg360.spudengine.core.render.Window;
+import me.cg360.spudengine.core.util.Bounds2D;
 import me.cg360.spudengine.core.util.Vectors;
 import me.cg360.spudengine.core.world.Scene;
 import me.cg360.spudengine.core.world.entity.impl.EnvironmentGeometry;
@@ -17,6 +17,7 @@ import me.cg360.spudengine.wormholes.world.entity.PortalEntity;
 import me.cg360.spudengine.wormholes.world.entity.PortalType;
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
+import org.tinylog.Logger;
 
 public class WormholeDemo extends GameComponent {
 
@@ -69,6 +70,32 @@ public class WormholeDemo extends GameComponent {
         if(key == GLFW.GLFW_KEY_F1 && action == GLFW.GLFW_RELEASE)
             this.getEngine().getRenderer().useWireframe = !this.getEngine().getRenderer().useWireframe;
 
+        this.handlePortalDebugKeys(key, action);
+
+        if(key == GLFW.GLFW_KEY_1 && action == GLFW.GLFW_RELEASE) {
+            Logger.info("Calculating bounds...");
+
+            if(this.getPortalTracker().hasBluePortal()) {
+                Bounds2D bounds = this.getPortalTracker().getBluePortal().getScreenBounds(this.scene());
+                Logger.info("Blue Portal Bounds: {} \n| intersects: {}\n| contains: {}",
+                        bounds,
+                        Bounds2D.SCREEN_BOUNDS.intersects(bounds),
+                        Bounds2D.SCREEN_BOUNDS.contains(bounds)
+                );
+            }
+
+            if(this.getPortalTracker().hasOrangePortal()) {
+                Bounds2D bounds = this.getPortalTracker().getOrangePortal().getScreenBounds(this.scene());
+                Logger.info("Orange Portal Bounds: {} \n| intersects: {}\n| contains: {}",
+                        bounds,
+                        Bounds2D.SCREEN_BOUNDS.intersects(bounds),
+                        Bounds2D.SCREEN_BOUNDS.contains(bounds)
+                );
+            }
+        }
+    }
+
+    private void handlePortalDebugKeys(int key, int action) {
         if(key == GLFW.GLFW_KEY_9 && action == GLFW.GLFW_RELEASE) {
 
             if(this.getPortalTracker().hasBluePortal()) {

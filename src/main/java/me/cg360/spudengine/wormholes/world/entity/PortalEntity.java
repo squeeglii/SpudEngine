@@ -2,13 +2,18 @@ package me.cg360.spudengine.wormholes.world.entity;
 
 import me.cg360.spudengine.core.render.context.RenderContext;
 import me.cg360.spudengine.core.render.context.RenderGoal;
+import me.cg360.spudengine.core.render.geometry.model.Mesh;
+import me.cg360.spudengine.core.util.Bounds2D;
 import me.cg360.spudengine.core.world.Scene;
 import me.cg360.spudengine.core.world.entity.SimpleEntity;
+import me.cg360.spudengine.wormholes.GeneratedAssets;
 import me.cg360.spudengine.wormholes.WormholeDemo;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
+import java.util.LinkedList;
+import java.util.List;
 import java.util.UUID;
 
 public class PortalEntity extends SimpleEntity {
@@ -90,6 +95,19 @@ public class PortalEntity extends SimpleEntity {
 
     public Vector3f getUp() {
         return this.up;
+    }
+
+    public Bounds2D getScreenBounds(Scene scene) {
+        List<Vector3f> points = new LinkedList<>();
+
+        for(Mesh mesh: GeneratedAssets.BLUE_PORTAL_MODEL.getSubMeshes()) {
+            float[] pComps = mesh.positions();
+            for(int i = 0; i < pComps.length; i+=3) {
+                points.add(new Vector3f(pComps[i], pComps[i+1], pComps[i+2]));
+            }
+        }
+
+        return Bounds2D.fromProjectedPoints(scene.getMainCamera(), scene.getProjection(), this.getTransform(), points);
     }
 
     @Override
