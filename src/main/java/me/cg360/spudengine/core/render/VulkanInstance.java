@@ -204,22 +204,28 @@ public class VulkanInstance {
 
             // -- Select validation layer to use.
             List<String> layersToUse = new ArrayList<>();
+            List<String> requestedLayers = new ArrayList<>();
+
+            // Optional Debugging Layers
+            //requestedLayers.add("VK_LAYER_LUNARG_monitor");
+
 
             // Main validation layer
             if (supportedLayers.contains("VK_LAYER_KHRONOS_validation")) {
                 layersToUse.add("VK_LAYER_KHRONOS_validation");
+                requestedLayers.stream().filter(supportedLayers::contains).forEach(layersToUse::add);
                 return layersToUse;
             }
 
             // Fallback if main fails.
             if (supportedLayers.contains("VK_LAYER_LUNARG_standard_validation")) {
                 layersToUse.add("VK_LAYER_LUNARG_standard_validation");
+                requestedLayers.stream().filter(supportedLayers::contains).forEach(layersToUse::add);
                 return layersToUse;
             }
 
             // Fallback if fallback fails.
             // Try to include as many of these as possible, where supported.
-            List<String> requestedLayers = new ArrayList<>();
             requestedLayers.add("VK_LAYER_GOOGLE_threading");
             requestedLayers.add("VK_LAYER_LUNARG_parameter_validation");
             requestedLayers.add("VK_LAYER_LUNARG_object_tracker");
