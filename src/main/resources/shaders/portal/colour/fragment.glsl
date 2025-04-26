@@ -8,6 +8,7 @@
 layout(location = 0) in vec2 texCoords;
 layout(location = 1) in vec2 overlayTexCoords;
 layout(location = 2) in vec4 portalColour;
+layout(location = 3) in vec4 debugPos;
 
 layout(location = 0) out vec4 uFragColor;
 
@@ -32,6 +33,7 @@ void main() {
 
     // Traditional cutout
     if (col.a IS_CUTOUT_THRESHOLD) {
+        //gl_FragDepth = 0;
         discard;
     }
 

@@ -1,4 +1,4 @@
-package me.cg360.spudengine.core.render.impl;
+package me.cg360.spudengine.core.render.impl.forward;
 
 import me.cg360.spudengine.core.EngineProperties;
 import me.cg360.spudengine.core.render.Renderer;
@@ -19,6 +19,8 @@ import me.cg360.spudengine.core.render.image.FrameBuffer;
 import me.cg360.spudengine.core.render.image.ImageView;
 import me.cg360.spudengine.core.render.image.SwapChain;
 import me.cg360.spudengine.core.render.image.texture.Texture;
+import me.cg360.spudengine.core.render.impl.RenderProcess;
+import me.cg360.spudengine.core.render.impl.SubRenderProcess;
 import me.cg360.spudengine.core.render.pipeline.Pipeline;
 import me.cg360.spudengine.core.render.pipeline.PipelineCache;
 import me.cg360.spudengine.core.render.pipeline.descriptor.DescriptorPool;
@@ -31,7 +33,6 @@ import me.cg360.spudengine.core.render.pipeline.util.stencil.CompareOperation;
 import me.cg360.spudengine.core.render.pipeline.util.stencil.StencilConfig;
 import me.cg360.spudengine.core.render.pipeline.util.stencil.StencilOperation;
 import me.cg360.spudengine.core.render.sync.Fence;
-import me.cg360.spudengine.core.render.sync.SyncSemaphores;
 import me.cg360.spudengine.core.util.VulkanUtil;
 import me.cg360.spudengine.core.world.entity.RenderedEntity;
 import me.cg360.spudengine.core.world.Scene;
@@ -261,13 +262,10 @@ public class ForwardRenderer extends RenderProcess {
             int val = pass % PortalLayerColourRenderPass.MAX_PORTAL_DEPTH;
             Logger.debug("Standard #{}: read {}", pass, val);
 
-            StencilConfig maskComp = new StencilConfig(val, CompareOperation.EQUAL)
-                    .setPassOp(StencilOperation.REPLACE)
-                    .setStencilFailOp(StencilOperation.KEEP)
-                    .setDepthFailOp(StencilOperation.KEEP)
-                    .setWriteMask(0x00);
-
             this.standardPipeline[pass] = builder
+                    .setUsingStencilTest(false)
+                    .setUsingDepthTest(true)
+                    .setUsingDepthWrite(true)
                     //.setStencilBack(maskComp)
                     .build(this.pipelineCache, "standard", this.renderPasses[pass].getHandle(), this.standardShaderProgram, 1);
         }
@@ -504,12 +502,12 @@ public class ForwardRenderer extends RenderProcess {
             Fence currentFence = this.fences[idx];
             currentFence.reset();
 
-            SyncSemaphores syncSemaphores = this.swapChain.getSyncSemaphores()[idx];
+            ForwardSemaphores forwardSemaphores = this.swapChain.getSyncSemaphores()[idx];
 
             queue.submit(stack.pointers(commandBuffer.asVk()),
-                         stack.longs(syncSemaphores.imgAcquisitionSemaphore().getHandle()),
+                         stack.longs(forwardSemaphores.imgAcquisitionSemaphore().getHandle()),
                          stack.ints(VK11.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                         stack.longs(syncSemaphores.renderCompleteSemaphore().getHandle()),
+                         stack.longs(forwardSemaphores.renderCompleteSemaphore().getHandle()),
                          currentFence);
         }
     }

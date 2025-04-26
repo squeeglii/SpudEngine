@@ -16,6 +16,7 @@ void main() {
     vec4 col = texture(textureSampler, texCoords);
 
     if (col.a IS_CUTOUT_THRESHOLD) {
+        //gl_FragDepth = 0;
         discard;
     }
 

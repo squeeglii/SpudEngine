@@ -41,6 +41,7 @@ layout(set = 4, binding = 0) uniform PORTAL_LAYER {
 layout(location = 0) out vec2 texCoords;
 layout(location = 1) out vec2 overlayTexCoords;
 layout(location = 2) out vec4 portalBorderColour;
+layout(location = 3) out vec4 debugPos;
 
 // Creates a copy of the primitive and transforms (roomTransform) it.
 // This is used to stitch rooms together at portal boundaries provided using the stitchTransform provided by both portals.
@@ -58,6 +59,7 @@ void emitOffsetRoom(vec4[3] worldPos, vec2[3] overlayCoords, vec4 portalColour, 
         overlayTexCoords = overlayCoords[v];
         portalBorderColour = portalColour;
         gl_Position = mP * mV * roomTransform * worldPos[v];
+        debugPos = mP * mV * roomTransform * worldPos[v];
         EmitVertex();
     }
 
