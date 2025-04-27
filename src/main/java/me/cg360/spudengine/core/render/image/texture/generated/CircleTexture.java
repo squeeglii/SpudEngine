@@ -11,7 +11,7 @@ import java.nio.ByteBuffer;
 
 public class CircleTexture extends Texture {
 
-    public CircleTexture(LogicalDevice device, String resourceName, int width, int height, int mipLevels, int radius, int outerBorder, Color baseColour, Color borderColour, Color innerColour) {
+    public CircleTexture(LogicalDevice device, String resourceName, int width, int height, int mipLevels, int radius, int outerBorder, int squishFactor, Color baseColour, Color borderColour, Color innerColour) {
         super(resourceName, true);
 
         this.width = width;
@@ -26,7 +26,6 @@ public class CircleTexture extends Texture {
         ByteBuffer imageData = ByteBuffer.allocate(componentCount);
 
         int radiusSquared = radius * radius;
-        int borderRadiusSquared = (radius + outerBorder) * (radius + outerBorder);
 
         for(int x = 0; x < width; x++) {
             for(int y = 0; y < height; y++) {
@@ -34,6 +33,12 @@ public class CircleTexture extends Texture {
                 int centeredY = y - (height / 2);
 
                 Vector2f offset = new Vector2f(centeredX, centeredY);
+                Vector2f norm = offset.normalize(new Vector2f());
+
+                float fracHeight = Math.abs(centeredY) / (float) height;
+                double squishFrac = 1 + (squishFactor - 1f) * Math.sin(Math.PI * fracHeight);
+
+                int borderRadiusSquared = (int) ((radius + (outerBorder * squishFrac)) * (radius + (outerBorder * squishFrac)));
 
                 Color colour;
                 float lengthSq = offset.lengthSquared();

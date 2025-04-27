@@ -98,11 +98,11 @@ public class GeneratedAssets {
         Color blueCol = new Color(50, 100, 255, 255);
         Color orangeCol = new Color(255, 100, 0, 255);
 
-        Texture blue = textureManager.newCircleTexture(BLUE_PORTAL_MATERIAL.texture(), 512, 512, 1, 220, 25, noOverlay, blueCol, blueCol);
-        Texture orange = textureManager.newCircleTexture(ORANGE_PORTAL_MATERIAL.texture(), 512, 512, 1, 220, 25, noOverlay, orangeCol, orangeCol);
+        Texture blue = textureManager.newCircleTexture(BLUE_PORTAL_MATERIAL.texture(), 512, 512, 1, 220, 15, 2, noOverlay, blueCol, blueCol);
+        Texture orange = textureManager.newCircleTexture(ORANGE_PORTAL_MATERIAL.texture(), 512, 512, 1, 220, 15, 2, noOverlay, orangeCol, orangeCol);
 
-        Texture cutout = textureManager.newCircleTexture(PORTAL_CUTOUT.texture(), 512, 512, 1, 220, 25,  noOverlay, portalBorder, portalCutout);
-        Texture incomplete = textureManager.newCircleTexture(PORTAL_INCOMPLETE.texture(), 512, 512, 1, 220, 25,  noOverlay, portalBorder, portalInner);
+        Texture cutout = textureManager.newCircleTexture(PORTAL_CUTOUT.texture(), 512, 512, 1, 220, 15,  2, noOverlay, portalBorder, portalCutout);
+        Texture incomplete = textureManager.newCircleTexture(PORTAL_INCOMPLETE.texture(), 512, 512, 1, 220, 15,  2, noOverlay, portalBorder, portalInner);
 
         // reuploads textures to overlay samplers.
         textureManager.markAsOverlays(cutout, incomplete);
