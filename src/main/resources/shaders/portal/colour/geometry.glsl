@@ -87,7 +87,7 @@ void main() {
     // Then this is just a basic shader. Just emit one room provided that
     // we're in the right renderpass for it (as passed by portalLayer.num) - this fixes no portals being weirdly laggy.
     if(missingBlue && missingOrange) {
-        if(portalLayer.num == 0) {
+        if(portalLayer.num <= 0) {   // -1 for ignore all checks, 0 for ONLY this layer.
             emitOffsetRoom(worldPositions, generatedOverlayCoords, vec4(1, 1, 1, 1), mat4(1));// room without portal transform.
         }
         return;
@@ -150,9 +150,11 @@ void main() {
     //todo: send culling through arrays to shader?
     //      ...or even send the full octree?
 
-    if(portalLayer.num == 0) {
+    if(portalLayer.num <= 0) { // -1 for ignore all checks, 0 for ONLY the origin layer.
         emitOffsetRoom(worldPositions, generatedOverlayCoords, portalColour, mat4(1));// room without portal transform.
-        return;
+
+        if(portalLayer.num == 0)
+            return;
     }
 
     // don't use portal transforms if there isn't even a link.
@@ -167,7 +169,8 @@ void main() {
         blue *= bluePortal.stitchTransform;
         orange *= orangePortal.stitchTransform;
 
-        if(i != portalLayer.num)
+        // -1 for ignore all checks, 0 for ONLY this layer.
+        if((portalLayer.num >= 0) && (i != portalLayer.num))
             continue;
 
         emitOffsetRoom(worldPositions, generatedOverlayCoords, portalColour, blue);

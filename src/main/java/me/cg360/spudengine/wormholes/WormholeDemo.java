@@ -1,10 +1,12 @@
 package me.cg360.spudengine.wormholes;
 
+import me.cg360.spudengine.core.EngineSetupContext;
 import me.cg360.spudengine.core.GameComponent;
 import me.cg360.spudengine.core.SpudEngine;
 import me.cg360.spudengine.core.component.CursorCapture;
 import me.cg360.spudengine.core.render.Renderer;
 import me.cg360.spudengine.core.render.Window;
+import me.cg360.spudengine.core.render.impl.RenderProcessInitialiser;
 import me.cg360.spudengine.core.util.Bounds2D;
 import me.cg360.spudengine.core.util.Vectors;
 import me.cg360.spudengine.core.world.Scene;
@@ -41,11 +43,15 @@ public class WormholeDemo extends GameComponent {
         this.addRenderProcess(new PortalSubRenderer(this));
     }
 
+    @Override
+    protected void onPreInit(EngineSetupContext engineSetupContext) {
+        instance = this;
+
+        engineSetupContext.overrideRenderProcess(GameProperties.RENDER_PROCESS.initialiser());
+    }
 
     @Override
     protected void onInit(Window window, Scene scene, Renderer renderer) {
-        instance = this;
-
         this.levelGeometry = new EnvironmentGeometry("env/chamber01");
         this.scene().addEntity(this.levelGeometry);
 

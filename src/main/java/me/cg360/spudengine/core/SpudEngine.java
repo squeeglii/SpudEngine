@@ -33,8 +33,13 @@ public class SpudEngine {
     // Engine Controls:
     public void start() {
         this.gameInstance = EngineProperties.GAME.create(this);
+
+        EngineSetupContext engineSetup = new EngineSetupContext(this.window, this.scene);
+        this.gameInstance.passPreInit(engineSetup);
+
         this.renderer = new Renderer(
                 this.window, this.scene,
+                engineSetup.getRenderProcessInitialiser(),
                 this.gameInstance.getRendererAddons().toArray(SubRenderProcess[]::new)
         );
 

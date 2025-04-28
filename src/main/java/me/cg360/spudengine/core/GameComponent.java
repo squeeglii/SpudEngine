@@ -43,6 +43,13 @@ public abstract class GameComponent {
         return subRenderProcess;
     }
 
+    protected final void passPreInit(EngineSetupContext engineSetupContext) {
+        for(GameComponent subListener : this.subListeners)
+            subListener.passPreInit(engineSetupContext);
+
+        this.onPreInit(engineSetupContext);
+    }
+
     protected final void passInit(Window window, Scene scene, Renderer renderer) {
         for(GameComponent subListener : this.subListeners)
             subListener.passInit(window, scene, renderer);
@@ -71,6 +78,8 @@ public abstract class GameComponent {
         this.onInputEvent(window, key, action, modifiers);
     }
 
+
+    protected void onPreInit(EngineSetupContext engineSetupContext) { }
 
     protected void onInit(Window window, Scene scene, Renderer renderer) { }
 

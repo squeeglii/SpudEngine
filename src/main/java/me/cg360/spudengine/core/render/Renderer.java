@@ -12,9 +12,11 @@ import me.cg360.spudengine.core.render.image.Attachment;
 import me.cg360.spudengine.core.render.image.SwapChain;
 import me.cg360.spudengine.core.render.image.texture.Texture;
 import me.cg360.spudengine.core.render.image.texture.TextureManager;
+import me.cg360.spudengine.core.render.impl.RenderProcessInitialiser;
 import me.cg360.spudengine.core.render.impl.forward.ForwardRenderer;
 import me.cg360.spudengine.core.render.impl.RenderProcess;
 import me.cg360.spudengine.core.render.impl.SubRenderProcess;
+import me.cg360.spudengine.core.render.impl.naiveforward.NaiveForwardRenderer;
 import me.cg360.spudengine.core.render.pipeline.PipelineCache;
 import me.cg360.spudengine.core.world.Scene;
 import org.joml.Vector3f;
@@ -43,7 +45,7 @@ public class Renderer {
 
     public boolean useWireframe;
 
-    public Renderer(Window window, Scene scene, SubRenderProcess[] subRenderProcesses) {
+    public Renderer(Window window, Scene scene, RenderProcessInitialiser processInit, SubRenderProcess[] subRenderProcesses) {
         this.vulkanInstance = new VulkanInstance(EngineProperties.USE_DEBUGGING);
 
         PhysicalDevice physicalDevice = PhysicalDevice.createPhysicalDevice(this.vulkanInstance, EngineProperties.PREFERRED_DEVICE_NAME);
@@ -60,7 +62,7 @@ public class Renderer {
         this.pipelineCache = new PipelineCache(this.graphicsDevice);
 
         Logger.debug("Creating Render Process...");
-        this.renderProcess = new ForwardRenderer(this.swapChain, this.commandPool, this.pipelineCache, scene, subRenderProcesses);
+        this.renderProcess = processInit.create(this.swapChain, this.commandPool, this.pipelineCache, scene, subRenderProcesses);
 
         this.textureManager = new TextureManager(this.graphicsDevice);
         this.modelManager = new ModelManager(this, this.graphicsDevice, this.textureManager);

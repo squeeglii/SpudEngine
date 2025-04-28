@@ -10,6 +10,7 @@ import me.cg360.spudengine.core.render.pipeline.descriptor.layout.UniformDescrip
 import me.cg360.spudengine.core.render.pipeline.shader.DescriptorSetLayoutBundle;
 import me.cg360.spudengine.core.render.pipeline.shader.ShaderIO;
 import me.cg360.spudengine.core.render.pipeline.shader.StandardSamplers;
+import me.cg360.spudengine.wormholes.GameProperties;
 import me.cg360.spudengine.wormholes.GeneratedAssets;
 import me.cg360.spudengine.wormholes.WormholeDemo;
 import me.cg360.spudengine.wormholes.logic.PortalTracker;
@@ -53,7 +54,7 @@ public class PortalSubRenderer implements SubRenderProcess {
         this.lOrangePortal = new UniformDescriptorSetLayout(builder.device(), 0, VK11.VK_SHADER_STAGE_GEOMETRY_BIT)
                 .enablePerFrameWrites(builder.swapChain());
         this.lPortalLayer = new UniformDescriptorSetLayout(builder.device(), 0, VK11.VK_SHADER_STAGE_GEOMETRY_BIT)
-                .setCount(PortalLayerColourRenderPass.MAX_PORTAL_DEPTH); // fixed values that can be swapped out like textures.
+                .setCount(PortalLayerColourRenderPass.MAX_PORTAL_DEPTH + 1); // fixed values that can be swapped out like textures.
 
         builder.addGeometryUniform(this.lBluePortal);
         builder.addGeometryUniform(this.lOrangePortal);
@@ -71,9 +72,13 @@ public class PortalSubRenderer implements SubRenderProcess {
         this.dPortalLayer = UniformDescriptorSet.create(pool, this.lPortalLayer, DataTypes.INT, 0);
         this.uPortalLayer = ShaderIO.collectUniformBuffers(this.dPortalLayer);
 
-        for(int i = 0; i < PortalLayerColourRenderPass.MAX_PORTAL_DEPTH; i++) {
-            final int layerOrd = i;
+        // create values -1  -->  max-depth - 1
+        // -1 disables layer checking (naive renderer)
+        // any other value locks on to a specific layer.
+        for(int i = 0; i <= PortalLayerColourRenderPass.MAX_PORTAL_DEPTH; i++) {
+            final int layerOrd = i - 1;
             this.uPortalLayer[i].runMapped(buf -> buf.putInt(layerOrd));
+            Logger.info("Layer: {}", layerOrd);
         }
     }
 
@@ -128,7 +133,18 @@ public class PortalSubRenderer implements SubRenderProcess {
 
         shaderIO.setUniform(this.lBluePortal, this.dBluePortal, frameIndex);
         shaderIO.setUniform(this.lOrangePortal, this.dOrangePortal, frameIndex);
-        shaderIO.setUniform(this.lPortalLayer, this.dPortalLayer[layer]);
+
+        switch (GameProperties.RENDER_PROCESS) {
+            case NAIVE_FORWARD -> {
+                // sends a -1.
+                shaderIO.setUniform(this.lPortalLayer, this.dPortalLayer[0]);
+            }
+            case MULTI_PASS_FORWARD, LAYERED_COMPOSE -> {
+                // sends a 0 --> max-depth - 1
+                shaderIO.setUniform(this.lPortalLayer, this.dPortalLayer[layer + 1]);
+            }
+        }
+
     }
 
     @Override
