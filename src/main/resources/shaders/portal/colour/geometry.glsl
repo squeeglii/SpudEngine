@@ -3,7 +3,7 @@
 // fragment shader uses threshold of -512 - overshoot it for sanity?
 #define OVERLAY_UNDEFINED vec2(-1024, -1024)
 
-#define MAX_RECURSION_DEPTH 5
+#define MAX_RECURSION_DEPTH 6
 #define PORTAL_CHECK_RANGE 3
 
 #define BLUE_PORTAL vec4(0.02, 0.25, 1, 1)

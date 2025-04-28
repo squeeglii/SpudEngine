@@ -1,5 +1,6 @@
-package me.cg360.spudengine.core.render.impl;
+package me.cg360.spudengine.core.render.impl.layered;
 
+import me.cg360.spudengine.core.exception.UnimplementedException;
 import me.cg360.spudengine.core.render.Renderer;
 import me.cg360.spudengine.core.render.command.CommandPool;
 import me.cg360.spudengine.core.render.command.CommandQueue;
@@ -8,21 +9,23 @@ import me.cg360.spudengine.core.render.geometry.model.BufferedModel;
 import me.cg360.spudengine.core.render.image.Attachment;
 import me.cg360.spudengine.core.render.image.SwapChain;
 import me.cg360.spudengine.core.render.image.texture.Texture;
+import me.cg360.spudengine.core.render.impl.RenderProcess;
+import me.cg360.spudengine.core.render.impl.SubRenderProcess;
 import me.cg360.spudengine.core.render.pipeline.PipelineCache;
 import me.cg360.spudengine.core.world.Scene;
 
 import java.util.List;
 
 /** Render each layer to  */
-public class PicassoRenderer extends RenderProcess {
+public class LayeredRenderer extends RenderProcess {
 
-    public PicassoRenderer(SwapChain swapChain, CommandPool commandPool, PipelineCache pipelineCache, Scene scene, SubRenderProcess[] subRenderProcesses) {
+    public LayeredRenderer(SwapChain swapChain, CommandPool commandPool, PipelineCache pipelineCache, Scene scene, SubRenderProcess[] subRenderProcesses) {
         super(subRenderProcesses);
     }
 
     @Override
     public void recordDraw(Renderer renderer) {
-
+        throw new UnimplementedException("Layered Renderer is not implemented yet.");
     }
 
     @Override

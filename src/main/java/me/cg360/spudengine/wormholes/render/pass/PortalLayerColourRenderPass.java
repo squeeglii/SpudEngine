@@ -6,7 +6,9 @@ import org.lwjgl.vulkan.*;
 
 public class PortalLayerColourRenderPass extends SwapChainRenderPass {
 
-    public static final int MAX_PORTAL_DEPTH = 5;
+    // Must be +1 what's in the shader for multi-pass support.
+    // -- easier than updating all the maths.
+    public static final int MAX_PORTAL_DEPTH = 7;
 
     public PortalLayerColourRenderPass(SwapChain swapChain, int depthImageFormat) {
         super(swapChain, depthImageFormat);

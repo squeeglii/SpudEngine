@@ -1,4 +1,4 @@
-package me.cg360.spudengine.core.render.impl.forward;
+package me.cg360.spudengine.core.render.impl.forward.multipass;
 
 import me.cg360.spudengine.core.EngineProperties;
 import me.cg360.spudengine.core.render.Renderer;
@@ -8,25 +8,16 @@ import me.cg360.spudengine.core.render.data.DataTypes;
 import me.cg360.spudengine.core.render.data.buffer.GeneralBuffer;
 import me.cg360.spudengine.core.render.command.CommandBuffer;
 import me.cg360.spudengine.core.render.command.CommandPool;
-import me.cg360.spudengine.core.render.command.CommandQueue;
 import me.cg360.spudengine.core.render.geometry.VertexFormats;
-import me.cg360.spudengine.core.render.geometry.model.BufferedMesh;
-import me.cg360.spudengine.core.render.geometry.model.BufferedModel;
-import me.cg360.spudengine.core.render.geometry.model.BundledMaterial;
-import me.cg360.spudengine.core.render.hardware.LogicalDevice;
 import me.cg360.spudengine.core.render.image.Attachment;
 import me.cg360.spudengine.core.render.image.FrameBuffer;
 import me.cg360.spudengine.core.render.image.ImageView;
 import me.cg360.spudengine.core.render.image.SwapChain;
-import me.cg360.spudengine.core.render.image.texture.Texture;
-import me.cg360.spudengine.core.render.impl.RenderProcess;
 import me.cg360.spudengine.core.render.impl.SubRenderProcess;
+import me.cg360.spudengine.core.render.impl.forward.CommonForwardRenderer;
 import me.cg360.spudengine.core.render.pipeline.Pipeline;
 import me.cg360.spudengine.core.render.pipeline.PipelineCache;
-import me.cg360.spudengine.core.render.pipeline.descriptor.DescriptorPool;
-import me.cg360.spudengine.core.render.pipeline.descriptor.active.UniformDescriptorSet;
 import me.cg360.spudengine.core.render.pipeline.descriptor.layout.DescriptorSetLayout;
-import me.cg360.spudengine.core.render.pipeline.descriptor.layout.UniformDescriptorSetLayout;
 import me.cg360.spudengine.core.render.pipeline.pass.SwapChainRenderPass;
 import me.cg360.spudengine.core.render.pipeline.shader.*;
 import me.cg360.spudengine.core.render.pipeline.util.stencil.CompareOperation;
@@ -34,110 +25,57 @@ import me.cg360.spudengine.core.render.pipeline.util.stencil.StencilConfig;
 import me.cg360.spudengine.core.render.pipeline.util.stencil.StencilOperation;
 import me.cg360.spudengine.core.render.sync.Fence;
 import me.cg360.spudengine.core.util.VulkanUtil;
-import me.cg360.spudengine.core.world.entity.RenderedEntity;
 import me.cg360.spudengine.core.world.Scene;
-import me.cg360.spudengine.core.world.entity.StaticModelEntity;
 import me.cg360.spudengine.wormholes.render.pass.PortalLayerColourRenderPass;
 import me.cg360.spudengine.wormholes.render.pass.PortalLayerColourStartRenderPass;
 import me.cg360.spudengine.wormholes.render.pass.PortalLayerStencilRenderPass;
-import org.jetbrains.annotations.NotNull;
 import org.joml.Matrix4f;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.*;
 import org.tinylog.Logger;
 
-import java.awt.*;
 import java.nio.LongBuffer;
 import java.util.*;
-import java.util.List;
 import java.util.function.Consumer;
 
-public class ForwardRenderer extends RenderProcess {
+public class ForwardRenderer extends CommonForwardRenderer {
 
-    private static final int DEPTH_ATTACHMENT_FORMAT = VK11.VK_FORMAT_D32_SFLOAT_S8_UINT;
-
-    private final LogicalDevice device;
-
-    private CommandBuffer[] commandBuffers;
-    private Fence[] fences;
     private SwapChainRenderPass[] renderPasses;
 
-    private SwapChain swapChain;
-    private FrameBuffer[] frameBuffers;
-
-    private PipelineCache pipelineCache;
     private Pipeline[] standardPipeline;
     private Pipeline[] wireframePipeline;
     private Pipeline[] stencilEnvironmentPipeline;
     private Pipeline[] stencilPortalPipeline;
 
-    private ShaderProgram standardShaderProgram;
     private ShaderProgram stencilShaderProgram;
 
-    private final Scene scene;
-
-    private Attachment[] depthAttachments;
-
-    private DescriptorPool descriptorPool;
-
-    private DescriptorSetLayout lProjectionMatrix;
-    private UniformDescriptorSet dProjectionMatrix;
-    private GeneralBuffer uProjectionMatrix;
-
-    private DescriptorSetLayout lViewMatrix;
-    private UniformDescriptorSet[] dViewMatrix;
-    private GeneralBuffer[] uViewMatrix;
-
-    private StandardSamplers standardSamplers;
-
     private final InternalRenderContext renderContext;
-    private final ShaderIO shaderIO; // #reset(...) whenever new draw call
 
 
     public ForwardRenderer(SwapChain swapChain, CommandPool commandPool, PipelineCache pipelineCache, Scene scene, SubRenderProcess[] subRenderProcesses) {
-        super(subRenderProcesses);
+        super(swapChain, commandPool, pipelineCache, scene, subRenderProcesses);
 
-        this.swapChain = swapChain;
-        this.pipelineCache = pipelineCache;
-        this.device = swapChain.getDevice();
+        this.renderContext = new InternalRenderContext();
+    }
 
-        this.scene = scene;
-
-        int numImages = swapChain.getImageViews().length;
-        this.createDepthImages();
-        this.createRenderPasses(swapChain, this.depthAttachments[0].getImage().getFormat());
-        this.createFrameBuffers();
-
-        Logger.info("Loading Shader Program...");
-        this.standardShaderProgram = this.buildStandardShaderProgram();
+    @Override
+    protected ShaderProgram buildShaderProgram() {
         //TODO: PORTAL REFERENCE REMOVAL.
+        Logger.info("Loading Stencil Shader Program...");
         this.stencilShaderProgram = ShaderProgram.attemptCompile(this.device,
                 new BinaryShaderFile(ShaderType.VERTEX, "shaders/vertex"),
                 new BinaryShaderFile(ShaderType.GEOMETRY, "shaders/portal/colour/geometry"),
                 new BinaryShaderFile(ShaderType.FRAGMENT, "shaders/portal/stencil_cutout/fragment")
         );
-        Logger.info("Successfully loaded shader program!");
+        Logger.info("Successfully loaded stencil shader program!");
 
-        this.shaderIO = new ShaderIO();
-        this.renderContext = new InternalRenderContext();
-
-        DescriptorSetLayout[] descriptorSetLayouts = this.initDescriptorSets();
-
-        this.buildPipelines(descriptorSetLayouts);
-        this.createCommandBuffers(commandPool, numImages);
-
-        // Initialize uniforms which don't change frame-to-frame.
-        this.setConstantUniforms();
-    }
-
-    @NotNull
-    private ShaderProgram buildStandardShaderProgram() {
         return ShaderProgram.attemptCompile(
                 this.device,
                 EngineProperties.shaders
         );
     }
 
+    @Override
     protected void createRenderPasses(SwapChain swapChain, int depthImageFormat) {
         //TODO: Remove portal references
         int passLimit = PortalLayerColourRenderPass.MAX_PORTAL_DEPTH * 2;
@@ -159,26 +97,7 @@ public class ForwardRenderer extends RenderProcess {
         }
     }
 
-    protected void createCommandBuffers(CommandPool commandPool, int numImages) {
-        this.commandBuffers = new CommandBuffer[numImages];
-        this.fences = new Fence[numImages];
-        for (int i = 0; i < numImages; i++) {
-            this.commandBuffers[i] = new CommandBuffer(commandPool, true, false);
-            this.fences[i] = new Fence(device, true);
-        }
-    }
-
-    protected void createDepthImages() {
-        int numImages = this.swapChain.getImageViews().length;
-        VkExtent2D swapChainExtent = this.swapChain.getSwapChainExtent();
-
-        this.depthAttachments = new Attachment[numImages];
-        for (int i = 0; i < numImages; i++) {
-            this.depthAttachments[i] = new Attachment(this.device, swapChainExtent.width(), swapChainExtent.height(),
-                    DEPTH_ATTACHMENT_FORMAT, VK11.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
-        }
-    }
-
+    @Override
     protected void createFrameBuffers() {
         try (MemoryStack stack = MemoryStack.stackPush()) {
             VkExtent2D swapChainExtent = this.swapChain.getSwapChainExtent();
@@ -200,48 +119,7 @@ public class ForwardRenderer extends RenderProcess {
         }
     }
 
-    protected final DescriptorSetLayout[] initDescriptorSets() {
-        Logger.info("Initializing Descriptor Sets...");
-
-        DescriptorSetLayoutBundle bundle = new DescriptorSetLayoutBundle(this.device, this.swapChain);
-        DescriptorSetLayout[] layout = this.buildUniformLayout(bundle).merge();
-        Logger.info("Collected {} uniform(s) from {}", layout.length, bundle);
-
-        this.descriptorPool = new DescriptorPool(this.device, layout);
-        this.buildDescriptorSets();
-
-        Logger.info("Initialized Descriptor Sets!");
-        return layout;
-    }
-
-    protected DescriptorSetLayoutBundle buildUniformLayout(DescriptorSetLayoutBundle bundle) {
-        this.lProjectionMatrix = new UniformDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_VERTEX_BIT);
-        this.lViewMatrix = new UniformDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_VERTEX_BIT)
-                .enablePerFrameWrites(this.swapChain);
-
-        bundle.addVertexUniforms(this.lProjectionMatrix, this.lViewMatrix);
-
-        this.standardSamplers = new StandardSamplers(this.shaderIO, bundle);
-
-        for(SubRenderProcess process: this.subRenderProcesses)
-            process.buildUniformLayout(bundle);
-
-        return bundle;
-    }
-
-    protected void buildDescriptorSets() {
-        this.dProjectionMatrix = UniformDescriptorSet.create(this.descriptorPool, this.lProjectionMatrix, DataTypes.MAT4X4F, 0)[0];
-        this.uProjectionMatrix = this.dProjectionMatrix.getBuffer();
-
-        this.dViewMatrix = UniformDescriptorSet.create(this.descriptorPool, this.lViewMatrix, DataTypes.MAT4X4F, 0);
-        this.uViewMatrix = ShaderIO.collectUniformBuffers(this.dViewMatrix);
-
-        this.standardSamplers.buildSets(this.descriptorPool);
-
-        for(SubRenderProcess process: this.subRenderProcesses)
-            process.createDescriptorSets(this.descriptorPool);
-    }
-
+    @Override
     protected void buildPipelines(DescriptorSetLayout[] descriptorSetLayouts) {
         Logger.debug("Building Pipelines...");
 
@@ -267,14 +145,14 @@ public class ForwardRenderer extends RenderProcess {
                     .setUsingDepthTest(true)
                     .setUsingDepthWrite(true)
                     //.setStencilBack(maskComp)
-                    .build(this.pipelineCache, "standard", this.renderPasses[pass].getHandle(), this.standardShaderProgram, 1);
+                    .build(this.pipelineCache, "standard", this.renderPasses[pass].getHandle(), this.shaderProgram, 1);
         }
 
         builder.setUsingWireframe(true)
                 .setUsingStencilTest(false);
         for(int pass = 0; pass < this.renderPasses.length; pass++)
             this.wireframePipeline[pass] = builder
-                    .build(this.pipelineCache, "wireframe", this.renderPasses[pass].getHandle(), this.standardShaderProgram, 1);
+                    .build(this.pipelineCache, "wireframe", this.renderPasses[pass].getHandle(), this.shaderProgram, 1);
 
 
 
@@ -311,15 +189,13 @@ public class ForwardRenderer extends RenderProcess {
         Logger.debug("Built pipelines!");
     }
 
-    protected void setConstantUniforms() {
-        DataTypes.MAT4X4F.copyToBuffer(this.uProjectionMatrix, this.scene.getProjection().asMatrix());
-    }
-
-    @Override
-    public void waitTillFree() {
-        int idx = this.swapChain.getCurrentFrame();
-        Fence currentFence = this.fences[idx];
-        currentFence.fenceWait();
+    protected void doRenderPass(VkCommandBuffer cmd, VkRenderPassBeginInfo renderPassBeginInfo, Pipeline pipeline, MemoryStack stack, int pass, Consumer<RenderContext> passActions) {
+        VK11.vkCmdBeginRenderPass(cmd, renderPassBeginInfo, VK11.VK_SUBPASS_CONTENTS_INLINE);
+        this.shaderIO.reset(stack, pipeline.bind(cmd), this.descriptorPool);
+        this.renderContext.setPass(pass);
+        this.renderContext.setCurrentPipeline(pipeline);
+        passActions.accept(this.renderContext);
+        VK11.vkCmdEndRenderPass(cmd);
     }
 
     @Override
@@ -341,7 +217,7 @@ public class ForwardRenderer extends RenderProcess {
             commandBuffer.reset();
 
             VkCommandBuffer cmd = commandBuffer.beginRecording();
-            VkClearValue.Buffer clearValues = generateClearValues(stack); // initial
+            VkClearValue.Buffer clearValues = CommonForwardRenderer.generateClearValues(stack); // initial
 
             // todo: remove portal references
             for(int pass = 0; pass < PortalLayerColourRenderPass.MAX_PORTAL_DEPTH; pass++) {
@@ -420,163 +296,6 @@ public class ForwardRenderer extends RenderProcess {
         }
     }
 
-    private void setupView(VkCommandBuffer cmd, MemoryStack stack, int width, int height) {
-        VkViewport.Buffer viewport = VkViewport.calloc(1, stack)
-                .x(0)
-                .y(height)
-                .height(-height)         // flip viewport - opengl's coordinate system is nicer.
-                .width(width)
-                .minDepth(0.0f)
-                .maxDepth(1.0f);
-        VK11.vkCmdSetViewport(cmd, 0, viewport);
-
-        VkRect2D.Buffer scissor = VkRect2D.calloc(1, stack)
-                .extent(it -> it
-                        .width(width)
-                        .height(height))
-                .offset(it -> it
-                        .x(0)
-                        .y(0));
-        VK11.vkCmdSetScissor(cmd, 0, scissor);
-    }
-
-    private static VkClearValue.Buffer generateClearValues(MemoryStack stack) {
-        VkClearValue.Buffer clearValues = VkClearValue.calloc(2, stack);
-        Color c = EngineProperties.CLEAR_COLOUR;
-        float[] components = new float[4];
-        c.getComponents(components);
-        clearValues.apply(0, v -> v.color()
-                .float32(0, components[0])
-                .float32(1, components[1])
-                .float32(2, components[2])
-                .float32(3, components[3])
-        );
-        clearValues.apply(1, v -> v.depthStencil()
-                .depth(1.0f)
-                .stencil(0)
-        );
-        return clearValues;
-    }
-
-    protected void drawAllSceneModels(VkCommandBuffer cmd, Renderer renderer, Pipeline selectedPipeline, int frameIndex) {
-        for (String modelId: this.scene.getUsedModelIds()) {
-            this.drawModel(cmd, renderer, selectedPipeline, modelId, frameIndex);
-        }
-    }
-
-    protected void drawModel(VkCommandBuffer cmd, Renderer renderer, Pipeline selectedPipeline, String modelId, int frameIndex) {
-        BufferedModel model = renderer.getModelManager().getModel(modelId);
-        List<StaticModelEntity> entities = this.scene.getEntitiesWithModel(modelId);
-
-        for(SubRenderProcess process: this.subRenderProcesses)
-            process.renderModel(this.shaderIO, this.standardSamplers, model, frameIndex);
-
-        for(BundledMaterial material: model.getMaterials()) {
-            if (material.meshes().isEmpty())
-                continue;
-
-            this.standardSamplers.setMaterial(material);
-
-            for(BufferedMesh mesh: material.meshes()) {
-                this.shaderIO.bindMesh(cmd, mesh);
-
-                for(RenderedEntity entity: entities) {
-                    if(!entity.shouldDraw(this.renderContext)) continue;
-
-                    long layoutHandle = selectedPipeline.getPipelineLayoutHandle();
-                    this.shaderIO.bindDescriptorSets(cmd, layoutHandle);
-                    this.shaderIO.applyVertexPushConstants(cmd, layoutHandle, entity.getTransform());
-
-                    VK11.vkCmdDrawIndexed(cmd, mesh.numIndices(), 1, 0, 0, 0);
-                }
-            }
-        }
-    }
-
-    @Override
-    public void submit(CommandQueue queue) {
-        try (MemoryStack stack = MemoryStack.stackPush()) {
-            int idx = this.swapChain.getCurrentFrame();
-
-            CommandBuffer commandBuffer = this.commandBuffers[idx];
-            Fence currentFence = this.fences[idx];
-            currentFence.reset();
-
-            ForwardSemaphores forwardSemaphores = this.swapChain.getSyncSemaphores()[idx];
-
-            queue.submit(stack.pointers(commandBuffer.asVk()),
-                         stack.longs(forwardSemaphores.imgAcquisitionSemaphore().getHandle()),
-                         stack.ints(VK11.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                         stack.longs(forwardSemaphores.renderCompleteSemaphore().getHandle()),
-                         currentFence);
-        }
-    }
-
-    protected void startRenderPass(VkCommandBuffer cmd, VkRenderPassBeginInfo renderPassBeginInfo, Pipeline pipeline, MemoryStack stack) {
-        VK11.vkCmdBeginRenderPass(cmd, renderPassBeginInfo, VK11.VK_SUBPASS_CONTENTS_INLINE);
-        this.shaderIO.reset(stack, pipeline.bind(cmd), this.descriptorPool);
-    }
-
-    protected void doRenderPass(VkCommandBuffer cmd, VkRenderPassBeginInfo renderPassBeginInfo, Pipeline pipeline, MemoryStack stack, int pass, Consumer<RenderContext> passActions) {
-        VK11.vkCmdBeginRenderPass(cmd, renderPassBeginInfo, VK11.VK_SUBPASS_CONTENTS_INLINE);
-        this.shaderIO.reset(stack, pipeline.bind(cmd), this.descriptorPool);
-        this.renderContext.setPass(pass);
-        this.renderContext.setCurrentPipeline(pipeline);
-        passActions.accept(this.renderContext);
-        VK11.vkCmdEndRenderPass(cmd);
-    }
-
-    protected void nextSubPass(VkCommandBuffer cmd, Pipeline pipeline, MemoryStack stack) {
-        VK11.vkCmdNextSubpass(cmd, VK11.VK_SUBPASS_CONTENTS_INLINE);
-        this.shaderIO.reset(stack, pipeline.bind(cmd), this.descriptorPool);
-    }
-
-    @Override
-    public void processModelBatch(List<BufferedModel> models) {
-        this.device.waitIdle();
-        Logger.debug("Processing {} models", models.size());
-
-        for (BufferedModel vulkanModel : models) {
-            for (BundledMaterial vulkanMaterial : vulkanModel.getMaterials()) {
-                if (vulkanMaterial.meshes().isEmpty())
-                    continue;
-
-                this.standardSamplers.registerTexture(vulkanMaterial.texture());
-            }
-        }
-    }
-
-    @Override
-    public void processOverlays(CommandPool uploadPool, CommandQueue queue, List<Texture> overlayTextures) {
-        this.device.waitIdle();
-        Logger.debug("Processing {} overlay textures", overlayTextures.size());
-
-        CommandBuffer cmd = new CommandBuffer(uploadPool, true, true);
-
-        cmd.record(() -> {
-            for(Texture texture: overlayTextures) {
-                texture.upload(cmd);
-            }
-        }).submitAndWait(queue);
-
-        // all textures transformed, use!
-        for(Texture texture : overlayTextures) {
-            this.standardSamplers.registerOverlay(texture);
-        }
-    }
-
-
-    @Override
-    public void onResize(SwapChain newSwapChain) {
-        DataTypes.MAT4X4F.copyToBuffer(this.uProjectionMatrix, this.scene.getProjection().asMatrix());
-
-        this.swapChain = newSwapChain;
-        Arrays.asList(this.frameBuffers).forEach(FrameBuffer::cleanup);
-        Arrays.asList(this.depthAttachments).forEach(Attachment::cleanup);
-        this.createDepthImages();
-        this.createFrameBuffers();
-    }
-
     @Override
     public void cleanup() {
         for(SubRenderProcess process: this.subRenderProcesses)
@@ -593,7 +312,7 @@ public class ForwardRenderer extends RenderProcess {
         VulkanUtil.cleanupAll(this.stencilEnvironmentPipeline);
         VulkanUtil.cleanupAll(this.stencilPortalPipeline);
 
-        this.standardShaderProgram.cleanup();
+        this.shaderProgram.cleanup();
         this.stencilShaderProgram.cleanup();
 
         Arrays.asList(this.frameBuffers).forEach(FrameBuffer::cleanup);
@@ -602,16 +321,6 @@ public class ForwardRenderer extends RenderProcess {
 
         Arrays.asList(this.commandBuffers).forEach(CommandBuffer::cleanup);
         Arrays.asList(this.fences).forEach(Fence::cleanup);
-    }
-
-    @Override
-    public Attachment getDepthAttachment(int index) {
-        return this.depthAttachments[index];
-    }
-
-    @Override
-    public int getDepthFormat() {
-        return DEPTH_ATTACHMENT_FORMAT;
     }
 
     @Override

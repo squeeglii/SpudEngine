@@ -2,7 +2,7 @@ package me.cg360.spudengine.core;
 
 import me.cg360.spudengine.core.render.Window;
 import me.cg360.spudengine.core.render.impl.RenderProcessInitialiser;
-import me.cg360.spudengine.core.render.impl.forward.ForwardRenderer;
+import me.cg360.spudengine.core.render.impl.forward.multipass.ForwardRenderer;
 import me.cg360.spudengine.core.world.Scene;
 
 public class EngineSetupContext {

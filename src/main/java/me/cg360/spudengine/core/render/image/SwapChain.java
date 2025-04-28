@@ -110,7 +110,7 @@ public class SwapChain implements VkHandleWrapper {
         int imageIndex;
         try (MemoryStack stack = MemoryStack.stackPush()) {
             IntBuffer ip = stack.mallocInt(1);
-            long acquisitionHandle = this.forwardSemaphores[this.currentFrame].imgAcquisitionSemaphore().getHandle();
+            long acquisitionHandle = this.forwardSemaphores[this.currentFrame].imageAcquisitionSemaphore().getHandle();
             int err = KHRSwapchain.vkAcquireNextImageKHR(this.logicalDevice.asVk(), this.swapchainHandle, ~0L,
                                                          acquisitionHandle, MemoryUtil.NULL, ip);
 
