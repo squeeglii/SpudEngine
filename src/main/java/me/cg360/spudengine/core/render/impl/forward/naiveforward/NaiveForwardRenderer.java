@@ -27,6 +27,7 @@ import org.tinylog.Logger;
 
 import java.nio.LongBuffer;
 import java.util.*;
+import java.util.function.Consumer;
 
 public class NaiveForwardRenderer extends CommonForwardRenderer {
 
@@ -50,7 +51,6 @@ public class NaiveForwardRenderer extends CommonForwardRenderer {
         Pipeline.Builder builder = Pipeline.builder(VertexFormats.POSITION_UV.getDefinition())
                 .setDescriptorLayouts(descriptorSetLayouts)
                 .setPushConstantLayout(  // @see ForwardRenderer#applyPushConstants(...) for how this is filled.
-                        //DataTypes.MAT4X4F, // proj
                         DataTypes.MAT4X4F // transform
                 )
                 .setCullMode(VK11.VK_CULL_MODE_FRONT_BIT); // uhhhh, right. Sure. This works but
@@ -90,6 +90,15 @@ public class NaiveForwardRenderer extends CommonForwardRenderer {
         }
     }
 
+    protected void doRenderPass(VkCommandBuffer cmd, VkRenderPassBeginInfo renderPassBeginInfo, Pipeline pipeline, MemoryStack stack, Consumer<RenderContext> passActions) {
+        VK11.vkCmdBeginRenderPass(cmd, renderPassBeginInfo, VK11.VK_SUBPASS_CONTENTS_INLINE);
+        this.shaderIO.reset(stack, pipeline.bind(cmd), this.descriptorPool);
+        this.renderContext.setPass(0);
+        this.renderContext.setCurrentPipeline(pipeline);
+        passActions.accept(this.renderContext);
+        VK11.vkCmdEndRenderPass(cmd);
+    }
+
     @Override
     public void recordDraw(Renderer renderer) {
         try (MemoryStack stack = MemoryStack.stackPush()) {
@@ -116,50 +125,31 @@ public class NaiveForwardRenderer extends CommonForwardRenderer {
                     .framebuffer(frameBuffer.getHandle());
 
             VkCommandBuffer cmd = commandBuffer.beginRecording();
-            VK11.vkCmdBeginRenderPass(cmd, renderPassBeginInfo, VK11.VK_SUBPASS_CONTENTS_INLINE); // ----
             Pipeline selectedPipeline = renderer.useWireframe
-                    ? this.wireframePipeline.bind(cmd)
-                    : this.standardPipeline.bind(cmd);
+                    ? this.wireframePipeline
+                    : this.standardPipeline;
 
-            this.renderContext.setRenderGoal(RenderGoal.STANDARD_DRAWING);
-            this.renderContext.setPass(0);
-            this.renderContext.setCurrentPipeline(selectedPipeline);
+            this.doRenderPass(cmd, renderPassBeginInfo, selectedPipeline, stack, context -> {
+                // Setup view
+                this.setupView(cmd, stack, width, height);
 
-            // Setup view
-            VkViewport.Buffer viewport = VkViewport.calloc(1, stack)
-                    .x(0)
-                    .y(height)
-                    .height(-height)         // flip viewport - opengl's coordinate system is nicer.
-                    .width(width)
-                    .minDepth(0.0f)
-                    .maxDepth(1.0f);
-            VK11.vkCmdSetViewport(cmd, 0, viewport);
+                // Populate Uniforms
+                this.shaderIO.reset(stack, selectedPipeline, this.descriptorPool);
 
-            VkRect2D.Buffer scissor = VkRect2D.calloc(1, stack)
-                    .extent(it -> it
-                            .width(width)
-                            .height(height))
-                    .offset(it -> it
-                            .x(0)
-                            .y(0));
-            VK11.vkCmdSetScissor(cmd, 0, scissor);
+                Matrix4f view = this.scene.getMainCamera().getViewMatrix();
+                DataTypes.MAT4X4F.copyToBuffer(this.uViewMatrix[idx], view);
 
-            // Populate Uniforms
-            this.shaderIO.reset(stack, selectedPipeline, this.descriptorPool);
+                this.shaderIO.setUniform(this.lProjectionMatrix, this.dProjectionMatrix);
+                this.shaderIO.setUniform(this.lViewMatrix, this.dViewMatrix, idx);
 
-            Matrix4f view = this.scene.getMainCamera().getViewMatrix();
-            DataTypes.MAT4X4F.copyToBuffer(this.uViewMatrix[idx], view);
+                for(SubRenderProcess process:  this.subRenderProcesses)
+                    process.renderPreMesh(this.shaderIO, this.standardSamplers, idx, 0);
 
-            this.shaderIO.setUniform(this.lProjectionMatrix, this.dProjectionMatrix);
-            this.shaderIO.setUniform(this.lViewMatrix, this.dViewMatrix, idx);
+                this.drawAllSceneModels(cmd, renderer, selectedPipeline, idx);
 
-            for(SubRenderProcess process:  this.subRenderProcesses)
-                process.renderPreMesh(this.shaderIO, this.standardSamplers, idx, 0);
+                this.shaderIO.free(); // free buffers from stack.
+            });
 
-            this.drawAllSceneModels(cmd, renderer, selectedPipeline, idx);
-
-            this.shaderIO.free(); // free buffers from stack.
-            VK11.vkCmdEndRenderPass(cmd); // ------------------------------------------------------
             commandBuffer.endRecording();
         }
     }
