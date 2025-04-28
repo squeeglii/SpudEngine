@@ -79,6 +79,7 @@ void main() {
     );
 
     vec2[3] generatedOverlayCoords = vec2[3]( OVERLAY_UNDEFINED, OVERLAY_UNDEFINED, OVERLAY_UNDEFINED );
+    vec2[3] blankOverlayCoords = vec2[3]( OVERLAY_UNDEFINED, OVERLAY_UNDEFINED, OVERLAY_UNDEFINED );
     vec4 portalColour;
 
     bool missingBlue = bluePortal.stitchTransform == mat4(0);
@@ -88,7 +89,7 @@ void main() {
     // we're in the right renderpass for it (as passed by portalLayer.num) - this fixes no portals being weirdly laggy.
     if(missingBlue && missingOrange) {
         if(portalLayer.num <= 0) {   // -1 for ignore all checks, 0 for ONLY this layer.
-            emitOffsetRoom(worldPositions, generatedOverlayCoords, vec4(1, 1, 1, 1), mat4(1));// room without portal transform.
+            emitOffsetRoom(worldPositions, blankOverlayCoords, vec4(1, 1, 1, 1), mat4(1));// room without portal transform.
         }
         return;
     }
@@ -173,7 +174,13 @@ void main() {
         if((portalLayer.num >= 0) && (i != portalLayer.num))
             continue;
 
-        emitOffsetRoom(worldPositions, generatedOverlayCoords, portalColour, blue);
-        emitOffsetRoom(worldPositions, generatedOverlayCoords, portalColour, orange);
+        // Final portal should not generate portal overlay.
+        vec2[3] overlay = i == MAX_RECURSION_DEPTH
+                            ? blankOverlayCoords
+                            : generatedOverlayCoords;
+
+
+        emitOffsetRoom(worldPositions, overlay, portalColour, blue);
+        emitOffsetRoom(worldPositions, overlay, portalColour, orange);
     }
 }

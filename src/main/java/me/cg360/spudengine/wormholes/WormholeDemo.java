@@ -78,7 +78,7 @@ public class WormholeDemo extends GameComponent {
 
         this.handlePortalDebugKeys(key, action);
 
-        if(key == GLFW.GLFW_KEY_1 && action == GLFW.GLFW_RELEASE) {
+        if(key == GLFW.GLFW_KEY_F2 && action == GLFW.GLFW_RELEASE) {
             Logger.info("Calculating bounds...");
 
             if(this.getPortalTracker().hasBluePortal()) {
@@ -102,7 +102,7 @@ public class WormholeDemo extends GameComponent {
     }
 
     private void handlePortalDebugKeys(int key, int action) {
-        if(key == GLFW.GLFW_KEY_9 && action == GLFW.GLFW_RELEASE) {
+        if(key == GLFW.GLFW_KEY_0 && action == GLFW.GLFW_RELEASE) {
 
             if(this.getPortalTracker().hasBluePortal()) {
                 this.getPortalTracker().removeBluePortal();
@@ -117,7 +117,7 @@ public class WormholeDemo extends GameComponent {
             }
         }
 
-        if(key == GLFW.GLFW_KEY_0 && action == GLFW.GLFW_RELEASE) {
+        if(key == GLFW.GLFW_KEY_1 && action == GLFW.GLFW_RELEASE) {
             if(this.getPortalTracker().hasOrangePortal()) {
                 this.getPortalTracker().removeOrangePortal();
 
@@ -125,6 +125,21 @@ public class WormholeDemo extends GameComponent {
                 PortalEntity orangePortal = new PortalEntity(
                         PortalType.ORANGE,
                         new Vector3f(0, 2.0f, -3.99f),
+                        Vectors.toRadians(0, 180, 0)
+                );
+
+                this.scene().addEntity(orangePortal);
+            }
+        }
+
+        if(key == GLFW.GLFW_KEY_2 && action == GLFW.GLFW_RELEASE) {
+            if(this.getPortalTracker().hasOrangePortal()) {
+                this.getPortalTracker().removeOrangePortal();
+
+            } else {
+                PortalEntity orangePortal = new PortalEntity(
+                        PortalType.ORANGE,
+                        new Vector3f(-6f, 0f, -2.99f),
                         Vectors.toRadians(0, 180, 0)
                 );
 
