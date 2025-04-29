@@ -26,7 +26,8 @@ public class AssetInitialisationStage extends GameComponent {
 
     public List<Model> loadEnvironmentModels() {
         return List.of(
-                ModelLoader.loadEnvironmentModel("env/chamber01")
+                ModelLoader.loadEnvironmentModel("env/chamber01"),
+                ModelLoader.loadEnvironmentModel("env/chamber_01_texupdate")
         );
     }
 

@@ -52,7 +52,9 @@ public class WormholeDemo extends GameComponent {
 
     @Override
     protected void onInit(Window window, Scene scene, Renderer renderer) {
-        this.levelGeometry = new EnvironmentGeometry("env/chamber01");
+        // remember, new world geometry goes in AssetInitialisationStage
+
+        this.levelGeometry = new EnvironmentGeometry("env/chamber_01_texupdate");
         this.scene().addEntity(this.levelGeometry);
 
         this.playerEntity = new LocalPlayerEntity(GeneratedAssets.PLAYER_MODEL);
