@@ -18,6 +18,7 @@ import me.cg360.spudengine.core.render.pipeline.Pipeline;
 import me.cg360.spudengine.core.render.pipeline.PipelineCache;
 import me.cg360.spudengine.core.render.pipeline.descriptor.layout.DescriptorSetLayout;
 import me.cg360.spudengine.core.render.pipeline.pass.SwapChainRenderPass;
+import me.cg360.spudengine.core.render.pipeline.util.ShaderStage;
 import me.cg360.spudengine.core.render.sync.Fence;
 import me.cg360.spudengine.core.util.VulkanUtil;
 import me.cg360.spudengine.core.world.Scene;
@@ -89,6 +90,7 @@ public class MultiPassForwardRenderer extends CommonForwardRenderer {
 
         Pipeline.Builder builder = Pipeline.builder(VertexFormats.POSITION_UV.getDefinition())
                 .setDescriptorLayouts(descriptorSetLayouts)
+                .setPushConstantStage(ShaderStage.GEOMETRY)
                 .setPushConstantLayout(  // @see ForwardRenderer#applyPushConstants(...) for how this is filled.
                         DataTypes.MAT4X4F // transform
                 )

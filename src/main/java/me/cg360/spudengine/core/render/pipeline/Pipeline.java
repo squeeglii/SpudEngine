@@ -7,6 +7,7 @@ import me.cg360.spudengine.core.render.pipeline.descriptor.layout.DescriptorSetL
 import me.cg360.spudengine.core.render.pipeline.shader.Shader;
 import me.cg360.spudengine.core.render.pipeline.shader.ShaderProgram;
 import me.cg360.spudengine.core.render.pipeline.util.BlendFunc;
+import me.cg360.spudengine.core.render.pipeline.util.ShaderStage;
 import me.cg360.spudengine.core.render.pipeline.util.stencil.StencilConfig;
 import me.cg360.spudengine.core.util.VkHandleWrapper;
 import me.cg360.spudengine.core.util.VulkanUtil;
@@ -27,7 +28,7 @@ public class Pipeline implements VkHandleWrapper {
     private final long pipelineLayout;
     private final long pipeline;
 
-    private final int pushConstantStage;
+    private final ShaderStage pushConstantStage;
     private final int pushConstantSize;
 
     private final String nickname;
@@ -127,17 +128,15 @@ public class Pipeline implements VkHandleWrapper {
                 this.pushConstantSize = builder.getPushConstantSize();
 
                 pushConstantRange = VkPushConstantRange.calloc(1, stack)
-                        .stageFlags(VK11.VK_SHADER_STAGE_VERTEX_BIT)
+                        .stageFlags(this.pushConstantStage.bitMask())
                         .offset(0)
                         .size(this.pushConstantSize);
 
-                if((this.pushConstantStage & VK11.VK_SHADER_STAGE_VERTEX_BIT) > 0)
-                    Logger.trace("Push Constants set to Vertex Mode! ({} - size: {})", this.pushConstantStage, this.pushConstantSize);
-                else Logger.trace("Push Constants set to ?????? Mode! ({} - size: {})", this.pushConstantStage, this.pushConstantSize);
+                Logger.trace("Push Constants set to {} Mode! (size: {})", this.pushConstantStage, this.pushConstantSize);
 
             } else {
-                Logger.trace("Push Constants disabled for Pipeline Layout!");
-                this.pushConstantStage = 0;
+                Logger.trace("Push Constants disabled for Pipeline Layout (size = 0)!");
+                this.pushConstantStage = ShaderStage.NONE;
                 this.pushConstantSize = 0;
             }
 
@@ -212,16 +211,12 @@ public class Pipeline implements VkHandleWrapper {
         return this.pipelineLayout;
     }
 
-    public int getPushConstantStage() {
-        return this.pushConstantStage;
-    }
-
     public int getPushConstantSize() {
         return this.pushConstantSize;
     }
 
-    public boolean isUsingPerVertexPushConstants() {
-        return (this.pushConstantStage & VK11.VK_SHADER_STAGE_VERTEX_BIT) > 0;
+    public ShaderStage getPushConstantStage() {
+        return this.pushConstantStage;
     }
 
     public String getNickname() {
@@ -247,7 +242,7 @@ public class Pipeline implements VkHandleWrapper {
         private int cullMode = VK11.VK_CULL_MODE_NONE;
         private boolean useWireframe = false;
 
-        private int pushConstantStage = VK11.VK_SHADER_STAGE_VERTEX_BIT;
+        private ShaderStage pushConstantStage = ShaderStage.VERTEX;
         private TypeHelper[] pushConstantLayout = null;
 
         private DescriptorSetLayout[] descriptorLayouts;
@@ -378,7 +373,7 @@ public class Pipeline implements VkHandleWrapper {
             return this;
         }
 
-        public Builder setPushConstantStage(int pushConstantStage) {
+        public Builder setPushConstantStage(ShaderStage pushConstantStage) {
             this.pushConstantStage = pushConstantStage;
             return this;
         }
@@ -420,7 +415,7 @@ public class Pipeline implements VkHandleWrapper {
             return this.cullMode;
         }
 
-        public int getPushConstantStage() {
+        public ShaderStage getPushConstantStage() {
             return this.pushConstantStage;
         }
 

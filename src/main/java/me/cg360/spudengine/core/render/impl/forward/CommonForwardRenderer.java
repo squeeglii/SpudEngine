@@ -149,7 +149,7 @@ public abstract class CommonForwardRenderer extends RenderProcess {
         this.lViewMatrix = new UniformDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_VERTEX_BIT)
                 .enablePerFrameWrites(this.swapChain);
 
-        bundle.addVertexUniforms(this.lProjectionMatrix, this.lViewMatrix);
+        bundle.addGeometryUniforms(this.lProjectionMatrix, this.lViewMatrix);
 
         this.standardSamplers = new StandardSamplers(this.shaderIO, bundle);
 
@@ -307,7 +307,7 @@ public abstract class CommonForwardRenderer extends RenderProcess {
 
                     long layoutHandle = selectedPipeline.getPipelineLayoutHandle();
                     this.shaderIO.bindDescriptorSets(cmd, layoutHandle);
-                    this.shaderIO.applyVertexPushConstants(cmd, layoutHandle, entity.getTransform());
+                    this.shaderIO.applyGeometryPushConstants(cmd, layoutHandle, entity.getTransform());
 
                     VK11.vkCmdDrawIndexed(cmd, mesh.numIndices(), 1, 0, 0, 0);
                 }

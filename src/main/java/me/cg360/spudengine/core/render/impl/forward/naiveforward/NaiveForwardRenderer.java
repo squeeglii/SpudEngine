@@ -18,6 +18,7 @@ import me.cg360.spudengine.core.render.pipeline.Pipeline;
 import me.cg360.spudengine.core.render.pipeline.PipelineCache;
 import me.cg360.spudengine.core.render.pipeline.descriptor.layout.DescriptorSetLayout;
 import me.cg360.spudengine.core.render.pipeline.pass.SwapChainRenderPass;
+import me.cg360.spudengine.core.render.pipeline.util.ShaderStage;
 import me.cg360.spudengine.core.render.sync.Fence;
 import me.cg360.spudengine.core.world.Scene;
 import org.joml.Matrix4f;
@@ -50,7 +51,8 @@ public class NaiveForwardRenderer extends CommonForwardRenderer {
 
         Pipeline.Builder builder = Pipeline.builder(VertexFormats.POSITION_UV.getDefinition())
                 .setDescriptorLayouts(descriptorSetLayouts)
-                .setPushConstantLayout(  // @see ForwardRenderer#applyPushConstants(...) for how this is filled.
+                .setPushConstantStage(ShaderStage.GEOMETRY)
+                .setPushConstantLayout(  // @see ShaderIO#applyVertex/GeometryPushConstants(...) for how this is filled.
                         DataTypes.MAT4X4F // transform
                 )
                 .setCullMode(VK11.VK_CULL_MODE_FRONT_BIT); // uhhhh, right. Sure. This works but

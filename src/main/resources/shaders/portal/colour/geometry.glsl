@@ -15,10 +15,19 @@ layout (triangle_strip, max_vertices = 3+(3*2*MAX_RECURSION_DEPTH)) out; // 3x t
 layout(location = 0) in VS_OUT {
     vec3 pos;
     vec2 texCoords;
-    mat4 projectionMatrix;
-    mat4 viewMatrix;
-    mat4 modelTransform;
 } gs_in[];
+
+layout(push_constant) uniform PushConstants {
+    mat4 modelTransform;
+} pushConstants;
+
+layout(set = 0, binding = 0) uniform Projection {
+    mat4 mat;
+} projection;
+
+layout(set = 1, binding = 0) uniform Camera {
+    mat4 mat;
+} view;
 
 layout(set = 2, binding = 0) uniform BLUE_PORTAL_DATA {
     vec3 worldPos;
@@ -50,8 +59,8 @@ layout(location = 3) out vec4 debugPos;
 // vec4    portalColour   -  colour used to tint the portal edge. This is just passed through.
 // mat4    roomTransform  -  transform applied on top of worldPos transform. Places the primitive in position for a room further down the portal scope.
 void emitOffsetRoom(vec4[3] worldPos, vec2[3] overlayCoords, vec4 portalColour, mat4 roomTransform) {
-    mat4 mP = gs_in[0].projectionMatrix;
-    mat4 mV = gs_in[0].viewMatrix;
+    mat4 mP = projection.mat;
+    mat4 mV = view.mat;
 
     // copy the points!
     for(int v = 0; v < 3; v++) {
@@ -73,9 +82,9 @@ void emitOffsetRoom(vec4[3] worldPos, vec2[3] overlayCoords, vec4 portalColour, 
 //
 void main() {
     vec4[3] worldPositions = vec4[3](
-            gs_in[0].modelTransform * vec4(gs_in[0].pos, 1),
-            gs_in[1].modelTransform * vec4(gs_in[1].pos, 1),
-            gs_in[2].modelTransform * vec4(gs_in[2].pos, 1)
+            pushConstants.modelTransform * vec4(gs_in[0].pos, 1),
+            pushConstants.modelTransform * vec4(gs_in[1].pos, 1),
+            pushConstants.modelTransform * vec4(gs_in[2].pos, 1)
     );
 
     vec2[3] generatedOverlayCoords = vec2[3]( OVERLAY_UNDEFINED, OVERLAY_UNDEFINED, OVERLAY_UNDEFINED );

@@ -57,6 +57,12 @@ public class ShaderIO {
         VK11.vkCmdPushConstants(cmd, currentPipelineLayout, VK11.VK_SHADER_STAGE_VERTEX_BIT, 0, this.pushConstantsBuffer);
     }
 
+    public void applyGeometryPushConstants(VkCommandBuffer cmd, long currentPipelineLayout, Matrix4f transform) {
+        //proj.get(buf);
+        transform.get(this.pushConstantsBuffer); // copy transform to pushConstantsBuffer
+        VK11.vkCmdPushConstants(cmd, currentPipelineLayout, VK11.VK_SHADER_STAGE_GEOMETRY_BIT, 0, this.pushConstantsBuffer);
+    }
+
     public void reset(MemoryStack stack, Pipeline pipeline, DescriptorPool pool) {
         this.descriptorSets = stack.mallocLong(pool.getSetPositionCount());
         this.vertexBuffer = stack.mallocLong(1);
