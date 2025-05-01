@@ -4,9 +4,8 @@ import me.cg360.spudengine.core.EngineSetupContext;
 import me.cg360.spudengine.core.GameComponent;
 import me.cg360.spudengine.core.SpudEngine;
 import me.cg360.spudengine.core.component.CursorCapture;
-import me.cg360.spudengine.core.render.Renderer;
+import me.cg360.spudengine.core.render.RenderSystem;
 import me.cg360.spudengine.core.render.Window;
-import me.cg360.spudengine.core.render.impl.RenderProcessInitialiser;
 import me.cg360.spudengine.core.util.Bounds2D;
 import me.cg360.spudengine.core.util.Vectors;
 import me.cg360.spudengine.core.world.Scene;
@@ -51,7 +50,7 @@ public class WormholeDemo extends GameComponent {
     }
 
     @Override
-    protected void onInit(Window window, Scene scene, Renderer renderer) {
+    protected void onInit(Window window, Scene scene, RenderSystem renderSystem) {
         // remember, new world geometry goes in AssetInitialisationStage
 
         this.levelGeometry = new EnvironmentGeometry("env/chamber_01_texupdate");

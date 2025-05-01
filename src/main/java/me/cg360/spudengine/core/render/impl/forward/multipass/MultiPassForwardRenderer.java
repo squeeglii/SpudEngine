@@ -1,6 +1,6 @@
 package me.cg360.spudengine.core.render.impl.forward.multipass;
 
-import me.cg360.spudengine.core.render.Renderer;
+import me.cg360.spudengine.core.render.RenderSystem;
 import me.cg360.spudengine.core.render.context.RenderContext;
 import me.cg360.spudengine.core.render.context.RenderGoal;
 import me.cg360.spudengine.core.render.data.DataTypes;
@@ -127,7 +127,7 @@ public class MultiPassForwardRenderer extends AbstractForwardRenderer {
     }
 
     @Override
-    public void recordDraw(Renderer renderer) {
+    public void recordDraw(RenderSystem renderSystem) {
         this.renderContext.reset();
 
         try (MemoryStack stack = MemoryStack.stackPush()) {
@@ -158,7 +158,7 @@ public class MultiPassForwardRenderer extends AbstractForwardRenderer {
                         .renderArea(a -> a.extent().set(width, height))
                         .framebuffer(frameBuffer.getHandle());
 
-                Pipeline selectedPipeline = renderer.useWireframe
+                Pipeline selectedPipeline = renderSystem.useWireframe
                         ? this.wireframePipeline[pass]
                         : this.standardPipeline[pass];
 
@@ -176,7 +176,7 @@ public class MultiPassForwardRenderer extends AbstractForwardRenderer {
                     for (SubRenderProcess process : this.subRenderProcesses)
                         process.renderPreMesh(context, this.shaderIO, this.standardSamplers);
 
-                    this.drawAllSceneModels(cmd, renderer, selectedPipeline, idx);
+                    this.drawAllSceneModels(cmd, renderSystem, selectedPipeline, idx);
 
                     this.shaderIO.free(); // free buffers from stack.
                 });

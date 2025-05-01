@@ -1,7 +1,7 @@
 package me.cg360.spudengine.core.render.impl;
 
 import me.cg360.spudengine.core.EngineProperties;
-import me.cg360.spudengine.core.render.Renderer;
+import me.cg360.spudengine.core.render.RenderSystem;
 import me.cg360.spudengine.core.render.command.CommandBuffer;
 import me.cg360.spudengine.core.render.command.CommandPool;
 import me.cg360.spudengine.core.render.command.CommandQueue;
@@ -131,14 +131,14 @@ public abstract class AbstractRenderer extends RenderProcess {
         this.shaderIO.reset(stack, pipeline.bind(cmd), this.descriptorPool);
     }
 
-    protected void drawAllSceneModels(VkCommandBuffer cmd, Renderer renderer, Pipeline selectedPipeline, int frameIndex) {
+    protected void drawAllSceneModels(VkCommandBuffer cmd, RenderSystem renderSystem, Pipeline selectedPipeline, int frameIndex) {
         for (String modelId: this.scene.getUsedModelIds()) {
-            this.drawModel(cmd, renderer, selectedPipeline, modelId, frameIndex);
+            this.drawModel(cmd, renderSystem, selectedPipeline, modelId, frameIndex);
         }
     }
 
-    protected void drawModel(VkCommandBuffer cmd, Renderer renderer, Pipeline selectedPipeline, String modelId, int frameIndex) {
-        BufferedModel model = renderer.getModelManager().getModel(modelId);
+    protected void drawModel(VkCommandBuffer cmd, RenderSystem renderSystem, Pipeline selectedPipeline, String modelId, int frameIndex) {
+        BufferedModel model = renderSystem.getModelManager().getModel(modelId);
         List<StaticModelEntity> entities = this.scene.getEntitiesWithModel(modelId);
 
         for(SubRenderProcess process: this.subRenderProcesses)

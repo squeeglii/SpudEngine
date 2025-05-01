@@ -1,44 +1,24 @@
 package me.cg360.spudengine.core.render.impl.forward;
 
-import me.cg360.spudengine.core.EngineProperties;
-import me.cg360.spudengine.core.render.Renderer;
 import me.cg360.spudengine.core.render.command.CommandBuffer;
 import me.cg360.spudengine.core.render.command.CommandPool;
 import me.cg360.spudengine.core.render.command.CommandQueue;
 import me.cg360.spudengine.core.render.data.DataTypes;
-import me.cg360.spudengine.core.render.data.buffer.GeneralBuffer;
-import me.cg360.spudengine.core.render.geometry.model.BufferedMesh;
-import me.cg360.spudengine.core.render.geometry.model.BufferedModel;
-import me.cg360.spudengine.core.render.geometry.model.BundledMaterial;
-import me.cg360.spudengine.core.render.hardware.LogicalDevice;
 import me.cg360.spudengine.core.render.image.Attachment;
 import me.cg360.spudengine.core.render.image.FrameBuffer;
 import me.cg360.spudengine.core.render.image.SwapChain;
-import me.cg360.spudengine.core.render.image.texture.Texture;
 import me.cg360.spudengine.core.render.impl.AbstractRenderer;
-import me.cg360.spudengine.core.render.impl.RenderProcess;
 import me.cg360.spudengine.core.render.impl.SubRenderProcess;
-import me.cg360.spudengine.core.render.pipeline.Pipeline;
 import me.cg360.spudengine.core.render.pipeline.PipelineCache;
-import me.cg360.spudengine.core.render.pipeline.descriptor.DescriptorPool;
-import me.cg360.spudengine.core.render.pipeline.descriptor.active.UniformDescriptorSet;
 import me.cg360.spudengine.core.render.pipeline.descriptor.layout.DescriptorSetLayout;
-import me.cg360.spudengine.core.render.pipeline.descriptor.layout.UniformDescriptorSetLayout;
-import me.cg360.spudengine.core.render.pipeline.shader.DescriptorSetLayoutBundle;
-import me.cg360.spudengine.core.render.pipeline.shader.ShaderIO;
 import me.cg360.spudengine.core.render.pipeline.shader.ShaderProgram;
-import me.cg360.spudengine.core.render.pipeline.shader.StandardSamplers;
 import me.cg360.spudengine.core.render.sync.Fence;
 import me.cg360.spudengine.core.world.Scene;
-import me.cg360.spudengine.core.world.entity.RenderedEntity;
-import me.cg360.spudengine.core.world.entity.StaticModelEntity;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.*;
 import org.tinylog.Logger;
 
-import java.awt.*;
 import java.util.Arrays;
-import java.util.List;
 
 public abstract class AbstractForwardRenderer extends AbstractRenderer {
 

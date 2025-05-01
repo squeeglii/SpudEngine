@@ -1,6 +1,6 @@
 package me.cg360.spudengine.core.render.impl.forward.naiveforward;
 
-import me.cg360.spudengine.core.render.Renderer;
+import me.cg360.spudengine.core.render.RenderSystem;
 import me.cg360.spudengine.core.render.context.RenderContext;
 import me.cg360.spudengine.core.render.context.RenderGoal;
 import me.cg360.spudengine.core.render.data.DataTypes;
@@ -103,7 +103,7 @@ public class NaiveForwardRenderer extends AbstractForwardRenderer {
     }
 
     @Override
-    public void recordDraw(Renderer renderer) {
+    public void recordDraw(RenderSystem renderSystem) {
         try (MemoryStack stack = MemoryStack.stackPush()) {
             VkExtent2D swapChainExtent = this.swapChain.getSwapChainExtent();
             int width = swapChainExtent.width();
@@ -129,7 +129,7 @@ public class NaiveForwardRenderer extends AbstractForwardRenderer {
                     .framebuffer(frameBuffer.getHandle());
 
             VkCommandBuffer cmd = commandBuffer.beginRecording();
-            Pipeline selectedPipeline = renderer.useWireframe
+            Pipeline selectedPipeline = renderSystem.useWireframe
                     ? this.wireframePipeline
                     : this.standardPipeline;
 
@@ -149,7 +149,7 @@ public class NaiveForwardRenderer extends AbstractForwardRenderer {
                 for(SubRenderProcess process:  this.subRenderProcesses)
                     process.renderPreMesh(this.renderContext, this.shaderIO, this.standardSamplers);
 
-                this.drawAllSceneModels(cmd, renderer, selectedPipeline, idx);
+                this.drawAllSceneModels(cmd, renderSystem, selectedPipeline, idx);
 
                 this.shaderIO.free(); // free buffers from stack.
             });

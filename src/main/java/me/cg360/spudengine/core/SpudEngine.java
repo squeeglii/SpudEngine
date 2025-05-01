@@ -1,6 +1,6 @@
 package me.cg360.spudengine.core;
 
-import me.cg360.spudengine.core.render.Renderer;
+import me.cg360.spudengine.core.render.RenderSystem;
 import me.cg360.spudengine.core.render.Window;
 import me.cg360.spudengine.core.render.impl.SubRenderProcess;
 import me.cg360.spudengine.core.world.Scene;
@@ -12,7 +12,7 @@ public class SpudEngine {
 
     private final Window window;
     private final Scene scene;
-    private Renderer renderer;
+    private RenderSystem renderSystem;
 
     private GameComponent gameInstance;
 
@@ -24,7 +24,7 @@ public class SpudEngine {
         this.window = new Window(EngineProperties.WINDOW_TITLE, this::inputEvent);
         this.scene = new Scene(this.window);
 
-        this.renderer = null;
+        this.renderSystem = null;
         this.gameInstance = null;
 
         this.preinit(this.window, this.scene);
@@ -37,13 +37,13 @@ public class SpudEngine {
         EngineSetupContext engineSetup = new EngineSetupContext(this.window, this.scene);
         this.gameInstance.passPreInit(engineSetup);
 
-        this.renderer = new Renderer(
+        this.renderSystem = new RenderSystem(
                 this.window, this.scene,
                 engineSetup.getRenderProcessInitialiser(),
                 this.gameInstance.getRendererAddons().toArray(SubRenderProcess[]::new)
         );
 
-        this.init(this.window, this.scene, this.renderer);
+        this.init(this.window, this.scene, this.renderSystem);
 
         this.isRunning = true;
         this.ticksAlive = 0;
@@ -80,7 +80,7 @@ public class SpudEngine {
                 updateDelta--;
             }
 
-            this.renderer.render(this.window, this.scene, (float) (updateDelta + this.ticksAlive));
+            this.renderSystem.render(this.window, this.scene, (float) (updateDelta + this.ticksAlive));
             prevInstant = now;
         }
 
@@ -100,12 +100,12 @@ public class SpudEngine {
         Logger.info("Completed engine initialisation (pre-init)");
     }
 
-    private void init(Window window, Scene scene, Renderer renderer) {
+    private void init(Window window, Scene scene, RenderSystem renderSystem) {
         Logger.info("Initialising logic... (init)");
 
-        renderer.getModelManager().createMissingModel();
+        renderSystem.getModelManager().createMissingModel();
 
-        this.gameInstance.passInit(window, scene, renderer);
+        this.gameInstance.passInit(window, scene, renderSystem);
 
         Logger.info("Completed logic initialisation (init)");
     }
@@ -130,15 +130,15 @@ public class SpudEngine {
 
     private void cleanup() {
         // Cleanup logic
-        this.renderer.cleanup();
+        this.renderSystem.cleanup();
         this.window.cleanup();
     }
 
     // Engine Components:
 
 
-    public Renderer getRenderer() {
-        return this.renderer;
+    public RenderSystem getRenderer() {
+        return this.renderSystem;
     }
 
     public Window getWindow() {

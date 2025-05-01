@@ -1,6 +1,6 @@
 package me.cg360.spudengine.core.render.impl;
 
-import me.cg360.spudengine.core.render.Renderer;
+import me.cg360.spudengine.core.render.RenderSystem;
 import me.cg360.spudengine.core.render.command.CommandPool;
 import me.cg360.spudengine.core.render.command.CommandQueue;
 import me.cg360.spudengine.core.render.context.RenderContext;
@@ -19,7 +19,7 @@ public abstract class RenderProcess {
         this.subRenderProcesses = subRenderProcesses;
     }
 
-    public abstract void recordDraw(Renderer renderer);
+    public abstract void recordDraw(RenderSystem renderSystem);
     public abstract void submit(CommandQueue queue);
 
     public abstract void processModelBatch(List<BufferedModel> models);

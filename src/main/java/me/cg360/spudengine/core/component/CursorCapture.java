@@ -3,7 +3,7 @@ package me.cg360.spudengine.core.component;
 import me.cg360.spudengine.core.GameComponent;
 import me.cg360.spudengine.core.SpudEngine;
 import me.cg360.spudengine.core.input.MouseInput;
-import me.cg360.spudengine.core.render.Renderer;
+import me.cg360.spudengine.core.render.RenderSystem;
 import me.cg360.spudengine.core.render.Window;
 import me.cg360.spudengine.core.world.Scene;
 import org.lwjgl.glfw.GLFW;
@@ -15,7 +15,7 @@ public class CursorCapture extends GameComponent {
     }
 
     @Override
-    protected void onInit(Window window, Scene scene, Renderer renderer) {
+    protected void onInit(Window window, Scene scene, RenderSystem renderSystem) {
         window.getMouseInput().setCursorCaptured(true);
         window.getMouseInput().setForceCentered(true);
     }

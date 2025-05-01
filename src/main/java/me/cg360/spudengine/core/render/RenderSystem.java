@@ -22,7 +22,7 @@ import org.tinylog.Logger;
 
 import java.util.List;
 
-public class Renderer {
+public class RenderSystem {
 
     private final VulkanInstance vulkanInstance;
 
@@ -43,7 +43,7 @@ public class Renderer {
 
     public boolean useWireframe;
 
-    public Renderer(Window window, Scene scene, RenderProcessInitialiser processInit, SubRenderProcess[] subRenderProcesses) {
+    public RenderSystem(Window window, Scene scene, RenderProcessInitialiser processInit, SubRenderProcess[] subRenderProcesses) {
         this.vulkanInstance = new VulkanInstance(EngineProperties.USE_DEBUGGING);
 
         PhysicalDevice physicalDevice = PhysicalDevice.createPhysicalDevice(this.vulkanInstance, EngineProperties.PREFERRED_DEVICE_NAME);

@@ -3,14 +3,12 @@ package me.cg360.spudengine.test;
 import me.cg360.spudengine.core.GameComponent;
 import me.cg360.spudengine.core.SpudEngine;
 import me.cg360.spudengine.core.component.FlyCameraController;
-import me.cg360.spudengine.core.input.MouseInput;
-import me.cg360.spudengine.core.render.Renderer;
+import me.cg360.spudengine.core.render.RenderSystem;
 import me.cg360.spudengine.core.render.Window;
 import me.cg360.spudengine.core.render.geometry.model.*;
 import me.cg360.spudengine.core.render.image.texture.Texture;
 import me.cg360.spudengine.core.world.entity.impl.SimpleMoveableEntity;
 import me.cg360.spudengine.core.world.Scene;
-import org.joml.Vector2f;
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 
@@ -78,13 +76,13 @@ public class EnginePlayground extends GameComponent {
     }
 
     @Override
-    protected void onInit(Window window, Scene scene, Renderer renderer) {
+    protected void onInit(Window window, Scene scene, RenderSystem renderSystem) {
         //Logger.info("\u001B[31mANSI Test.");
-        Texture colTex = renderer.getTextureManager().newCheckerboardTexture(
+        Texture colTex = renderSystem.getTextureManager().newCheckerboardTexture(
                 "magenta", 256, 256, 3, 32, Color.MAGENTA, Color.BLACK
         );
 
-        renderer.getModelManager().processModels(
+        renderSystem.getModelManager().processModels(
                 ModelLoader.loadEnvironmentModel("chamber01", "env/chamber01.obj"),
                 new Model("cube", new Material("missing", Material.WHITE), MESH_CUBE)
         );

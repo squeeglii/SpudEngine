@@ -1,35 +1,23 @@
 package me.cg360.spudengine.core.render.impl.layered.stage;
 
 import me.cg360.spudengine.core.exception.UnimplementedException;
-import me.cg360.spudengine.core.render.Renderer;
+import me.cg360.spudengine.core.render.RenderSystem;
 import me.cg360.spudengine.core.render.command.CommandBuffer;
 import me.cg360.spudengine.core.render.command.CommandPool;
 import me.cg360.spudengine.core.render.command.CommandQueue;
 import me.cg360.spudengine.core.render.context.RenderContext;
 import me.cg360.spudengine.core.render.context.RenderGoal;
 import me.cg360.spudengine.core.render.data.DataTypes;
-import me.cg360.spudengine.core.render.data.buffer.GeneralBuffer;
-import me.cg360.spudengine.core.render.geometry.model.BufferedModel;
-import me.cg360.spudengine.core.render.geometry.model.BundledMaterial;
-import me.cg360.spudengine.core.render.hardware.LogicalDevice;
 import me.cg360.spudengine.core.render.image.*;
-import me.cg360.spudengine.core.render.image.texture.Texture;
 import me.cg360.spudengine.core.render.impl.AbstractRenderer;
 import me.cg360.spudengine.core.render.impl.SubRenderProcess;
 import me.cg360.spudengine.core.render.pipeline.Pipeline;
 import me.cg360.spudengine.core.render.pipeline.PipelineCache;
-import me.cg360.spudengine.core.render.pipeline.descriptor.DescriptorPool;
-import me.cg360.spudengine.core.render.pipeline.descriptor.active.UniformDescriptorSet;
 import me.cg360.spudengine.core.render.pipeline.descriptor.layout.DescriptorSetLayout;
-import me.cg360.spudengine.core.render.pipeline.shader.ShaderIO;
 import me.cg360.spudengine.core.render.pipeline.shader.ShaderProgram;
-import me.cg360.spudengine.core.render.pipeline.shader.StandardSamplers;
 import me.cg360.spudengine.core.render.sync.Fence;
 import me.cg360.spudengine.core.world.Scene;
-import org.lwjgl.vulkan.VK11;
 import org.tinylog.Logger;
-
-import java.util.List;
 
 /** Render each layer to  */
 public class LayerRenderer extends AbstractRenderer {
@@ -88,7 +76,7 @@ public class LayerRenderer extends AbstractRenderer {
     }
 
     @Override
-    public void recordDraw(Renderer renderer) {
+    public void recordDraw(RenderSystem renderSystem) {
         throw new UnimplementedException("Layered Renderer is not implemented yet.");
     }
 

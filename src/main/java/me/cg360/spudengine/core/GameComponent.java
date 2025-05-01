@@ -1,6 +1,6 @@
 package me.cg360.spudengine.core;
 
-import me.cg360.spudengine.core.render.Renderer;
+import me.cg360.spudengine.core.render.RenderSystem;
 import me.cg360.spudengine.core.render.Window;
 import me.cg360.spudengine.core.render.impl.SubRenderProcess;
 import me.cg360.spudengine.core.world.Scene;
@@ -50,11 +50,11 @@ public abstract class GameComponent {
         this.onPreInit(engineSetupContext);
     }
 
-    protected final void passInit(Window window, Scene scene, Renderer renderer) {
+    protected final void passInit(Window window, Scene scene, RenderSystem renderSystem) {
         for(GameComponent subListener : this.subListeners)
-            subListener.passInit(window, scene, renderer);
+            subListener.passInit(window, scene, renderSystem);
 
-        this.onInit(window, scene, renderer);
+        this.onInit(window, scene, renderSystem);
     }
 
     protected final void passLogicTick(Window window, Scene scene, long delta) {
@@ -81,7 +81,7 @@ public abstract class GameComponent {
 
     protected void onPreInit(EngineSetupContext engineSetupContext) { }
 
-    protected void onInit(Window window, Scene scene, Renderer renderer) { }
+    protected void onInit(Window window, Scene scene, RenderSystem renderSystem) { }
 
     protected void onLogicTick(Window window, Scene scene, long delta) { }
 
@@ -100,7 +100,7 @@ public abstract class GameComponent {
         return this.getEngine().getScene();
     }
 
-    protected final Renderer renderer() {
+    protected final RenderSystem renderer() {
         return this.getEngine().getRenderer();
     }
 

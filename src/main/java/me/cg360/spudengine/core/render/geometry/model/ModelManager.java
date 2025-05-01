@@ -1,6 +1,6 @@
 package me.cg360.spudengine.core.render.geometry.model;
 
-import me.cg360.spudengine.core.render.Renderer;
+import me.cg360.spudengine.core.render.RenderSystem;
 import me.cg360.spudengine.core.render.data.buffer.BufferTransfer;
 import me.cg360.spudengine.core.render.data.buffer.GeneralBuffer;
 import me.cg360.spudengine.core.render.command.CommandBuffer;
@@ -12,7 +12,6 @@ import me.cg360.spudengine.core.render.geometry.VertexFormats;
 import me.cg360.spudengine.core.render.hardware.LogicalDevice;
 import me.cg360.spudengine.core.render.image.texture.Texture;
 import me.cg360.spudengine.core.render.image.texture.TextureManager;
-import me.cg360.spudengine.core.render.sync.Fence;
 import me.cg360.spudengine.core.util.Registry;
 import me.cg360.spudengine.core.util.VulkanUtil;
 import org.lwjgl.system.MemoryStack;
@@ -33,7 +32,7 @@ public class ModelManager implements Registry {
 
     private static final VertexFormatSummary BUFFER_FORMAT = VertexFormats.POSITION_UV;
 
-    private Renderer host;
+    private RenderSystem host;
 
     private final LogicalDevice graphicsDevice;
     private final TextureManager textureManager;
@@ -42,7 +41,7 @@ public class ModelManager implements Registry {
 
     public final Material fallbackMaterial;
 
-    public ModelManager(Renderer host, LogicalDevice graphicsDevice, TextureManager textureManager) {
+    public ModelManager(RenderSystem host, LogicalDevice graphicsDevice, TextureManager textureManager) {
         this.host = host;
         this.graphicsDevice = graphicsDevice;
         this.textureManager = textureManager;
