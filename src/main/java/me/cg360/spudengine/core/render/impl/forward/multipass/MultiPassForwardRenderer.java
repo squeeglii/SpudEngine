@@ -139,6 +139,7 @@ public class MultiPassForwardRenderer extends CommonForwardRenderer {
             int width = swapChainExtent.width();
             int height = swapChainExtent.height();
             int idx = this.swapChain.getCurrentFrame();
+            this.renderContext.setFrameIndex(idx);
 
             //Fence fence = this.fences[idx];
             CommandBuffer commandBuffer = this.commandBuffers[idx];
@@ -177,7 +178,7 @@ public class MultiPassForwardRenderer extends CommonForwardRenderer {
                     this.shaderIO.setUniform(this.lViewMatrix, this.dViewMatrix, idx);
 
                     for (SubRenderProcess process : this.subRenderProcesses)
-                        process.renderPreMesh(this.shaderIO, this.standardSamplers, idx, context.getPass());
+                        process.renderPreMesh(context, this.shaderIO, this.standardSamplers);
 
                     this.drawAllSceneModels(cmd, renderer, selectedPipeline, idx);
 
@@ -221,6 +222,7 @@ public class MultiPassForwardRenderer extends CommonForwardRenderer {
     public static class InternalRenderContext extends RenderContext {
 
         protected void reset() {
+            this.frameIndex = -1;
             this.pass = -1;
             this.renderGoal = RenderGoal.NONE;
             this.currentPipeline = null;
@@ -236,6 +238,10 @@ public class MultiPassForwardRenderer extends CommonForwardRenderer {
 
         protected void setCurrentPipeline(Pipeline currentPipeline) {
             this.currentPipeline = currentPipeline;
+        }
+
+        protected void setFrameIndex(int frameIndex) {
+            this.frameIndex = frameIndex;
         }
     }
 

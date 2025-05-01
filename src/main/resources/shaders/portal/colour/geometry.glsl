@@ -9,6 +9,9 @@
 #define BLUE_PORTAL vec4(0.02, 0.25, 1, 1)
 #define ORANGE_PORTAL vec4(1, 0.25, 0, 1)
 
+#define IS_BLUE_MASK == 1
+#define IS_ORANGE_MASK == 2
+
 layout (triangles) in;
 layout (triangle_strip, max_vertices = 3+(3*2*MAX_RECURSION_DEPTH)) out; // 3x triangles, 9 vertices. Allows for 2 copies of every model.
 
@@ -46,6 +49,10 @@ layout(set = 3, binding = 0) uniform ORANGE_PORTAL_DATA {
 layout(set = 4, binding = 0) uniform PORTAL_LAYER {
     int num;
 } portalLayer;
+
+layout(set = 5, binding = 0) uniform PORTAL_TYPE_MASK {
+    int val;
+} portalTypeMask;
 
 layout(location = 0) out vec2 texCoords;
 layout(location = 1) out vec2 overlayTexCoords;
@@ -175,6 +182,13 @@ void main() {
     mat4 blue = mat4(1);
     mat4 orange = mat4(1);
 
+    // Portal type is "unassigned" skip.
+    if(portalTypeMask.val == 0) {
+        return;
+    }
+
+    bool ignorePortalTypeMask = portalTypeMask.val < 0;
+
     for(int i = 1; i <= MAX_RECURSION_DEPTH; i++) {
         blue *= bluePortal.stitchTransform;
         orange *= orangePortal.stitchTransform;
@@ -188,8 +202,12 @@ void main() {
                             ? blankOverlayCoords
                             : generatedOverlayCoords;
 
+        if(ignorePortalTypeMask || portalTypeMask.val IS_BLUE_MASK) {
+            emitOffsetRoom(worldPositions, overlay, portalColour, blue);
+        }
 
-        emitOffsetRoom(worldPositions, overlay, portalColour, blue);
-        emitOffsetRoom(worldPositions, overlay, portalColour, orange);
+        if(ignorePortalTypeMask || portalTypeMask.val IS_ORANGE_MASK) {
+            emitOffsetRoom(worldPositions, overlay, portalColour, orange);
+        }
     }
 }

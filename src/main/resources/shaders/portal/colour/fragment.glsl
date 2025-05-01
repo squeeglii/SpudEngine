@@ -12,8 +12,8 @@ layout(location = 3) in vec4 debugPos;
 
 layout(location = 0) out vec4 uFragColor;
 
-layout(set = 5, binding = 0) uniform sampler2D textureSampler;
-layout(set = 6, binding = 0) uniform sampler2D overlaySampler;
+layout(set = 6, binding = 0) uniform sampler2D textureSampler;
+layout(set = 7, binding = 0) uniform sampler2D overlaySampler;
 
 void main() {
     vec4 col = texture(textureSampler, texCoords);

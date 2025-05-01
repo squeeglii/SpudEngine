@@ -41,6 +41,10 @@ layout(set = 4, binding = 0) uniform PORTAL_LAYER {
     int num;
 } portalLayer;
 
+layout(set = 5, binding = 0) uniform PORTAL_TYPE_MASK {
+    int val;
+} portalTypeMask;
+
 layout(location = 0) out vec2 texCoords;
 layout(location = 1) out vec2 overlayTexCoords;
 layout(location = 2) out vec4 portalBorderColour;

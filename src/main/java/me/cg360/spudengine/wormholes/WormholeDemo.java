@@ -103,6 +103,18 @@ public class WormholeDemo extends GameComponent {
         }
     }
 
+    private void handlePortalRotation(int key, int action) {
+        if(key == GLFW.GLFW_KEY_LEFT_BRACKET && action == GLFW.GLFW_RELEASE) {
+
+        }
+
+        if(key == GLFW.GLFW_KEY_RIGHT_BRACKET && action == GLFW.GLFW_RELEASE) {
+            if(this.getPortalTracker().hasOrangePortal()) {
+                //todo add rotation cos I'm bored.
+            }
+        }
+    }
+
     private void handlePortalDebugKeys(int key, int action) {
         if(key == GLFW.GLFW_KEY_0 && action == GLFW.GLFW_RELEASE) {
 
@@ -118,6 +130,22 @@ public class WormholeDemo extends GameComponent {
                 this.scene().addEntity(bluePortal);
             }
         }
+
+        if(key == GLFW.GLFW_KEY_9 && action == GLFW.GLFW_RELEASE) {
+
+            if(this.getPortalTracker().hasBluePortal()) {
+                this.getPortalTracker().removeBluePortal();
+            } else {
+                PortalEntity bluePortal = new PortalEntity(
+                        PortalType.BLUE,
+                        new Vector3f(-2f, 0f, 3.99f),
+                        Vectors.toRadians(0, 0, 0)
+                );
+
+                this.scene().addEntity(bluePortal);
+            }
+        }
+
 
         if(key == GLFW.GLFW_KEY_1 && action == GLFW.GLFW_RELEASE) {
             if(this.getPortalTracker().hasOrangePortal()) {
@@ -148,6 +176,22 @@ public class WormholeDemo extends GameComponent {
                 this.scene().addEntity(orangePortal);
             }
         }
+
+        if(key == GLFW.GLFW_KEY_3 && action == GLFW.GLFW_RELEASE) {
+            if(this.getPortalTracker().hasOrangePortal()) {
+                this.getPortalTracker().removeOrangePortal();
+
+            } else {
+                PortalEntity orangePortal = new PortalEntity(
+                        PortalType.ORANGE,
+                        new Vector3f(-2f, 0f, -3.99f),
+                        Vectors.toRadians(0, 180, 0)
+                );
+
+                this.scene().addEntity(orangePortal);
+            }
+        }
+        
     }
 
     public PortalTracker getPortalTracker() {

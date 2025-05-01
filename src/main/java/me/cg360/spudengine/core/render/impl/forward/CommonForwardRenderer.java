@@ -145,8 +145,8 @@ public abstract class CommonForwardRenderer extends RenderProcess {
     }
 
     protected DescriptorSetLayoutBundle buildUniformLayout(DescriptorSetLayoutBundle bundle) {
-        this.lProjectionMatrix = new UniformDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_VERTEX_BIT);
-        this.lViewMatrix = new UniformDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_VERTEX_BIT)
+        this.lProjectionMatrix = new UniformDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_GEOMETRY_BIT);
+        this.lViewMatrix = new UniformDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_GEOMETRY_BIT)
                 .enablePerFrameWrites(this.swapChain);
 
         bundle.addGeometryUniforms(this.lProjectionMatrix, this.lViewMatrix);
@@ -291,7 +291,7 @@ public abstract class CommonForwardRenderer extends RenderProcess {
         List<StaticModelEntity> entities = this.scene.getEntitiesWithModel(modelId);
 
         for(SubRenderProcess process: this.subRenderProcesses)
-            process.renderModel(this.shaderIO, this.standardSamplers, model, frameIndex);
+            process.renderModel(this.getCurrentContext(), this.shaderIO, this.standardSamplers, model);
 
         for(BundledMaterial material: model.getMaterials()) {
             if (material.meshes().isEmpty())

@@ -16,7 +16,7 @@ public abstract class DescriptorSet {
     protected final long descriptorSet;
 
     public DescriptorSet(DescriptorPool pool, DescriptorSetLayout template, int binding) {
-        Logger.info("Building DescriptorSet of type {}", template.getDescriptorSetType());
+        Logger.trace("Building DescriptorSet of type {}", template.getDescriptorSetType());
         this.descriptorSet = this.buildDescriptorSet(pool, template, binding);
     }
 

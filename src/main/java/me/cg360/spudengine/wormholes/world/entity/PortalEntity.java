@@ -6,6 +6,7 @@ import me.cg360.spudengine.core.render.geometry.model.Mesh;
 import me.cg360.spudengine.core.util.Bounds2D;
 import me.cg360.spudengine.core.world.Scene;
 import me.cg360.spudengine.core.world.entity.SimpleEntity;
+import me.cg360.spudengine.wormholes.GameProperties;
 import me.cg360.spudengine.wormholes.GeneratedAssets;
 import me.cg360.spudengine.wormholes.WormholeDemo;
 import org.joml.Matrix4f;
@@ -118,6 +119,6 @@ public class PortalEntity extends SimpleEntity {
         // useful when rendering to the stencil buffer to make a cutout.
 
         //return false;
-        return renderContext.getRenderGoal() == RenderGoal.STENCIL_ADJUSTMENT;
+        return renderContext.renderGoal() == RenderGoal.STENCIL_ADJUSTMENT || GameProperties.FORCE_RENDER_SOLID_PORTALS;
     }
 }
