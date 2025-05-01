@@ -9,6 +9,7 @@ import me.cg360.spudengine.core.render.image.FrameBuffer;
 import me.cg360.spudengine.core.render.image.SwapChain;
 import me.cg360.spudengine.core.render.impl.AbstractRenderer;
 import me.cg360.spudengine.core.render.impl.SubRenderProcess;
+import me.cg360.spudengine.core.render.impl.layered.LayeredSemaphores;
 import me.cg360.spudengine.core.render.pipeline.PipelineCache;
 import me.cg360.spudengine.core.render.pipeline.descriptor.layout.DescriptorSetLayout;
 import me.cg360.spudengine.core.render.pipeline.shader.ShaderProgram;
@@ -95,12 +96,12 @@ public abstract class AbstractForwardRenderer extends AbstractRenderer {
             Fence currentFence = this.fences[idx];
             currentFence.reset();
 
-            ForwardSemaphores syncSemaphores = this.swapChain.getSyncSemaphores()[idx];
+            LayeredSemaphores syncSemaphores = this.swapChain.getSyncSemaphores()[idx];
 
             queue.submit(stack.pointers(commandBuffer.asVk()),
                     stack.longs(syncSemaphores.imageAcquisitionSemaphore().getHandle()),
                     stack.ints(VK11.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                    stack.longs(syncSemaphores.renderCompleteSemaphore().getHandle()),
+                    stack.longs(syncSemaphores.composeCompleteSemaphore().getHandle()),
                     currentFence);
         }
     }
@@ -114,26 +115,6 @@ public abstract class AbstractForwardRenderer extends AbstractRenderer {
         Arrays.asList(this.depthAttachments).forEach(Attachment::cleanup);
         this.createDepthImages();
         this.createFrameBuffers();
-    }
-
-    protected void setupView(VkCommandBuffer cmd, MemoryStack stack, int width, int height) {
-        VkViewport.Buffer viewport = VkViewport.calloc(1, stack)
-                .x(0)
-                .y(height)
-                .height(-height)         // flip viewport - opengl's coordinate system is nicer.
-                .width(width)
-                .minDepth(0.0f)
-                .maxDepth(1.0f);
-        VK11.vkCmdSetViewport(cmd, 0, viewport);
-
-        VkRect2D.Buffer scissor = VkRect2D.calloc(1, stack)
-                .extent(it -> it
-                        .width(width)
-                        .height(height))
-                .offset(it -> it
-                        .x(0)
-                        .y(0));
-        VK11.vkCmdSetScissor(cmd, 0, scissor);
     }
 
     @Override

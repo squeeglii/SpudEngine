@@ -13,7 +13,6 @@ public class SimpleDescriptorSetLayout extends DescriptorSetLayout {
 
     public SimpleDescriptorSetLayout(LogicalDevice device, int type, int binding, int stage) {
         super(device, type, binding, stage);
-        Logger.trace("Layout deffo has handle of: {}", this.getHandle());
     }
 
     @Override

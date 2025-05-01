@@ -117,17 +117,18 @@ public class MultiPassForwardRenderer extends AbstractForwardRenderer {
         Logger.debug("Built pipelines!");
     }
 
-    protected void doRenderPass(VkCommandBuffer cmd, VkRenderPassBeginInfo renderPassBeginInfo, Pipeline pipeline, MemoryStack stack, int pass, Consumer<RenderContext> passActions) {
+    protected void doRenderPass(VkCommandBuffer cmd, VkRenderPassBeginInfo renderPassBeginInfo, Pipeline pipeline, int frameIndex, MemoryStack stack, int pass, Consumer<RenderContext> passActions) {
         VK11.vkCmdBeginRenderPass(cmd, renderPassBeginInfo, VK11.VK_SUBPASS_CONTENTS_INLINE);
         this.shaderIO.reset(stack, pipeline.bind(cmd), this.descriptorPool);
         this.renderContext.setPass(pass);
         this.renderContext.setCurrentPipeline(pipeline);
+        this.renderContext.setFrameIndex(frameIndex);
         passActions.accept(this.renderContext);
         VK11.vkCmdEndRenderPass(cmd);
     }
 
     @Override
-    public void recordDraw(RenderSystem renderSystem) {
+    public void draw(RenderSystem renderSystem) {
         this.renderContext.reset();
 
         try (MemoryStack stack = MemoryStack.stackPush()) {
@@ -163,8 +164,8 @@ public class MultiPassForwardRenderer extends AbstractForwardRenderer {
                         : this.standardPipeline[pass];
 
                 // Run a pass for each layer of portal depth.
-                this.doRenderPass(cmd, renderPassBeginInfo, selectedPipeline, stack, pass, context -> {
-                    this.setupView(cmd, stack, width, height);
+                this.doRenderPass(cmd, renderPassBeginInfo, selectedPipeline, idx, stack, pass, context -> {
+                    VulkanUtil.setupStandardViewport(cmd, stack, width, height);
                     this.shaderIO.reset(stack, selectedPipeline, this.descriptorPool);
 
                     Matrix4f view = this.scene.getMainCamera().getViewMatrix();

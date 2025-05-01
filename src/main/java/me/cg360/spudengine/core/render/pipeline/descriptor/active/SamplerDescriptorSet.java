@@ -1,5 +1,7 @@
 package me.cg360.spudengine.core.render.pipeline.descriptor.active;
 
+import me.cg360.spudengine.core.render.image.Attachment;
+import me.cg360.spudengine.core.render.image.ImageView;
 import me.cg360.spudengine.core.render.pipeline.descriptor.DescriptorPool;
 import me.cg360.spudengine.core.render.pipeline.descriptor.layout.DescriptorSetLayout;
 import me.cg360.spudengine.core.render.image.texture.Texture;
@@ -11,13 +13,13 @@ import org.lwjgl.vulkan.VkWriteDescriptorSet;
 
 public class SamplerDescriptorSet extends DescriptorSet {
 
-    public SamplerDescriptorSet(DescriptorPool pool, DescriptorSetLayout template, int binding, Texture texture, TextureSampler sampler) {
+    public SamplerDescriptorSet(DescriptorPool pool, DescriptorSetLayout template, int binding, ImageView imageView, TextureSampler sampler) {
         super(pool, template, binding); // calls buildDescriptorSet()
 
         try (MemoryStack stack = MemoryStack.stackPush()) {
             VkDescriptorImageInfo.Buffer imageInfo = VkDescriptorImageInfo.calloc(1, stack)
                     .imageLayout(VK11.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                    .imageView(texture.getImageView().getHandle())
+                    .imageView(imageView.getHandle())
                     .sampler(sampler.getHandle());
 
             VkWriteDescriptorSet.Buffer descrBuffer = VkWriteDescriptorSet.calloc(1, stack);
@@ -31,5 +33,13 @@ public class SamplerDescriptorSet extends DescriptorSet {
 
             VK11.vkUpdateDescriptorSets(pool.getDevice().asVk(), descrBuffer, null);
         }
+    }
+
+    public SamplerDescriptorSet(DescriptorPool pool, DescriptorSetLayout template, int binding, Texture texture, TextureSampler sampler) {
+        this(pool, template, binding, texture.getImageView(), sampler);
+    }
+
+    public SamplerDescriptorSet(DescriptorPool pool, DescriptorSetLayout template, int binding, Attachment attachment, TextureSampler sampler) {
+        this(pool, template, binding, attachment.getImageView(), sampler);
     }
 }

@@ -86,8 +86,7 @@ public class RenderSystem {
             this.renderProcess.processOverlays(this.commandPool, this.graphicsQueue, overlaysToUpload);
         }
 
-        this.renderProcess.recordDraw(this);
-        this.renderProcess.submit(this.graphicsQueue);
+        this.renderProcess.recordAndSubmit(this, this.graphicsQueue);
 
         if (this.swapChain.presentImage(this.presentQueue, imageIndex))
             window.setRequiresSizeUpdate(true);

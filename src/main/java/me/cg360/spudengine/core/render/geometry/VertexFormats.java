@@ -6,6 +6,8 @@ public class VertexFormats {
 
     public static final int DEFAULT_BINDING = 0;
 
+    public static final VertexFormatSummary EMPTY = new VertexFormatSummary();
+
     public static final VertexFormatSummary POSITION = new VertexFormatSummary(
             Attribute.VEC3F.withBinding(DEFAULT_BINDING)
     );

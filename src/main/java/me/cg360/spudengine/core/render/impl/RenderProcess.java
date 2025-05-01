@@ -8,6 +8,7 @@ import me.cg360.spudengine.core.render.geometry.model.BufferedModel;
 import me.cg360.spudengine.core.render.image.Attachment;
 import me.cg360.spudengine.core.render.image.SwapChain;
 import me.cg360.spudengine.core.render.image.texture.Texture;
+import me.cg360.spudengine.core.render.pipeline.descriptor.layout.DescriptorSetLayout;
 
 import java.util.List;
 
@@ -19,8 +20,13 @@ public abstract class RenderProcess {
         this.subRenderProcesses = subRenderProcesses;
     }
 
-    public abstract void recordDraw(RenderSystem renderSystem);
-    public abstract void submit(CommandQueue queue);
+    protected abstract void draw(RenderSystem renderSystem);
+    protected abstract void submit(CommandQueue queue);
+
+    public void recordAndSubmit(RenderSystem renderSystem, CommandQueue commandQueue) {
+        this.draw(renderSystem);
+        this.submit(commandQueue);
+    }
 
     public abstract void processModelBatch(List<BufferedModel> models);
     public abstract void processOverlays(CommandPool uploadPool, CommandQueue queue, List<Texture> overlayTextures);

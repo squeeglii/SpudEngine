@@ -44,7 +44,7 @@ public class LayeredFrameBuffer {
         }
     }
 
-    public void resize(SwapChain swapChain) {
+    public void onResize(SwapChain swapChain) {
         this.frameBuffer.cleanup();
         this.attachments.cleanup();
 
@@ -68,5 +68,9 @@ public class LayeredFrameBuffer {
 
     public LayeredRenderPass getRenderPass() {
         return this.renderPass;
+    }
+
+    public int getRenderTargetCount() {
+        return this.renderTargetCount;
     }
 }

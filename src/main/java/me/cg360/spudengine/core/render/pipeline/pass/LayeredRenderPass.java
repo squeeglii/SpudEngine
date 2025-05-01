@@ -3,6 +3,7 @@ package me.cg360.spudengine.core.render.pipeline.pass;
 import me.cg360.spudengine.core.render.hardware.LogicalDevice;
 import me.cg360.spudengine.core.render.image.Attachment;
 import me.cg360.spudengine.core.render.image.RenderTargetAttachmentSet;
+import me.cg360.spudengine.core.util.VkHandleWrapper;
 import me.cg360.spudengine.core.util.VulkanUtil;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.*;
@@ -10,7 +11,7 @@ import org.lwjgl.vulkan.*;
 import java.nio.LongBuffer;
 import java.util.List;
 
-public class LayeredRenderPass {
+public class LayeredRenderPass implements VkHandleWrapper {
 
     protected final LogicalDevice device;
     protected final long renderPassHandle;
@@ -109,10 +110,12 @@ public class LayeredRenderPass {
                   .dependencyFlags(VK11.VK_DEPENDENCY_BY_REGION_BIT);
     }
 
+    @Override
     public void cleanup() {
         VK11.vkDestroyRenderPass(this.device.asVk(), this.renderPassHandle, null);
     }
 
+    @Override
     public long getHandle() {
         return this.renderPassHandle;
     }

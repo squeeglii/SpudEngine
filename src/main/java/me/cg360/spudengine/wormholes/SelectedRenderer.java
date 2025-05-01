@@ -1,5 +1,6 @@
 package me.cg360.spudengine.wormholes;
 
+import me.cg360.spudengine.core.render.impl.layered.LayeredRenderer;
 import me.cg360.spudengine.core.render.impl.layered.stage.LayerRenderer;
 import me.cg360.spudengine.core.render.impl.RenderProcessInitialiser;
 import me.cg360.spudengine.core.render.impl.forward.multipass.MultiPassForwardRenderer;
@@ -13,9 +14,7 @@ public enum SelectedRenderer {
             new MultiPassForwardRenderer(swapchain, commandPool, pipelineCache, scene, GameProperties.MAX_PORTAL_DEPTH, subRenderers)),
     LAYERED_COMPOSE(
             (swapchain, commandPool, pipelineCache, scene, subRenderers) ->
-            new LayerRenderer(swapchain, commandPool, pipelineCache, scene, GameProperties.MAX_PORTAL_DEPTH, subRenderers)),;
-
-    // TODO: Replace Layer Renderer with LAYER*ED* renderer.
+            new LayeredRenderer(swapchain, commandPool, pipelineCache, scene, GameProperties.MAX_PORTAL_DEPTH, subRenderers));
 
     private final RenderProcessInitialiser initialiser;
 

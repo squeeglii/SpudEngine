@@ -107,4 +107,24 @@ public class VulkanUtil {
         return clearValues;
     }
 
+    public static void setupStandardViewport(VkCommandBuffer cmd, MemoryStack stack, int width, int height) {
+        VkViewport.Buffer viewport = VkViewport.calloc(1, stack)
+                .x(0)
+                .y(height)
+                .height(-height)         // flip viewport - opengl's coordinate system is nicer.
+                .width(width)
+                .minDepth(0.0f)
+                .maxDepth(1.0f);
+        VK11.vkCmdSetViewport(cmd, 0, viewport);
+
+        VkRect2D.Buffer scissor = VkRect2D.calloc(1, stack)
+                .extent(it -> it
+                        .width(width)
+                        .height(height))
+                .offset(it -> it
+                        .x(0)
+                        .y(0));
+        VK11.vkCmdSetScissor(cmd, 0, scissor);
+    }
+
 }

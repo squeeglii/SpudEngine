@@ -16,7 +16,7 @@ public record LayeredSemaphores(Semaphore imageAcquisitionSemaphore, Semaphore l
 
     public void cleanup() {
         this.imageAcquisitionSemaphore.cleanup();
-        this.layersCompleteSemaphore.cleanup();
+        this.layersCompleteSemaphore.cleanup();     // only used for Layered Renderer.
         this.composeCompleteSemaphore.cleanup();
     }
 

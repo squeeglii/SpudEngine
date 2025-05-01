@@ -7,7 +7,7 @@ import me.cg360.spudengine.core.render.hardware.LogicalDevice;
 import me.cg360.spudengine.core.render.hardware.PhysicalDevice;
 import me.cg360.spudengine.core.render.hardware.Surface;
 import me.cg360.spudengine.core.render.hardware.SurfaceFormat;
-import me.cg360.spudengine.core.render.impl.forward.ForwardSemaphores;
+import me.cg360.spudengine.core.render.impl.layered.LayeredSemaphores;
 import me.cg360.spudengine.core.util.VkHandleWrapper;
 import me.cg360.spudengine.core.util.VulkanUtil;
 import org.lwjgl.system.MemoryStack;
@@ -30,7 +30,7 @@ public class SwapChain implements VkHandleWrapper {
 
     private final long swapchainHandle;
 
-    private final ForwardSemaphores[] forwardSemaphores; // SyncSemaphores?
+    private final LayeredSemaphores[] syncSemaphores; // SyncSemaphores?
     private int currentFrame;
 
 
@@ -100,8 +100,8 @@ public class SwapChain implements VkHandleWrapper {
 
             this.imageViews = SwapChain.createImageViews(stack, device, this.swapchainHandle, this.surfaceFormat.format());
 
-            this.forwardSemaphores = new ForwardSemaphores[numImages];
-            Arrays.setAll(this.forwardSemaphores, i -> new ForwardSemaphores(this.logicalDevice));
+            this.syncSemaphores = new LayeredSemaphores[numImages];
+            Arrays.setAll(this.syncSemaphores, i -> new LayeredSemaphores(this.logicalDevice));
             this.currentFrame = 0;
         }
     }
@@ -110,7 +110,7 @@ public class SwapChain implements VkHandleWrapper {
         int imageIndex;
         try (MemoryStack stack = MemoryStack.stackPush()) {
             IntBuffer ip = stack.mallocInt(1);
-            long acquisitionHandle = this.forwardSemaphores[this.currentFrame].imageAcquisitionSemaphore().getHandle();
+            long acquisitionHandle = this.syncSemaphores[this.currentFrame].imageAcquisitionSemaphore().getHandle();
             int err = KHRSwapchain.vkAcquireNextImageKHR(this.logicalDevice.asVk(), this.swapchainHandle, ~0L,
                                                          acquisitionHandle, MemoryUtil.NULL, ip);
 
@@ -133,7 +133,7 @@ public class SwapChain implements VkHandleWrapper {
     public boolean presentImage(CommandQueue presentQueue, int imageIndex) {
         boolean resize = false;
         try (MemoryStack stack = MemoryStack.stackPush()) {
-            LongBuffer semaphoreHandles = stack.longs(this.forwardSemaphores[currentFrame].renderCompleteSemaphore().getHandle());
+            LongBuffer semaphoreHandles = stack.longs(this.syncSemaphores[currentFrame].composeCompleteSemaphore().getHandle());
             VkPresentInfoKHR present = VkPresentInfoKHR.calloc(stack)
                     .sType(KHRSwapchain.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR)
                     .pWaitSemaphores(semaphoreHandles)
@@ -160,7 +160,7 @@ public class SwapChain implements VkHandleWrapper {
         this.swapChainExtent.free();
 
         Arrays.asList(this.imageViews).forEach(ImageView::cleanup);
-        Arrays.asList(this.forwardSemaphores).forEach(ForwardSemaphores::cleanup);
+        Arrays.asList(this.syncSemaphores).forEach(LayeredSemaphores::cleanup);
 
         KHRSwapchain.vkDestroySwapchainKHR(this.logicalDevice.asVk(), this.swapchainHandle, null);
 
@@ -187,8 +187,8 @@ public class SwapChain implements VkHandleWrapper {
         return this.swapChainExtent;
     }
 
-    public ForwardSemaphores[] getSyncSemaphores() {
-        return this.forwardSemaphores;
+    public LayeredSemaphores[] getSyncSemaphores() {
+        return this.syncSemaphores;
     }
 
     public int getCurrentFrame() {

@@ -11,7 +11,6 @@ public class Attachment {
 
     private boolean isDepthAttachment;
 
-
     public Attachment(LogicalDevice device, int width, int height, int format, int usage){
         this.image = Image.builder(width, height, usage | VK11.VK_IMAGE_USAGE_SAMPLED_BIT)
                 .format(format)
