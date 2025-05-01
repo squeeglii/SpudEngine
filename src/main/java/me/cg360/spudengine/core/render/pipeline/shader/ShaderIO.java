@@ -11,6 +11,7 @@ import org.joml.Matrix4f;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK11;
 import org.lwjgl.vulkan.VkCommandBuffer;
+import org.tinylog.Logger;
 
 import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
@@ -30,15 +31,15 @@ public class ShaderIO {
     }
 
     public void setUniform(DescriptorSetLayout layout, DescriptorSet set) {
-        this.descriptorSets.put(layout.getSetPosition(), set.getHandle());
+        this.setUniform(layout.getSetPosition(), set);
     }
 
     public void setUniform(int setNumber, DescriptorSet[] set, int swapImageIndex) {
-        this.descriptorSets.put(setNumber, set[swapImageIndex].getHandle());
+        this.setUniform(setNumber, set[swapImageIndex]);
     }
 
     public void setUniform(DescriptorSetLayout layout, DescriptorSet[] set, int swapImageIndex) {
-        this.descriptorSets.put(layout.getSetPosition(), set[swapImageIndex].getHandle());
+        this.setUniform(layout.getSetPosition(), set[swapImageIndex]);
     }
 
     public void bindMesh(VkCommandBuffer cmd, BufferedMesh mesh) {
@@ -52,13 +53,11 @@ public class ShaderIO {
     }
 
     public void applyVertexPushConstants(VkCommandBuffer cmd, long currentPipelineLayout, Matrix4f transform) {
-        //proj.get(buf);
         transform.get(this.pushConstantsBuffer); // copy transform to pushConstantsBuffer
         VK11.vkCmdPushConstants(cmd, currentPipelineLayout, VK11.VK_SHADER_STAGE_VERTEX_BIT, 0, this.pushConstantsBuffer);
     }
 
     public void applyGeometryPushConstants(VkCommandBuffer cmd, long currentPipelineLayout, Matrix4f transform) {
-        //proj.get(buf);
         transform.get(this.pushConstantsBuffer); // copy transform to pushConstantsBuffer
         VK11.vkCmdPushConstants(cmd, currentPipelineLayout, VK11.VK_SHADER_STAGE_GEOMETRY_BIT, 0, this.pushConstantsBuffer);
     }

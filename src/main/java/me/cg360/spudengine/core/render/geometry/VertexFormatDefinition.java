@@ -12,7 +12,18 @@ public class VertexFormatDefinition {
     private final VkVertexInputAttributeDescription.Buffer attributesBuffer;
     private final VkVertexInputBindingDescription.Buffer bindingsBuffer;
 
-    public VertexFormatDefinition(Attribute... attributes) {
+    protected VertexFormatDefinition(Attribute... attributes) {
+        if(attributes.length == 0) {
+            this.definitionHandle = VkPipelineVertexInputStateCreateInfo.calloc();
+            this.definitionHandle.sType(VK11.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO)
+                    .pVertexBindingDescriptions(null)
+                    .pVertexAttributeDescriptions(null);
+
+            this.attributesBuffer = null;
+            this.bindingsBuffer = null;
+            return;
+        }
+
         this.attributesBuffer = VkVertexInputAttributeDescription.calloc(attributes.length);
         this.bindingsBuffer = VkVertexInputBindingDescription.calloc(1);
         this.definitionHandle = VkPipelineVertexInputStateCreateInfo.calloc();
@@ -50,8 +61,9 @@ public class VertexFormatDefinition {
 
     public void cleanup() {
         this.definitionHandle.free();
-        this.bindingsBuffer.free();
-        this.attributesBuffer.free();
+
+        if(this.bindingsBuffer != null) this.bindingsBuffer.free();
+        if(this.attributesBuffer != null) this.attributesBuffer.free();
     }
 
     public VkPipelineVertexInputStateCreateInfo asVk() {

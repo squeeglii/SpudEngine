@@ -13,12 +13,12 @@ import org.lwjgl.vulkan.VkWriteDescriptorSet;
 
 public class SamplerDescriptorSet extends DescriptorSet {
 
-    public SamplerDescriptorSet(DescriptorPool pool, DescriptorSetLayout template, int binding, ImageView imageView, TextureSampler sampler) {
+    public SamplerDescriptorSet(DescriptorPool pool, DescriptorSetLayout template, int binding, int imageLayout, ImageView imageView, TextureSampler sampler) {
         super(pool, template, binding); // calls buildDescriptorSet()
 
         try (MemoryStack stack = MemoryStack.stackPush()) {
             VkDescriptorImageInfo.Buffer imageInfo = VkDescriptorImageInfo.calloc(1, stack)
-                    .imageLayout(VK11.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .imageLayout(imageLayout)
                     .imageView(imageView.getHandle())
                     .sampler(sampler.getHandle());
 
@@ -36,10 +36,10 @@ public class SamplerDescriptorSet extends DescriptorSet {
     }
 
     public SamplerDescriptorSet(DescriptorPool pool, DescriptorSetLayout template, int binding, Texture texture, TextureSampler sampler) {
-        this(pool, template, binding, texture.getImageView(), sampler);
+        this(pool, template, binding, VK11.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, texture.getImageView(), sampler);
     }
 
-    public SamplerDescriptorSet(DescriptorPool pool, DescriptorSetLayout template, int binding, Attachment attachment, TextureSampler sampler) {
-        this(pool, template, binding, attachment.getImageView(), sampler);
+    public SamplerDescriptorSet(DescriptorPool pool, DescriptorSetLayout template, int binding, int imageLayout, Attachment attachment, TextureSampler sampler) {
+        this(pool, template, binding, imageLayout, attachment.getImageView(), sampler);
     }
 }

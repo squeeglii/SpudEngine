@@ -192,11 +192,8 @@ public class NaiveForwardRenderer extends AbstractForwardRenderer {
 
     private static class InternalRenderContext extends RenderContext {
 
-        protected void reset() {
-            this.frameIndex = -1;
-            this.pass = -1;
-            this.renderGoal = RenderGoal.NONE;
-            this.currentPipeline = null;
+        public void reset() {
+            super.reset();
         }
 
         protected void setPass(int pass) {

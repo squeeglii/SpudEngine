@@ -40,7 +40,7 @@ public class LayeredFrameBuffer {
             attachmentHandles.flip();
 
             // All render targets should be the same format, so renderpass shouldn't matter.
-            this.frameBuffer = new FrameBuffer(swapChain.getDevice(), width, height, attachmentHandles, 0);
+            this.frameBuffer = new FrameBuffer(swapChain.getDevice(), width, height, attachmentHandles, this.getRenderPass().getHandle());
         }
     }
 
@@ -64,6 +64,10 @@ public class LayeredFrameBuffer {
 
     public RenderTargetAttachmentSet getAttachments() {
         return this.attachments;
+    }
+
+    public FrameBuffer getFrameBuffer() {
+        return this.frameBuffer;
     }
 
     public LayeredRenderPass getRenderPass() {

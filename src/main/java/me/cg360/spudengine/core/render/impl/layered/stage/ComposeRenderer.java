@@ -68,10 +68,12 @@ public class ComposeRenderer extends RenderProcess {
 
         Logger.info("Loading Shader Program...");
         this.shaderProgram = ShaderProgram.attemptCompile(this.device,
-                new BinaryShaderFile(ShaderType.VERTEX, "layered/vertex_compose"),
-                new BinaryShaderFile(ShaderType.FRAGMENT, "layered/fragment_compose")
+                new BinaryShaderFile(ShaderType.VERTEX, "shaders/layered/vertex_compose"),
+                new BinaryShaderFile(ShaderType.FRAGMENT, "shaders/layered/fragment_compose")
         );
         Logger.info("Successfully loaded shader program!");
+
+        this.shaderIO = new ShaderIO();
 
         DescriptorSetLayout[] descriptorSetLayouts = this.initDescriptorSets();
 
@@ -80,7 +82,6 @@ public class ComposeRenderer extends RenderProcess {
         int numImages = swapChain.getImageViews().length;
         this.createCommandBuffers(commandPool, numImages);
 
-        this.shaderIO = new ShaderIO();
         this.renderContext = new InternalRenderContext();
 
         for (int i = 0; i < numImages; i++)
@@ -112,6 +113,7 @@ public class ComposeRenderer extends RenderProcess {
 
     protected void buildDescriptorSets() {
         this.renderTargetSamplers.buildSets(this.descriptorPool);
+        this.reprocessRenderTargets(this.renderTargetAttachments);
 
         for(SubRenderProcess process: this.subRenderProcesses)
             process.createDescriptorSets(this.descriptorPool);
@@ -141,6 +143,7 @@ public class ComposeRenderer extends RenderProcess {
     }
 
     public void preRecordDraw(int imageIdx) {
+        Logger.info("Pre-recording draw for compositor");
         try (MemoryStack stack = MemoryStack.stackPush()) {
             VkExtent2D swapChainExtent = this.swapChain.getSwapChainExtent();
             int width = swapChainExtent.width();
@@ -179,7 +182,7 @@ public class ComposeRenderer extends RenderProcess {
                 // For each render target, draw a rectangle.
                 int renderTargets = this.renderTargetAttachments.getRenderTargetCount();
                 for(int i = 0; i < renderTargets; i++) {
-                    this.renderTargetSamplers.selectRenderTarget(renderTargets);
+                    this.renderTargetSamplers.selectRenderTarget(i);
 
                     long layoutHandle = selectedPipeline.getPipelineLayoutHandle();
                     this.shaderIO.bindDescriptorSets(cmd, layoutHandle);
@@ -191,6 +194,8 @@ public class ComposeRenderer extends RenderProcess {
 
             commandBuffer.endRecording();
         }
+
+        Logger.info("Finished pre-recording draw for compositor");
     }
 
     @Override
@@ -237,17 +242,20 @@ public class ComposeRenderer extends RenderProcess {
     public void onResize(SwapChain newSwapChain, RenderTargetAttachmentSet newRenderTargets) {
         //TODO: Make something cleaner that forces a reset of render targets.
         // Currently, this onResize is "optional", but that can lead to dirty
+        this.renderTargetAttachments = newRenderTargets;
         this.reprocessRenderTargets(newRenderTargets);
         this.onResize(newSwapChain);
     }
 
     public void reprocessRenderTargets(RenderTargetAttachmentSet attachmentSet) {
+        Logger.info("Reprocessing render targets");
         for(int i = 0; i < attachmentSet.getRenderTargetCount(); i++) {
             Attachment colour = attachmentSet.getColourAttachment(i);
             Attachment depth = attachmentSet.getDepthAttachment(i);
 
-            this.renderTargetSamplers.registerRenderTarget(colour, depth, i);
+            this.renderTargetSamplers.registerRenderTarget(this.device, colour, depth, i);
         }
+        Logger.info("Reprocessed render targets");
     }
 
     protected void doRenderPass(VkCommandBuffer cmd, VkRenderPassBeginInfo renderPassBeginInfo, Pipeline pipeline, int frameIndex, MemoryStack stack, Consumer<RenderContext> passActions) {
@@ -292,11 +300,8 @@ public class ComposeRenderer extends RenderProcess {
 
     private static class InternalRenderContext extends RenderContext {
 
-        public InternalRenderContext() {
-            this.pass = -1;
-            this.frameIndex = -1;
-            this.renderGoal = RenderGoal.NONE;
-            this.currentPipeline = null;
+        public void reset() {
+            super.reset();
         }
 
         public void setPass(int pass) {

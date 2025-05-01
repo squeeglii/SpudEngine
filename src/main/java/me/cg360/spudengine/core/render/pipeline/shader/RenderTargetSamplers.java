@@ -4,13 +4,16 @@ import me.cg360.spudengine.core.EngineProperties;
 import me.cg360.spudengine.core.exception.EngineLimitExceededException;
 import me.cg360.spudengine.core.render.geometry.model.BundledMaterial;
 import me.cg360.spudengine.core.render.geometry.model.Material;
+import me.cg360.spudengine.core.render.hardware.LogicalDevice;
 import me.cg360.spudengine.core.render.image.Attachment;
+import me.cg360.spudengine.core.render.image.ImageView;
 import me.cg360.spudengine.core.render.image.texture.Texture;
 import me.cg360.spudengine.core.render.image.texture.TextureSampler;
 import me.cg360.spudengine.core.render.pipeline.descriptor.DescriptorPool;
 import me.cg360.spudengine.core.render.pipeline.descriptor.active.SamplerDescriptorSet;
 import me.cg360.spudengine.core.render.pipeline.descriptor.layout.DescriptorSetLayout;
 import me.cg360.spudengine.core.render.pipeline.descriptor.layout.SamplerDescriptorSetLayout;
+import me.cg360.spudengine.core.util.VulkanUtil;
 import org.lwjgl.vulkan.VK11;
 
 public class RenderTargetSamplers {
@@ -20,6 +23,7 @@ public class RenderTargetSamplers {
     private DescriptorPool hostPool;
 
     private final int renderTextureCount;
+    private final ImageView[] depthOnlyViews;
 
     private final DescriptorSetLayout lColourSampler;
     private SamplerDescriptorSet[] dColourSampler;
@@ -33,6 +37,7 @@ public class RenderTargetSamplers {
         this.shaderIO = shaderIO;
 
         this.renderTextureCount = renderTextureCount;
+        this.depthOnlyViews = new ImageView[renderTextureCount];
 
         this.lColourSampler = new SamplerDescriptorSetLayout(builder.device(), 0, VK11.VK_SHADER_STAGE_FRAGMENT_BIT)
                 .setCount(renderTextureCount);
@@ -52,9 +57,19 @@ public class RenderTargetSamplers {
         this.uDepthSampler = new TextureSampler(this.hostPool.getDevice(), 1, false, VK11.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
     }
 
-    public void registerRenderTarget(Attachment colourAttachment, Attachment depthAttachment, int renderTargetId) {
-        this.dColourSampler[renderTargetId] = new SamplerDescriptorSet(this.hostPool, this.lColourSampler, 0, colourAttachment, this.uColourSampler);
-        this.dDepthSampler[renderTargetId] = new SamplerDescriptorSet(this.hostPool, this.lDepthSampler, 0, depthAttachment, this.uDepthSampler);
+    public void registerRenderTarget(LogicalDevice device, Attachment colourAttachment, Attachment depthAttachment, int renderTargetId) {
+        this.dColourSampler[renderTargetId] = new SamplerDescriptorSet(this.hostPool, this.lColourSampler, 0, VK11.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, colourAttachment, this.uColourSampler);
+
+        if(this.depthOnlyViews[renderTargetId] != null) {
+            this.depthOnlyViews[renderTargetId].cleanup();
+        }
+
+        this.depthOnlyViews[renderTargetId] = ImageView.builder()
+                .format(depthAttachment.getImage().getFormat())
+                .aspectMask(VK11.VK_IMAGE_ASPECT_DEPTH_BIT)
+                .build(device, depthAttachment.getImage().getHandle());
+
+        this.dDepthSampler[renderTargetId] = new SamplerDescriptorSet(this.hostPool, this.lDepthSampler, 0, VK11.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, this.depthOnlyViews[renderTargetId], this.uDepthSampler);
     }
 
     public void selectRenderTarget(int renderTargetId) {
@@ -64,6 +79,7 @@ public class RenderTargetSamplers {
 
 
     public void cleanup() {
+        VulkanUtil.cleanupAll(this.depthOnlyViews);
         this.uColourSampler.cleanup();
         this.uDepthSampler.cleanup();
     }

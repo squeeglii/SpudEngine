@@ -72,7 +72,7 @@ public class PortalSubRenderer implements SubRenderProcess {
         builder.addGeometryUniform(this.lBluePortal);
         builder.addGeometryUniform(this.lOrangePortal);
         builder.addGeometryUniform(this.lPortalLayer);
-        builder.addGeometryUniforms(this.lPortalTypeMask);
+        builder.addGeometryUniform(this.lPortalTypeMask);
     }
 
     @Override
@@ -178,7 +178,8 @@ public class PortalSubRenderer implements SubRenderProcess {
 
                 // todo: set the mask based on what portal is being rendered.
 
-                //shaderIO.setUniform(this.lPortalTypeMask, this.dPortalTypeMask[DISABLE_CHECKS]);
+
+                shaderIO.setUniform(this.lPortalTypeMask, this.dPortalTypeMask[DISABLE_CHECKS]);
             }
         }
 

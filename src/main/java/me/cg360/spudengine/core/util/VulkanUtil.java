@@ -90,8 +90,15 @@ public class VulkanUtil {
     }
 
     public static VkClearValue.Buffer generateClearValues(MemoryStack stack) {
+        return VulkanUtil.generateClearValues(stack, EngineProperties.CLEAR_COLOUR);
+    }
+
+    public static VkClearValue.Buffer generateFullAlphaClearValues(MemoryStack stack) {
+        return VulkanUtil.generateClearValues(stack, EngineProperties.FULL_ALPHA);
+    }
+
+    public static VkClearValue.Buffer generateClearValues(MemoryStack stack, Color c) {
         VkClearValue.Buffer clearValues = VkClearValue.calloc(2, stack);
-        Color c = EngineProperties.CLEAR_COLOUR;
         float[] components = new float[4];
         c.getComponents(components);
         clearValues.apply(0, v -> v.color()
@@ -108,6 +115,11 @@ public class VulkanUtil {
     }
 
     public static void setupStandardViewport(VkCommandBuffer cmd, MemoryStack stack, int width, int height) {
+        VulkanUtil.setupFullscreenViewport(cmd, stack, width, height);
+        VulkanUtil.setupFullscreenScissor(cmd, stack, width, height);
+    }
+
+    public static void setupFullscreenViewport(VkCommandBuffer cmd, MemoryStack stack, int width, int height) {
         VkViewport.Buffer viewport = VkViewport.calloc(1, stack)
                 .x(0)
                 .y(height)
@@ -116,7 +128,9 @@ public class VulkanUtil {
                 .minDepth(0.0f)
                 .maxDepth(1.0f);
         VK11.vkCmdSetViewport(cmd, 0, viewport);
+    }
 
+    public static void setupFullscreenScissor(VkCommandBuffer cmd, MemoryStack stack, int width, int height) {
         VkRect2D.Buffer scissor = VkRect2D.calloc(1, stack)
                 .extent(it -> it
                         .width(width)
