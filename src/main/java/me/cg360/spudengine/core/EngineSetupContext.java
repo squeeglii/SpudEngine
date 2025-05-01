@@ -3,11 +3,12 @@ package me.cg360.spudengine.core;
 import me.cg360.spudengine.core.render.Window;
 import me.cg360.spudengine.core.render.impl.RenderProcessInitialiser;
 import me.cg360.spudengine.core.render.impl.forward.multipass.MultiPassForwardRenderer;
+import me.cg360.spudengine.core.render.impl.forward.naiveforward.NaiveForwardRenderer;
 import me.cg360.spudengine.core.world.Scene;
 
 public class EngineSetupContext {
 
-    private static final RenderProcessInitialiser DEFAULT_RENDERER = MultiPassForwardRenderer::new;
+    private static final RenderProcessInitialiser DEFAULT_RENDERER = NaiveForwardRenderer::new;
 
     private final Window window;
     private final Scene scene;

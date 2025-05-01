@@ -13,7 +13,7 @@ import me.cg360.spudengine.core.render.image.FrameBuffer;
 import me.cg360.spudengine.core.render.image.ImageView;
 import me.cg360.spudengine.core.render.image.SwapChain;
 import me.cg360.spudengine.core.render.impl.SubRenderProcess;
-import me.cg360.spudengine.core.render.impl.forward.CommonForwardRenderer;
+import me.cg360.spudengine.core.render.impl.forward.AbstractForwardRenderer;
 import me.cg360.spudengine.core.render.pipeline.Pipeline;
 import me.cg360.spudengine.core.render.pipeline.PipelineCache;
 import me.cg360.spudengine.core.render.pipeline.descriptor.layout.DescriptorSetLayout;
@@ -22,7 +22,7 @@ import me.cg360.spudengine.core.render.pipeline.util.ShaderStage;
 import me.cg360.spudengine.core.render.sync.Fence;
 import me.cg360.spudengine.core.util.VulkanUtil;
 import me.cg360.spudengine.core.world.Scene;
-import me.cg360.spudengine.wormholes.render.pass.PortalLayerColourRenderPass;
+import me.cg360.spudengine.wormholes.render.pass.PortalMultiRenderPass;
 import org.joml.Matrix4f;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.*;
@@ -32,7 +32,7 @@ import java.nio.LongBuffer;
 import java.util.*;
 import java.util.function.Consumer;
 
-public class MultiPassForwardRenderer extends CommonForwardRenderer {
+public class MultiPassForwardRenderer extends AbstractForwardRenderer {
 
     private SwapChainRenderPass[] renderPasses;
 
@@ -42,23 +42,22 @@ public class MultiPassForwardRenderer extends CommonForwardRenderer {
     private final InternalRenderContext renderContext;
 
 
-    public MultiPassForwardRenderer(SwapChain swapChain, CommandPool commandPool, PipelineCache pipelineCache, Scene scene, SubRenderProcess[] subRenderProcesses) {
-        super(swapChain, commandPool, pipelineCache, scene, subRenderProcesses);
+    public MultiPassForwardRenderer(SwapChain swapChain, CommandPool commandPool, PipelineCache pipelineCache, Scene scene, int passCount, SubRenderProcess[] subRenderProcesses) {
+        super(swapChain, commandPool, pipelineCache, scene, passCount, subRenderProcesses);
 
         this.renderContext = new InternalRenderContext();
     }
 
     @Override
-    protected void createRenderPasses(SwapChain swapChain, int depthImageFormat) {
-        //TODO: Remove portal references
-        this.renderPasses = new SwapChainRenderPass[PortalLayerColourRenderPass.MAX_PORTAL_DEPTH];
+    protected void createRenderPasses(SwapChain swapChain, int depthImageFormat, int requestedPassCount) {
+        this.renderPasses = new SwapChainRenderPass[requestedPassCount];
 
         // Initial pass, clears all values
         this.renderPasses[0] = new SwapChainRenderPass(swapChain, depthImageFormat);
 
         // colour render passes
-        for(int pass =  1; pass < PortalLayerColourRenderPass.MAX_PORTAL_DEPTH; pass++) {
-            this.renderPasses[pass] = new PortalLayerColourRenderPass(swapChain, depthImageFormat);
+        for(int pass =  1; pass < this.renderPasses.length; pass++) {
+            this.renderPasses[pass] = new PortalMultiRenderPass(swapChain, depthImageFormat);
         }
     }
 
@@ -101,9 +100,6 @@ public class MultiPassForwardRenderer extends CommonForwardRenderer {
 
         //builder.setUsingStencilTest(true);
         for(int pass = 0; pass < this.renderPasses.length; pass++) {
-            int val = pass % PortalLayerColourRenderPass.MAX_PORTAL_DEPTH;
-            Logger.debug("Standard #{}: read {}", pass, val);
-
             this.standardPipeline[pass] = builder
                     .setUsingStencilTest(false)
                     .setUsingDepthTest(true)
@@ -150,11 +146,11 @@ public class MultiPassForwardRenderer extends CommonForwardRenderer {
             commandBuffer.reset();
 
             VkCommandBuffer cmd = commandBuffer.beginRecording();
-            VkClearValue.Buffer clearValues = CommonForwardRenderer.generateClearValues(stack); // initial
+            VkClearValue.Buffer clearValues = VulkanUtil.generateClearValues(stack); // initial
 
             // standard pass.
             this.renderContext.setRenderGoal(RenderGoal.STANDARD_DRAWING);
-            for(int pass = 0; pass < PortalLayerColourRenderPass.MAX_PORTAL_DEPTH; pass++) {
+            for(int pass = 0; pass < this.renderPasses.length; pass++) {
                 VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.calloc(stack)
                         .sType(VK11.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO)
                         .renderPass(this.renderPasses[pass].getHandle())
@@ -219,7 +215,7 @@ public class MultiPassForwardRenderer extends CommonForwardRenderer {
         return this.renderContext;
     }
 
-    public static class InternalRenderContext extends RenderContext {
+    private static class InternalRenderContext extends RenderContext {
 
         protected void reset() {
             this.frameIndex = -1;

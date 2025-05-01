@@ -1,6 +1,7 @@
 package me.cg360.spudengine.core.render.image;
 
 import me.cg360.spudengine.core.render.hardware.LogicalDevice;
+import me.cg360.spudengine.core.render.impl.AbstractRenderer;
 import org.lwjgl.vulkan.VK11;
 
 import java.util.ArrayList;
@@ -24,10 +25,15 @@ public class RenderTargetAttachmentSet {
 
             this.attachments.add(new Attachment(  // Depth
                     device, width, height,
-                    VK11.VK_FORMAT_D32_SFLOAT_S8_UINT,
+                    AbstractRenderer.DEPTH_ATTACHMENT_FORMAT,
                     VK11.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
             ));
         }
+    }
+
+    public void cleanup() {
+        for(Attachment attachment : this.attachments)
+            attachment.cleanup();
     }
 
     public Attachment getColourAttachment(int renderTargetId) {
@@ -35,7 +41,15 @@ public class RenderTargetAttachmentSet {
     }
 
     public Attachment getDepthAttachment(int renderTargetId) {
-        return this.attachments.get(1+ (renderTargetId * 2));
+        return this.attachments.get(1 + (renderTargetId * 2));
+    }
+
+    public int getColourAttachmentLocation(int renderTargetId) {
+        return renderTargetId * 2;
+    }
+
+    public int getDepthAttachmentLocation(int renderTargetId) {
+        return 1 + (renderTargetId * 2);
     }
 
     public int getRenderTargetCount() {

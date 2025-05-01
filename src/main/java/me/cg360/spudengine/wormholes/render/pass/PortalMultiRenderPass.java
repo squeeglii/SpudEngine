@@ -4,13 +4,9 @@ import me.cg360.spudengine.core.render.image.SwapChain;
 import me.cg360.spudengine.core.render.pipeline.pass.SwapChainRenderPass;
 import org.lwjgl.vulkan.*;
 
-public class PortalLayerColourRenderPass extends SwapChainRenderPass {
+public class PortalMultiRenderPass extends SwapChainRenderPass {
 
-    // Must be +1 what's in the shader for multi-pass support.
-    // -- easier than updating all the maths.
-    public static final int MAX_PORTAL_DEPTH = 7;
-
-    public PortalLayerColourRenderPass(SwapChain swapChain, int depthImageFormat) {
+    public PortalMultiRenderPass(SwapChain swapChain, int depthImageFormat) {
         super(swapChain, depthImageFormat);
     }
 

@@ -1,9 +1,12 @@
 package me.cg360.spudengine.core.util;
 
+import me.cg360.spudengine.core.EngineProperties;
 import me.cg360.spudengine.core.render.hardware.PhysicalDevice;
+import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.*;
 import org.tinylog.Logger;
 
+import java.awt.*;
 import java.util.Arrays;
 
 public class VulkanUtil {
@@ -84,6 +87,24 @@ public class VulkanUtil {
 
     public static void cleanupAll(VkHandleWrapper[] vkObjects) {
         Arrays.stream(vkObjects).forEach(VkHandleWrapper::cleanup);
+    }
+
+    public static VkClearValue.Buffer generateClearValues(MemoryStack stack) {
+        VkClearValue.Buffer clearValues = VkClearValue.calloc(2, stack);
+        Color c = EngineProperties.CLEAR_COLOUR;
+        float[] components = new float[4];
+        c.getComponents(components);
+        clearValues.apply(0, v -> v.color()
+                .float32(0, components[0])
+                .float32(1, components[1])
+                .float32(2, components[2])
+                .float32(3, components[3])
+        );
+        clearValues.apply(1, v -> v.depthStencil()
+                .depth(1.0f)
+                .stencil(0)
+        );
+        return clearValues;
     }
 
 }

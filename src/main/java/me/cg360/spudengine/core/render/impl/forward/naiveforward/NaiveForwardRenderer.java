@@ -13,13 +13,14 @@ import me.cg360.spudengine.core.render.image.FrameBuffer;
 import me.cg360.spudengine.core.render.image.ImageView;
 import me.cg360.spudengine.core.render.image.SwapChain;
 import me.cg360.spudengine.core.render.impl.SubRenderProcess;
-import me.cg360.spudengine.core.render.impl.forward.CommonForwardRenderer;
+import me.cg360.spudengine.core.render.impl.forward.AbstractForwardRenderer;
 import me.cg360.spudengine.core.render.pipeline.Pipeline;
 import me.cg360.spudengine.core.render.pipeline.PipelineCache;
 import me.cg360.spudengine.core.render.pipeline.descriptor.layout.DescriptorSetLayout;
 import me.cg360.spudengine.core.render.pipeline.pass.SwapChainRenderPass;
 import me.cg360.spudengine.core.render.pipeline.util.ShaderStage;
 import me.cg360.spudengine.core.render.sync.Fence;
+import me.cg360.spudengine.core.util.VulkanUtil;
 import me.cg360.spudengine.core.world.Scene;
 import org.joml.Matrix4f;
 import org.lwjgl.system.MemoryStack;
@@ -30,17 +31,17 @@ import java.nio.LongBuffer;
 import java.util.*;
 import java.util.function.Consumer;
 
-public class NaiveForwardRenderer extends CommonForwardRenderer {
+public class NaiveForwardRenderer extends AbstractForwardRenderer {
 
     private SwapChainRenderPass renderPass;
 
     private Pipeline standardPipeline;
     private Pipeline wireframePipeline;
 
-    protected InternalRenderContext renderContext;
+    private InternalRenderContext renderContext;
 
     public NaiveForwardRenderer(SwapChain swapChain, CommandPool commandPool, PipelineCache pipelineCache, Scene scene, SubRenderProcess[] subRenderProcesses) {
-        super(swapChain, commandPool, pipelineCache, scene, subRenderProcesses);
+        super(swapChain, commandPool, pipelineCache, scene, 1, subRenderProcesses);
 
         this.renderContext = new InternalRenderContext();
     }
@@ -67,7 +68,7 @@ public class NaiveForwardRenderer extends CommonForwardRenderer {
     }
 
     @Override
-    protected void createRenderPasses(SwapChain swapChain, int depthImageFormat) {
+    protected void createRenderPasses(SwapChain swapChain, int depthImageFormat, int requestedPassCount) {
         this.renderPass = new SwapChainRenderPass(swapChain, this.depthAttachments[0].getImage().getFormat());
     }
 
@@ -118,7 +119,7 @@ public class NaiveForwardRenderer extends CommonForwardRenderer {
             //fence.reset();
             commandBuffer.reset();
 
-            VkClearValue.Buffer clearValues = generateClearValues(stack);
+            VkClearValue.Buffer clearValues = VulkanUtil.generateClearValues(stack);
 
             VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.calloc(stack)
                     .sType(VK11.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO)
@@ -188,7 +189,7 @@ public class NaiveForwardRenderer extends CommonForwardRenderer {
     }
 
 
-    public static class InternalRenderContext extends RenderContext {
+    private static class InternalRenderContext extends RenderContext {
 
         protected void reset() {
             this.frameIndex = -1;
