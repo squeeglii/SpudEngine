@@ -6,6 +6,7 @@ import me.cg360.spudengine.core.render.command.CommandPool;
 import me.cg360.spudengine.core.render.command.CommandQueue;
 import me.cg360.spudengine.core.render.context.RenderContext;
 import me.cg360.spudengine.core.render.context.RenderGoal;
+import me.cg360.spudengine.core.render.data.buffer.GeneralBuffer;
 import me.cg360.spudengine.core.render.geometry.VertexFormats;
 import me.cg360.spudengine.core.render.geometry.model.BufferedModel;
 import me.cg360.spudengine.core.render.hardware.LogicalDevice;
@@ -28,6 +29,7 @@ import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.*;
 import org.tinylog.Logger;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -247,6 +249,7 @@ public class ComposeRenderer extends RenderProcess {
         //TODO: Make something cleaner that forces a reset of render targets.
         // Currently, this onResize is "optional", but that can lead to dirty
         this.renderTargetAttachments = newRenderTargets;
+        this.renderTargetSamplers.freeRenderTargets();
         this.reprocessRenderTargets(newRenderTargets);
         this.onResize(newSwapChain);
     }
@@ -284,7 +287,21 @@ public class ComposeRenderer extends RenderProcess {
 
     @Override
     public void cleanup() {
+        for(SubRenderProcess process: this.subRenderProcesses)
+            process.cleanup();
 
+        this.renderTargetSamplers.cleanup();
+
+        this.descriptorPool.cleanup(); // descriptor sets cleaned up here.
+
+        this.standardPipeline.cleanup();
+
+        this.shaderProgram.cleanup();
+
+        this.frameBuffer.cleanup();
+
+        Arrays.asList(this.commandBuffers).forEach(CommandBuffer::cleanup);
+        Arrays.asList(this.fences).forEach(Fence::cleanup);
     }
 
     @Override

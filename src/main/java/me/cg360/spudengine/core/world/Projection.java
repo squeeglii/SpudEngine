@@ -24,7 +24,8 @@ public class Projection {
         this.height = height;
 
         float aspectRatio = (float) width / (float) height;
-        this.projectionMatrix.perspective(EngineProperties.FOV, aspectRatio, this.near, this.far, true);
+        double fov = Math.PI * (EngineProperties.FOV / 180.0d);
+        this.projectionMatrix.perspective((float) fov, aspectRatio, this.near, this.far, true);
     }
 
     public Matrix4f asMatrix() {

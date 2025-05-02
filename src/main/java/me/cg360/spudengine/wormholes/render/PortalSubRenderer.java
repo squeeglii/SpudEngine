@@ -227,6 +227,8 @@ public class PortalSubRenderer implements SubRenderProcess {
 
             if(!shouldDraw) {
                 cullDraw(cmd, stack);
+            } else {
+                noCull(cmd, stack);
             }
         }
     }
@@ -242,6 +244,8 @@ public class PortalSubRenderer implements SubRenderProcess {
 
             if(!shouldDraw) {
                 cullDraw(cmd, stack);
+            } else {
+                noCull(cmd, stack);
             }
         }
     }
@@ -251,6 +255,17 @@ public class PortalSubRenderer implements SubRenderProcess {
                 .extent(it -> it
                         .width(0)
                         .height(0))
+                .offset(it -> it
+                        .x(0)
+                        .y(0));
+        VK11.vkCmdSetScissor(cmd, 0, scissor);
+    }
+
+    private static void noCull(VkCommandBuffer cmd, MemoryStack stack) {
+        VkRect2D.Buffer scissor = VkRect2D.calloc(1, stack)
+                .extent(it -> it
+                        .width(100000)
+                        .height(100000))
                 .offset(it -> it
                         .x(0)
                         .y(0));

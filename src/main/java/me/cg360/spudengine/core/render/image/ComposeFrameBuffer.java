@@ -65,6 +65,13 @@ public class ComposeFrameBuffer {
         this.createFrameBuffers(swapChain);
     }
 
+    public void cleanup() {
+        VulkanUtil.cleanupAll(this.frameBuffers);
+        Arrays.stream(this.depthAttachments).forEach(Attachment::cleanup);
+
+        this.renderPass.cleanup();
+    }
+
     public FrameBuffer[] getBuffers() {
         return this.frameBuffers;
     }
