@@ -122,7 +122,11 @@ public class Camera {
     }
 
     public Vector3f getFacingDirection() {
-        return forward;
+        return this.forward;
+    }
+
+    public Vector2f getRotation() {
+        return this.rotation;
     }
 
     public Matrix4f getViewMatrix() {

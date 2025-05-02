@@ -40,7 +40,7 @@ public class Window implements VkHandleWrapper {
 
         GLFW.glfwSetFramebufferSizeCallback(this.handle, (window, width, height) -> this.resize(width, height));
         GLFW.glfwSetKeyCallback(this.handle, (window, key, scancode, action, mods) -> {
-            if(key == GLFW.GLFW_KEY_F4 && action == GLFW.GLFW_RELEASE)
+            if(key == GLFW.GLFW_KEY_END && action == GLFW.GLFW_RELEASE)
                 this.requestClose();
 
             if(keyCallback != null)

@@ -8,10 +8,6 @@ Massive thank you! There's a *lot* of setup for Vulkan and this book was a valua
 
 ---
 
-It's written in java. 
+## Wormhole / Portal Demo Project
 
-It uses Vulkan (via LWGJL).
-
-It will support portals at whatever cost.
-
-[Abracadabra.](https://www.youtube.com/watch?v=vBynw9Isr28)
+For information on how to use the Wormhole sub-project, see [docs/wormhole_project_guide.md](./docs/wormhole_project_guide.md)

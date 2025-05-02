@@ -18,6 +18,8 @@ public class LocalPlayerEntity extends StaticModelEntity implements InputTicked 
 
     private final Camera sceneCamera;
 
+    private boolean shouldRender;
+
     public LocalPlayerEntity(Model modelId) {
         this(modelId.getId());
     }
@@ -25,6 +27,7 @@ public class LocalPlayerEntity extends StaticModelEntity implements InputTicked 
     public LocalPlayerEntity(String modelId) {
         super(UUID.randomUUID(), modelId);
         this.sceneCamera = new Camera(true);
+        this.shouldRender = true;
     }
 
     /** */
@@ -73,6 +76,18 @@ public class LocalPlayerEntity extends StaticModelEntity implements InputTicked 
         }
     }
 
+    public void toggleRendering() {
+        this.shouldRender = !this.shouldRender;
+    }
+
+    public void setPosition(float x, float y, float z) {
+        this.sceneCamera.setPosition(x, y, z);
+    }
+
+    public void setRotation(float pitch, float yaw) {
+        this.sceneCamera.setRotation(pitch, yaw);
+    }
+
     @Override
     public Matrix4f getTransform() {
         return this.sceneCamera.getViewMatrix().invert(new Matrix4f());
@@ -80,6 +95,6 @@ public class LocalPlayerEntity extends StaticModelEntity implements InputTicked 
 
     @Override
     public boolean shouldDraw(RenderContext renderContext) {
-        return renderContext.subpass() == 1;
+        return this.shouldRender;
     }
 }

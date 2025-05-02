@@ -71,7 +71,25 @@ public class GeneratedAssets {
             0 // Default material.
     );
 
-    public static final Model PLAYER_MODEL = new Model("generated/player", MESH_CUBE);
+    private static final Mesh MESH_PLAYER = new Mesh(
+            Vectors.scaleAll(new float[]{
+                    -0.5f, 1.5f, 0.5f,
+                    -0.5f, -1.5f, 0.5f,
+                    0.5f, -1.5f, 0.5f,
+                    0.5f, 1.5f, 0.5f,
+                    -0.5f, 1.5f, -0.5f,
+                    0.5f, 1.5f, -0.5f,
+                    -0.5f, -1.5f, -0.5f,
+                    0.5f, -1.5f, -0.5f,
+            }, 0.2f),
+
+            MESH_CUBE.textureCoordinates(),
+            MESH_CUBE.indices(),
+            0
+    );
+
+
+    public static final Model PLAYER_MODEL = new Model("generated/player", MESH_PLAYER);
 
     public static final Mesh PORTAL_MESH = new Mesh(PORTAL_POINTS, PORTAL_UVs, PORTAL_INDICES, 0);
 

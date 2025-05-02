@@ -56,11 +56,10 @@ public class RenderTargetSamplers {
     }
 
     public void registerRenderTarget(LogicalDevice device, Attachment colourAttachment, Attachment depthAttachment, int renderTargetId) {
-        this.dColourSampler[renderTargetId] = new SamplerDescriptorSet(this.hostPool, this.lColourSampler, 0, VK11.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, colourAttachment, this.uColourSampler);
+        if(this.dColourSampler[renderTargetId] != null || this.dDepthSampler[renderTargetId] != null)
+            throw new IllegalStateException("Render Target Id is already registered to a sampler - see #freeRenderTarget(...)");
 
-        if(this.depthOnlyViews[renderTargetId] != null) {
-            this.depthOnlyViews[renderTargetId].cleanup();
-        }
+        this.dColourSampler[renderTargetId] = new SamplerDescriptorSet(this.hostPool, this.lColourSampler, 0, VK11.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, colourAttachment, this.uColourSampler);
 
         this.depthOnlyViews[renderTargetId] = ImageView.builder()
                 .format(depthAttachment.getImage().getFormat())
@@ -80,11 +79,33 @@ public class RenderTargetSamplers {
 
                 renderTargetSets.put(colour);
                 renderTargetSets.put(depth);
+
+                this.dColourSampler[i] = null;
+                this.dDepthSampler[i] = null;
+                this.depthOnlyViews[i] = null; // Depth-Only view gets cleaned up automatically.
             }
 
             renderTargetSets.flip();
 
             VK11.vkFreeDescriptorSets(this.hostPool.getDevice().asVk(), this.hostPool.getHandle(), renderTargetSets);
+        }
+    }
+
+    public void freeRenderTarget(int renderTargetId) {
+        try(MemoryStack stack = MemoryStack.stackPush()) {
+            LongBuffer renderTargetSets = stack.mallocLong(2);
+
+            long colour = this.dColourSampler[renderTargetId].getHandle();
+            long depth = this.dDepthSampler[renderTargetId].getHandle();
+
+            renderTargetSets.put(0, colour);
+            renderTargetSets.put(1, depth);
+
+            VK11.vkFreeDescriptorSets(this.hostPool.getDevice().asVk(), this.hostPool.getHandle(), renderTargetSets);
+
+            this.dColourSampler[renderTargetId] = null;
+            this.dDepthSampler[renderTargetId] = null;
+            this.depthOnlyViews[renderTargetId] = null;
         }
     }
 

@@ -57,6 +57,7 @@ public class WormholeDemo extends GameComponent {
         this.scene().addEntity(this.levelGeometry);
 
         this.playerEntity = new LocalPlayerEntity(GeneratedAssets.PLAYER_MODEL);
+        this.playerEntity.setPosition(0, 2, 0);
         this.scene().addEntity(this.playerEntity);
 
         //this.testTranslation();
@@ -74,10 +75,16 @@ public class WormholeDemo extends GameComponent {
 
     @Override
     protected void onInputEvent(Window window, int key, int action, int modifiers) {
-        if(key == GLFW.GLFW_KEY_F1 && action == GLFW.GLFW_RELEASE)
-            this.getEngine().getRenderer().useWireframe = !this.getEngine().getRenderer().useWireframe;
+        this.handleFunctionKeys(key, action);
+        this.handlePortalDebugPlacementKeys(key, action);
+        this.handleDebugViewKeys(key, action);
+    }
 
-        this.handlePortalDebugKeys(key, action);
+    private void handleFunctionKeys(int key, int action) {
+        if(key == GLFW.GLFW_KEY_F1 && action == GLFW.GLFW_RELEASE) {
+            this.getEngine().getRenderer().useWireframe = !this.getEngine().getRenderer().useWireframe;
+            Logger.info("Toggled wireframe mode.");
+        }
 
         if(key == GLFW.GLFW_KEY_F2 && action == GLFW.GLFW_RELEASE) {
             Logger.info("Calculating bounds...");
@@ -100,98 +107,138 @@ public class WormholeDemo extends GameComponent {
                 );
             }
         }
+
+        if(key == GLFW.GLFW_KEY_F3 && action == GLFW.GLFW_RELEASE) {
+            Logger.info("Camera State: \n| position: {}\n| rotation: {} \n| facing: {}",
+                    this.scene().getMainCamera().getPosition(),
+                    this.scene().getMainCamera().getRotation(),
+                    this.scene().getMainCamera().getFacingDirection()
+            );
+        }
+
+        if(key == GLFW.GLFW_KEY_F4 && action == GLFW.GLFW_RELEASE) {
+            GameProperties.forceRenderSolidPortals = !GameProperties.forceRenderSolidPortals;
+            Logger.info("Toggled forceRenderSolidPortals to {}", GameProperties.forceRenderSolidPortals);
+        }
+
+        if(key == GLFW.GLFW_KEY_F5 && action == GLFW.GLFW_RELEASE) {
+            this.playerEntity.toggleRendering();
+            Logger.info("Toggled player model rendering.");
+        }
     }
 
-    private void handlePortalRotation(int key, int action) {
-        if(key == GLFW.GLFW_KEY_LEFT_BRACKET && action == GLFW.GLFW_RELEASE) {
+    private void handleDebugViewKeys(int key, int action) {
+        if(action != GLFW.GLFW_RELEASE) return;
 
-        }
+        switch (key) {
+            case GLFW.GLFW_KEY_I -> {
+                this.scene().getMainCamera().setPosition(1000000, 0, 0);
+                this.scene().getMainCamera().setRotation(0, 0);
+            }
 
-        if(key == GLFW.GLFW_KEY_RIGHT_BRACKET && action == GLFW.GLFW_RELEASE) {
-            if(this.getPortalTracker().hasOrangePortal()) {
-                //todo add rotation cos I'm bored.
+            case GLFW.GLFW_KEY_O -> {
+                this.scene().getMainCamera().setPosition(0, 2, 0);
+                this.scene().getMainCamera().setRotation(0, 0);
             }
         }
     }
 
-    private void handlePortalDebugKeys(int key, int action) {
-        if(key == GLFW.GLFW_KEY_0 && action == GLFW.GLFW_RELEASE) {
+    private void handlePortalDebugPlacementKeys(int key, int action) {
+        if(action != GLFW.GLFW_RELEASE) return;
 
-            if(this.getPortalTracker().hasBluePortal()) {
-                this.getPortalTracker().removeBluePortal();
-            } else {
-                PortalEntity bluePortal = new PortalEntity(
-                        PortalType.BLUE,
-                        new Vector3f(-6f, 0f, -1.01f),
-                        Vectors.toRadians(0, 0, 0)
-                );
+        switch (key) {
+            case GLFW.GLFW_KEY_0 -> {
+                if(this.getPortalTracker().hasBluePortal()) {
+                    this.getPortalTracker().removeBluePortal();
+                } else {
+                    PortalEntity bluePortal = new PortalEntity(
+                            PortalType.BLUE,
+                            new Vector3f(-6f, 0f, -1.01f),
+                            Vectors.toRadians(0, 0, 0)
+                    );
 
-                this.scene().addEntity(bluePortal);
+                    this.scene().addEntity(bluePortal);
+                }
+            }
+
+            case GLFW.GLFW_KEY_9 -> {
+                if(this.getPortalTracker().hasBluePortal()) {
+                    this.getPortalTracker().removeBluePortal();
+                } else {
+                    PortalEntity bluePortal = new PortalEntity(
+                            PortalType.BLUE,
+                            new Vector3f(-2f, 0f, 3.99f),
+                            Vectors.toRadians(0, 0, 0)
+                    );
+
+                    this.scene().addEntity(bluePortal);
+                }
+            }
+
+            case GLFW.GLFW_KEY_8 -> {
+                if(this.getPortalTracker().hasBluePortal()) {
+                    this.getPortalTracker().removeBluePortal();
+                } else {
+                    PortalEntity bluePortal = new PortalEntity(
+                            PortalType.BLUE,
+                            new Vector3f(-3.99f, 0f, 1),
+                            Vectors.toRadians(0, -90, 0)
+                    );
+
+                    this.scene().addEntity(bluePortal);
+                }
+            }
+
+            // Orange Portals --------------------------------------------------
+
+            case GLFW.GLFW_KEY_1 -> {
+                if(this.getPortalTracker().hasOrangePortal()) {
+                    this.getPortalTracker().removeOrangePortal();
+
+                } else {
+                    PortalEntity orangePortal = new PortalEntity(
+                            PortalType.ORANGE,
+                            new Vector3f(0, 2.0f, -3.99f),
+                            Vectors.toRadians(0, 180, 0)
+                    );
+
+                    this.scene().addEntity(orangePortal);
+                }
+            }
+
+            case GLFW.GLFW_KEY_2 -> {
+                if(this.getPortalTracker().hasOrangePortal()) {
+                    this.getPortalTracker().removeOrangePortal();
+
+                } else {
+                    PortalEntity orangePortal = new PortalEntity(
+                            PortalType.ORANGE,
+                            new Vector3f(-6f, 0f, -2.99f),
+                            Vectors.toRadians(0, 180, 0)
+                    );
+
+                    this.scene().addEntity(orangePortal);
+                }
+            }
+
+            case GLFW.GLFW_KEY_3 -> {
+                if(this.getPortalTracker().hasOrangePortal()) {
+                    this.getPortalTracker().removeOrangePortal();
+
+                } else {
+                    PortalEntity orangePortal = new PortalEntity(
+                            PortalType.ORANGE,
+                            new Vector3f(-2f, 0f, -3.99f),
+                            Vectors.toRadians(0, 180, 0)
+                    );
+
+                    this.scene().addEntity(orangePortal);
+                }
             }
         }
-
-        if(key == GLFW.GLFW_KEY_9 && action == GLFW.GLFW_RELEASE) {
-
-            if(this.getPortalTracker().hasBluePortal()) {
-                this.getPortalTracker().removeBluePortal();
-            } else {
-                PortalEntity bluePortal = new PortalEntity(
-                        PortalType.BLUE,
-                        new Vector3f(-2f, 0f, 3.99f),
-                        Vectors.toRadians(0, 0, 0)
-                );
-
-                this.scene().addEntity(bluePortal);
-            }
-        }
-
-
-        if(key == GLFW.GLFW_KEY_1 && action == GLFW.GLFW_RELEASE) {
-            if(this.getPortalTracker().hasOrangePortal()) {
-                this.getPortalTracker().removeOrangePortal();
-
-            } else {
-                PortalEntity orangePortal = new PortalEntity(
-                        PortalType.ORANGE,
-                        new Vector3f(0, 2.0f, -3.99f),
-                        Vectors.toRadians(0, 180, 0)
-                );
-
-                this.scene().addEntity(orangePortal);
-            }
-        }
-
-        if(key == GLFW.GLFW_KEY_2 && action == GLFW.GLFW_RELEASE) {
-            if(this.getPortalTracker().hasOrangePortal()) {
-                this.getPortalTracker().removeOrangePortal();
-
-            } else {
-                PortalEntity orangePortal = new PortalEntity(
-                        PortalType.ORANGE,
-                        new Vector3f(-6f, 0f, -2.99f),
-                        Vectors.toRadians(0, 180, 0)
-                );
-
-                this.scene().addEntity(orangePortal);
-            }
-        }
-
-        if(key == GLFW.GLFW_KEY_3 && action == GLFW.GLFW_RELEASE) {
-            if(this.getPortalTracker().hasOrangePortal()) {
-                this.getPortalTracker().removeOrangePortal();
-
-            } else {
-                PortalEntity orangePortal = new PortalEntity(
-                        PortalType.ORANGE,
-                        new Vector3f(-2f, 0f, -3.99f),
-                        Vectors.toRadians(0, 180, 0)
-                );
-
-                this.scene().addEntity(orangePortal);
-            }
-        }
-        
     }
+
+
 
     public PortalTracker getPortalTracker() {
         return this.portalTracker;

@@ -119,6 +119,6 @@ public class PortalEntity extends SimpleEntity {
         // useful when rendering to the stencil buffer to make a cutout.
 
         //return false;
-        return renderContext.renderGoal() == RenderGoal.ORANGE_STENCIL || GameProperties.FORCE_RENDER_SOLID_PORTALS;
+        return GameProperties.forceRenderSolidPortals;
     }
 }
