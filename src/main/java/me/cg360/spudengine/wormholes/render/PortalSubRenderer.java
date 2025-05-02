@@ -11,6 +11,7 @@ import me.cg360.spudengine.core.render.pipeline.descriptor.layout.UniformDescrip
 import me.cg360.spudengine.core.render.pipeline.shader.DescriptorSetLayoutBundle;
 import me.cg360.spudengine.core.render.pipeline.shader.ShaderIO;
 import me.cg360.spudengine.core.render.pipeline.shader.StandardSamplers;
+import me.cg360.spudengine.core.util.Bounds3D;
 import me.cg360.spudengine.core.util.VulkanUtil;
 import me.cg360.spudengine.wormholes.GameProperties;
 import me.cg360.spudengine.wormholes.GeneratedAssets;
@@ -18,7 +19,10 @@ import me.cg360.spudengine.wormholes.WormholeDemo;
 import me.cg360.spudengine.wormholes.logic.PortalTracker;
 import me.cg360.spudengine.wormholes.world.entity.PortalEntity;
 import org.joml.Matrix4f;
+import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK11;
+import org.lwjgl.vulkan.VkCommandBuffer;
+import org.lwjgl.vulkan.VkRect2D;
 import org.tinylog.Logger;
 
 public class PortalSubRenderer implements SubRenderProcess {
@@ -110,7 +114,7 @@ public class PortalSubRenderer implements SubRenderProcess {
     }
 
     @Override
-    public void renderPreMesh(RenderContext renderContext, ShaderIO shaderIO, StandardSamplers samplers) {
+    public void renderPreMesh(RenderContext renderContext, ShaderIO shaderIO, StandardSamplers samplers, VkCommandBuffer cmd) {
         PortalTracker pTrack = this.game.getPortalTracker();
 
         // last subpass == closest room copy. invert using max depth.
@@ -176,13 +180,81 @@ public class PortalSubRenderer implements SubRenderProcess {
 
             case LAYERED_COMPOSE -> {
                 this.limitPortalLayerToPass(shaderIO, layerOnSubpass);
+                int redrawStep = renderContext.redrawIteration();
 
-                // todo: set the mask based on what portal is being rendered.
+                if(layerOnSubpass == 0) {
+                    shaderIO.setUniform(this.lPortalTypeMask, this.dPortalTypeMask[UNASSIGNED_PORTAL_TYPE]);
 
-                shaderIO.setUniform(this.lPortalTypeMask, this.dPortalTypeMask[DISABLE_CHECKS]);
+                    try(MemoryStack stack = MemoryStack.stackPush()) {
+                        VkRect2D.Buffer scissor = VkRect2D.calloc(1, stack)
+                                .extent(it -> it
+                                        .width(10000)
+                                        .height(10000))
+                                .offset(it -> it
+                                        .x(0)
+                                        .y(0));
+                        VK11.vkCmdSetScissor(cmd, 0, scissor);
+                    }
+
+
+                // Redraw - draws 2 cycles in the same subpass.
+                } else {
+                    if(redrawStep == 0) {
+                        shaderIO.setUniform(this.lPortalTypeMask, this.dPortalTypeMask[BLUE_PORTAL_TYPE]);
+                        handleBlueLayer(cmd, pTrack);
+                        renderContext.requestRedraw();
+
+                        //TODO: bounds2d tests don't seem to be working so it isn;t culling. Fix those
+                        // and then add the more specific checks.
+
+                    } else {
+                        shaderIO.setUniform(this.lPortalTypeMask, this.dPortalTypeMask[ORANGE_PORTAL_TYPE]);
+                        handleOrangeLayer(cmd, pTrack);
+                    }
+                }
             }
         }
 
+    }
+
+    private static void handleBlueLayer(VkCommandBuffer cmd, PortalTracker pTrack) {
+        if(!pTrack.hasBluePortal()) return;
+
+        Bounds3D portalBounds = pTrack.getBluePortal().getScreenBounds(pTrack.getEngine().getScene());
+
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            boolean shouldDraw = Bounds3D.SCREEN_BOUNDS.intersects(portalBounds);
+
+            if(!shouldDraw) {
+                cullDraw(cmd, stack);
+            }
+        }
+    }
+
+    private static void handleOrangeLayer(VkCommandBuffer cmd, PortalTracker pTrack) {
+        if(!pTrack.hasOrangePortal()) return;
+
+        Bounds3D portalBounds = pTrack.getOrangePortal().getScreenBounds(pTrack.getEngine().getScene());
+
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+
+            boolean shouldDraw = Bounds3D.SCREEN_BOUNDS.intersects(portalBounds);
+
+            if(!shouldDraw) {
+                cullDraw(cmd, stack);
+            }
+        }
+    }
+
+    private static void cullDraw(VkCommandBuffer cmd, MemoryStack stack) {
+        VkRect2D.Buffer scissor = VkRect2D.calloc(1, stack)
+                .extent(it -> it
+                        .width(0)
+                        .height(0))
+                .offset(it -> it
+                        .x(0)
+                        .y(0));
+        VK11.vkCmdSetScissor(cmd, 0, scissor);
     }
 
     private void limitPortalLayerToPass(ShaderIO shaderIO, int layer) {

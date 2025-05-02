@@ -3,7 +3,7 @@ package me.cg360.spudengine.wormholes.world.entity;
 import me.cg360.spudengine.core.render.context.RenderContext;
 import me.cg360.spudengine.core.render.context.RenderGoal;
 import me.cg360.spudengine.core.render.geometry.model.Mesh;
-import me.cg360.spudengine.core.util.Bounds2D;
+import me.cg360.spudengine.core.util.Bounds3D;
 import me.cg360.spudengine.core.world.Scene;
 import me.cg360.spudengine.core.world.entity.SimpleEntity;
 import me.cg360.spudengine.wormholes.GameProperties;
@@ -98,7 +98,7 @@ public class PortalEntity extends SimpleEntity {
         return this.up;
     }
 
-    public Bounds2D getScreenBounds(Scene scene) {
+    public Bounds3D getScreenBounds(Scene scene) {
         List<Vector3f> points = new LinkedList<>();
 
         for(Mesh mesh: GeneratedAssets.BLUE_PORTAL_MODEL.getSubMeshes()) {
@@ -108,7 +108,7 @@ public class PortalEntity extends SimpleEntity {
             }
         }
 
-        return Bounds2D.fromProjectedPoints(scene.getMainCamera(), scene.getProjection(), this.getTransform(), points);
+        return Bounds3D.fromProjectedPoints(scene.getMainCamera(), scene.getProjection(), this.getTransform(), points);
     }
 
     @Override
@@ -119,6 +119,6 @@ public class PortalEntity extends SimpleEntity {
         // useful when rendering to the stencil buffer to make a cutout.
 
         //return false;
-        return renderContext.renderGoal() == RenderGoal.STENCIL_ADJUSTMENT || GameProperties.FORCE_RENDER_SOLID_PORTALS;
+        return renderContext.renderGoal() == RenderGoal.ORANGE_STENCIL || GameProperties.FORCE_RENDER_SOLID_PORTALS;
     }
 }

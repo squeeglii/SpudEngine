@@ -3,8 +3,8 @@ package me.cg360.spudengine.core.render.context;
 public enum RenderGoal {
 
     NONE,
-    STENCIL_WRITING,       // initial room writes.
-    STENCIL_ADJUSTMENT,    // portals
+    ORANGE_STENCIL,       // initial room writes.
+    BLUE_STENCIL,         // portals
     STANDARD_DRAWING
 
 }

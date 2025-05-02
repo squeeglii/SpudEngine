@@ -178,7 +178,7 @@ public class ComposeRenderer extends RenderProcess {
                 this.shaderIO.reset(stack, selectedPipeline, this.descriptorPool);
 
                 for(SubRenderProcess process:  this.subRenderProcesses)
-                    process.renderPreMesh(this.renderContext, this.shaderIO, null);
+                    process.renderPreMesh(this.renderContext, this.shaderIO, null, cmd);
 
                 for(SubRenderProcess process: this.subRenderProcesses)
                     process.renderModel(this.renderContext, this.shaderIO, null, null);

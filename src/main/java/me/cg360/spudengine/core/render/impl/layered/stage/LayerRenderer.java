@@ -1,7 +1,6 @@
 package me.cg360.spudengine.core.render.impl.layered.stage;
 
 import me.cg360.spudengine.core.EngineProperties;
-import me.cg360.spudengine.core.exception.UnimplementedException;
 import me.cg360.spudengine.core.render.RenderSystem;
 import me.cg360.spudengine.core.render.command.CommandBuffer;
 import me.cg360.spudengine.core.render.command.CommandPool;
@@ -138,6 +137,7 @@ public class LayerRenderer extends AbstractRenderer {
             this.doRenderPass(cmd, renderPassBeginInfo, this.standardPipeline[0], idx, stack, 0, context -> {
                 int limit = this.frameBuffer.getRenderTargetCount();
                 for(int subpass = 0; subpass < limit; subpass++) {
+                    this.renderContext.cancelRedraw();
                     this.shaderIO.reset(stack, context.currentPipeline(), this.descriptorPool);
 
                     this.renderContext.setSubpass(subpass);
@@ -145,7 +145,6 @@ public class LayerRenderer extends AbstractRenderer {
                     this.renderContext.currentPipeline().bind(cmd);
 
                     VulkanUtil.setupStandardViewport(cmd, stack, width, height);
-                    // todo: scissor
 
                     Matrix4f view = this.scene.getMainCamera().getViewMatrix();
                     DataTypes.MAT4X4F.copyToBuffer(this.uViewMatrix[idx], view);
@@ -153,10 +152,12 @@ public class LayerRenderer extends AbstractRenderer {
                     this.shaderIO.setUniform(this.lProjectionMatrix, this.dProjectionMatrix);
                     this.shaderIO.setUniform(this.lViewMatrix, this.dViewMatrix, idx);
 
-                    for (SubRenderProcess process : this.subRenderProcesses)
-                        process.renderPreMesh(context, this.shaderIO, this.standardSamplers);
+                    do {
+                        for (SubRenderProcess process : this.subRenderProcesses)
+                            process.renderPreMesh(context, this.shaderIO, this.standardSamplers, cmd);
 
-                    this.drawAllSceneModels(cmd, renderSystem, this.renderContext.currentPipeline(), idx);
+                        this.drawAllSceneModels(cmd, renderSystem, this.renderContext.currentPipeline(), idx);
+                    } while(this.renderContext.hasRequestedRedraw());
 
                     if(subpass + 1 < limit)
                         VK11.vkCmdNextSubpass(cmd, VK11.VK_SUBPASS_CONTENTS_INLINE);
@@ -284,10 +285,12 @@ public class LayerRenderer extends AbstractRenderer {
 
         public void setPass(int pass) {
             this.pass = pass;
+            this.redrawIteration = 0;
         }
 
         public void setSubpass(int subpass) {
             this.subpass = subpass;
+            this.redrawIteration = 0;
         }
 
         public void setRenderGoal(RenderGoal renderGoal) {

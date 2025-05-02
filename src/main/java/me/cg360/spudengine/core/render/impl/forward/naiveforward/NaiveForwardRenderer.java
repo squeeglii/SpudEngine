@@ -148,7 +148,7 @@ public class NaiveForwardRenderer extends AbstractForwardRenderer {
                 this.shaderIO.setUniform(this.lViewMatrix, this.dViewMatrix, idx);
 
                 for(SubRenderProcess process:  this.subRenderProcesses)
-                    process.renderPreMesh(this.renderContext, this.shaderIO, this.standardSamplers);
+                    process.renderPreMesh(this.renderContext, this.shaderIO, this.standardSamplers, cmd);
 
                 this.drawAllSceneModels(cmd, renderSystem, selectedPipeline, idx);
 

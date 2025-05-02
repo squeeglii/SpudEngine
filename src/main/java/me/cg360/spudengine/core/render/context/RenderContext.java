@@ -9,6 +9,9 @@ public class RenderContext {
     protected int pass;
     protected int subpass;
     protected int frameIndex;
+    protected int redrawIteration;
+
+    protected boolean requestRedraw = false;
 
     public RenderContext() {
         this.reset();
@@ -18,8 +21,11 @@ public class RenderContext {
         this.frameIndex = -1;
         this.pass = -1;
         this.subpass = 0;
+        this.redrawIteration = 0;
         this.renderGoal = RenderGoal.NONE;
         this.currentPipeline = null;
+
+        this.requestRedraw = false;
     }
 
 
@@ -41,5 +47,27 @@ public class RenderContext {
 
     public int frameIndex() {
         return this.frameIndex;
+    }
+
+    public int redrawIteration() {
+        return this.redrawIteration;
+    }
+
+    public void requestRedraw() {
+        this.requestRedraw = true;
+    }
+
+    public void cancelRedraw() {
+        this.requestRedraw = false;
+    }
+
+    public boolean hasRequestedRedraw() {
+        if(this.requestRedraw) {
+            this.redrawIteration++;
+            this.requestRedraw = false;
+            return true;
+        }
+
+        return false;
     }
 }

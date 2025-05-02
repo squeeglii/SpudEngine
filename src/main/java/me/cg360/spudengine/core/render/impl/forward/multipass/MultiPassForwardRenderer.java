@@ -175,7 +175,7 @@ public class MultiPassForwardRenderer extends AbstractForwardRenderer {
                     this.shaderIO.setUniform(this.lViewMatrix, this.dViewMatrix, idx);
 
                     for (SubRenderProcess process : this.subRenderProcesses)
-                        process.renderPreMesh(context, this.shaderIO, this.standardSamplers);
+                        process.renderPreMesh(context, this.shaderIO, this.standardSamplers, cmd);
 
                     this.drawAllSceneModels(cmd, renderSystem, selectedPipeline, idx);
 

@@ -2,6 +2,7 @@ package me.cg360.spudengine.core.world.entity.impl;
 
 import me.cg360.spudengine.core.input.MouseInput;
 import me.cg360.spudengine.core.render.Window;
+import me.cg360.spudengine.core.render.context.RenderContext;
 import me.cg360.spudengine.core.render.geometry.model.Model;
 import me.cg360.spudengine.core.world.Camera;
 import me.cg360.spudengine.core.world.Scene;
@@ -75,5 +76,10 @@ public class LocalPlayerEntity extends StaticModelEntity implements InputTicked 
     @Override
     public Matrix4f getTransform() {
         return this.sceneCamera.getViewMatrix().invert(new Matrix4f());
+    }
+
+    @Override
+    public boolean shouldDraw(RenderContext renderContext) {
+        return renderContext.subpass() == 1;
     }
 }
