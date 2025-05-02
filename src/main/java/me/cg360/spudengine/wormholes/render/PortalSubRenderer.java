@@ -115,7 +115,8 @@ public class PortalSubRenderer implements SubRenderProcess {
 
         // last subpass == closest room copy. invert using max depth.
         //Logger.info("Rendering Portal PreMesh {}", subPass);
-        int layer = GameProperties.MAX_PORTAL_DEPTH - 1 - renderContext.pass();
+        int layerOnPass = GameProperties.MAX_PORTAL_DEPTH - 1 - renderContext.pass();
+        int layerOnSubpass = GameProperties.MAX_PORTAL_DEPTH - 1 - renderContext.subpass();
 
         if (pTrack.hasPortalPair()) {
             PortalEntity bluePortal =  pTrack.getBluePortal();
@@ -169,15 +170,14 @@ public class PortalSubRenderer implements SubRenderProcess {
             }
 
             case MULTI_PASS_FORWARD -> {
-                this.limitPortalLayerToPass(shaderIO, layer);
+                this.limitPortalLayerToPass(shaderIO, layerOnPass);
                 shaderIO.setUniform(this.lPortalTypeMask, this.dPortalTypeMask[DISABLE_CHECKS]);
             }
 
             case LAYERED_COMPOSE -> {
-                this.limitPortalLayerToPass(shaderIO, layer);
+                this.limitPortalLayerToPass(shaderIO, layerOnSubpass);
 
                 // todo: set the mask based on what portal is being rendered.
-
 
                 shaderIO.setUniform(this.lPortalTypeMask, this.dPortalTypeMask[DISABLE_CHECKS]);
             }

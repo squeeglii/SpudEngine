@@ -1,5 +1,6 @@
 package me.cg360.spudengine.core.render.impl.forward;
 
+import me.cg360.spudengine.core.EngineProperties;
 import me.cg360.spudengine.core.render.command.CommandBuffer;
 import me.cg360.spudengine.core.render.command.CommandPool;
 import me.cg360.spudengine.core.render.command.CommandQueue;
@@ -59,6 +60,11 @@ public abstract class AbstractForwardRenderer extends AbstractRenderer {
 
     protected abstract void createRenderPasses(SwapChain swapChain, int depthImageFormat, int requestedPassCount);
     protected abstract void createFrameBuffers();
+
+    @Override
+    protected ShaderProgram buildShaderProgram() {
+        return ShaderProgram.attemptCompile(this.device, EngineProperties.FORWARD_SHADERS);
+    }
 
     protected void createCommandBuffers(CommandPool commandPool, int numImages) {
         this.commandBuffers = new CommandBuffer[numImages];

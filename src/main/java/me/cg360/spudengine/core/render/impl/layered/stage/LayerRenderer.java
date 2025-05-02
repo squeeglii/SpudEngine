@@ -86,6 +86,11 @@ public class LayerRenderer extends AbstractRenderer {
     }
 
     @Override
+    protected ShaderProgram buildShaderProgram() {
+        return ShaderProgram.attemptCompile(this.device, EngineProperties.LAYERED_SHADERS);
+    }
+
+    @Override
     protected void buildPipelines(DescriptorSetLayout[] descriptorSetLayouts) {
         Logger.debug("Building Pipelines...");
 

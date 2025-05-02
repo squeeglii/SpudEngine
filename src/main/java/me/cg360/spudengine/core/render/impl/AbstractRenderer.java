@@ -67,6 +67,7 @@ public abstract class AbstractRenderer extends RenderProcess {
     }
 
     protected abstract void buildPipelines(DescriptorSetLayout[] descriptorSetLayouts);
+    protected abstract ShaderProgram buildShaderProgram();
 
     protected void setConstantUniforms() {
         DataTypes.MAT4X4F.copyToBuffer(this.uProjectionMatrix, this.scene.getProjection().asMatrix());
@@ -114,12 +115,6 @@ public abstract class AbstractRenderer extends RenderProcess {
             process.createDescriptorSets(this.descriptorPool);
     }
 
-    protected ShaderProgram buildShaderProgram() {
-        return ShaderProgram.attemptCompile(
-                this.device,
-                EngineProperties.shaders
-        );
-    }
 
     protected void startRenderPass(VkCommandBuffer cmd, VkRenderPassBeginInfo renderPassBeginInfo, Pipeline pipeline, MemoryStack stack) {
         VK11.vkCmdBeginRenderPass(cmd, renderPassBeginInfo, VK11.VK_SUBPASS_CONTENTS_INLINE);

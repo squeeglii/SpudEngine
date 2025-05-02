@@ -20,6 +20,7 @@ import me.cg360.spudengine.core.render.pipeline.PipelineCache;
 import me.cg360.spudengine.core.render.pipeline.descriptor.DescriptorPool;
 import me.cg360.spudengine.core.render.pipeline.descriptor.layout.DescriptorSetLayout;
 import me.cg360.spudengine.core.render.pipeline.shader.*;
+import me.cg360.spudengine.core.render.pipeline.util.BlendFunc;
 import me.cg360.spudengine.core.render.pipeline.util.ShaderStage;
 import me.cg360.spudengine.core.render.sync.Fence;
 import me.cg360.spudengine.core.util.VulkanUtil;
@@ -125,7 +126,10 @@ public class ComposeRenderer extends RenderProcess {
                 .setPushConstantStage(ShaderStage.NONE)
                 .setCullMode(VK11.VK_CULL_MODE_NONE) // todo: if issues, check this.
                 .setUsingDepthWrite(true)
-                .setUsingDepthTest(false);
+                .setUsingDepthTest(false)
+                .setUsingBlend(true)
+                .setBlendFunc(BlendFunc.DEFAULT)
+                .setColourBlendOp(VK11.VK_BLEND_OP_ADD);
         // ^^^ always overwrite depth. Lets you reference the depth buffer later, but ignores ordering issues.
 
         long renderPassHandle = this.frameBuffer.getRenderPass().getHandle();

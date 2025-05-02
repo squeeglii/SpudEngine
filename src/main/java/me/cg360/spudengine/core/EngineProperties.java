@@ -44,10 +44,16 @@ public class EngineProperties {
     public static final float FAR_PLANE = 100.0f;
     public static final int MAX_TEXTURES = 1024;
     public static final int MAX_OVERLAY_TEXTURES = 1024;
-    public static final BinaryShaderFile[] shaders = new BinaryShaderFile[] {
+    public static final BinaryShaderFile[] FORWARD_SHADERS = new BinaryShaderFile[] {
             new BinaryShaderFile(ShaderType.VERTEX, "shaders/vertex"),
             new BinaryShaderFile(ShaderType.GEOMETRY, "shaders/portal/colour/geometry"),
             new BinaryShaderFile(ShaderType.FRAGMENT, "shaders/portal/colour/fragment"),
+    };
+
+    public static final BinaryShaderFile[] LAYERED_SHADERS = new BinaryShaderFile[] {
+            new BinaryShaderFile(ShaderType.VERTEX, "shaders/vertex"),
+            new BinaryShaderFile(ShaderType.GEOMETRY, "shaders/portal/colour/geometry"),
+            new BinaryShaderFile(ShaderType.FRAGMENT, "shaders/portal/colour/fragment_layered"),
     };
 
     // -- End of properties --

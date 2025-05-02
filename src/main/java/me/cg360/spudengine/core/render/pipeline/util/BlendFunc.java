@@ -8,9 +8,9 @@ public record BlendFunc(BlendFactor srcColour, BlendFactor srcAlpha, BlendFactor
 
     public static final BlendFunc DEFAULT = new BlendFunc(
             BlendFactor.SRC_ALPHA,
+            BlendFactor.SRC_ALPHA,
             BlendFactor.ONE_MINUS_SRC_ALPHA,
-            BlendFactor.ONE,
-            BlendFactor.ZERO
+            BlendFactor.ONE_MINUS_SRC_ALPHA
     );
 
     public static final BlendFunc REPLACE = new BlendFunc(
