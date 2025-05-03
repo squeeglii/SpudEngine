@@ -3,14 +3,18 @@
 // fragment shader uses threshold of -512 - overshoot it for sanity?
 #define OVERLAY_UNDEFINED vec2(-1024, -1024)
 
-#define MAX_RECURSION_DEPTH 6
+#define IS_BLUE_MASK == 1
+#define IS_ORANGE_MASK == 2
+
+// portal is 1u wide, 2u tall by default.
+#define PORTAL_SCALE_X 1
+#define PORTAL_SCALE_Y 2
 #define PORTAL_CHECK_RANGE 3
+
+#define MAX_RECURSION_DEPTH 6
 
 #define BLUE_PORTAL vec4(0.02, 0.25, 1, 1)
 #define ORANGE_PORTAL vec4(1, 0.25, 0, 1)
-
-#define IS_BLUE_MASK == 1
-#define IS_ORANGE_MASK == 2
 
 layout (triangles) in;
 layout (triangle_strip, max_vertices = 3+(3*2*MAX_RECURSION_DEPTH)) out; // 3x triangles, 9 vertices. Allows for 2 copies of every model.
@@ -146,10 +150,9 @@ void main() {
 
        vec3 closestCross = cross(closestUp, closestNormal);
 
-        // portal is 1u wide, 2u tall.
-        vec3 diffWide = diffPortal * closestCross;
+        vec3 diffWide = diffPortal * closestCross / PORTAL_SCALE_X;
         float lenWide = length(diffWide);
-        vec3 diffTall = (diffPortal * closestUp) / 2;
+        vec3 diffTall = (diffPortal * closestUp) / PORTAL_SCALE_Y;
         float lenTall = length(diffTall);
 
         vec2 scaledDiff = vec2(lenWide, lenTall);

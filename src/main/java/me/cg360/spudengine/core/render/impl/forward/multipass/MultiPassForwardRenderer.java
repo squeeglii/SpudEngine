@@ -169,9 +169,11 @@ public class MultiPassForwardRenderer extends AbstractForwardRenderer {
                     this.shaderIO.reset(stack, selectedPipeline, this.descriptorPool);
 
                     Matrix4f view = this.scene.getMainCamera().getViewMatrix();
+                    Matrix4f projection = this.scene.getProjection().asMatrix();
                     DataTypes.MAT4X4F.copyToBuffer(this.uViewMatrix[idx], view);
+                    DataTypes.MAT4X4F.copyToBuffer(this.uProjectionMatrix[idx], projection);
 
-                    this.shaderIO.setUniform(this.lProjectionMatrix, this.dProjectionMatrix);
+                    this.shaderIO.setUniform(this.lProjectionMatrix, this.dProjectionMatrix, idx);
                     this.shaderIO.setUniform(this.lViewMatrix, this.dViewMatrix, idx);
 
                     for (SubRenderProcess process : this.subRenderProcesses)
@@ -192,7 +194,7 @@ public class MultiPassForwardRenderer extends AbstractForwardRenderer {
         for(SubRenderProcess process: this.subRenderProcesses)
             process.cleanup();
 
-        this.uProjectionMatrix.cleanup();
+        Arrays.stream(this.uProjectionMatrix).forEach(GeneralBuffer::cleanup);
         Arrays.stream(this.uViewMatrix).forEach(GeneralBuffer::cleanup);
         this.standardSamplers.cleanup();
 

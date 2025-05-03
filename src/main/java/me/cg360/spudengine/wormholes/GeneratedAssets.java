@@ -12,13 +12,21 @@ import java.util.List;
 
 public class GeneratedAssets {
 
-    private static final float[] PORTAL_POINTS = new float[] {
+    private static final float[] PORTAL_POINTS_1x2 = new float[] {
             -0.5f,  1.0f, 0.0f,    // left top
              0.5f,  1.0f, 0.0f,    // right top
              0.5f, -1.0f, 0.0f,    // right bottom
             -0.5f, -1.0f, 0.0f,    // left bottom
              0.0f,  0.0f, 0.0f,    // center
     };
+    private static final float[] PORTAL_POINTS_2x2 = new float[] {
+            -1.0f,  1.0f, 0.0f,    // left top
+             1.0f,  1.0f, 0.0f,    // right top
+             1.0f, -1.0f, 0.0f,    // right bottom
+            -1.0f, -1.0f, 0.0f,    // left bottom
+             0.0f,  0.0f, 0.0f,    // center
+    };
+
     private static final float[] PORTAL_UVs = new float[] {
             0.0f, 1.0f,
             1.0f, 1.0f,
@@ -91,7 +99,8 @@ public class GeneratedAssets {
 
     public static final Model PLAYER_MODEL = new Model("generated/player", MESH_PLAYER);
 
-    public static final Mesh PORTAL_MESH = new Mesh(PORTAL_POINTS, PORTAL_UVs, PORTAL_INDICES, 0);
+    // Portal scale is mostly controlled in the shader, but providing a larger model makes scanning more reliable
+    public static final Mesh PORTAL_MESH = new Mesh(PORTAL_POINTS_1x2, PORTAL_UVs, PORTAL_INDICES, 0);
 
     public static final Material BLUE_PORTAL_MATERIAL = new Material("generated/portal/blue", Material.WHITE);
     public static final Model BLUE_PORTAL_MODEL = new Model("generated/portal/blue", BLUE_PORTAL_MATERIAL, PORTAL_MESH);

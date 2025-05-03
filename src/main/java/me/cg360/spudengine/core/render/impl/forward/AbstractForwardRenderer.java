@@ -53,9 +53,6 @@ public abstract class AbstractForwardRenderer extends AbstractRenderer {
 
         this.buildPipelines(descriptorSetLayouts);
         this.createCommandBuffers(commandPool, numImages);
-
-        // Initialize uniforms which don't change frame-to-frame.
-        this.setConstantUniforms();
     }
 
     protected abstract void createRenderPasses(SwapChain swapChain, int depthImageFormat, int requestedPassCount);
@@ -114,8 +111,6 @@ public abstract class AbstractForwardRenderer extends AbstractRenderer {
 
     @Override
     public void onResize(SwapChain newSwapChain) {
-        DataTypes.MAT4X4F.copyToBuffer(this.uProjectionMatrix, this.scene.getProjection().asMatrix());
-
         this.swapChain = newSwapChain;
         Arrays.asList(this.frameBuffers).forEach(FrameBuffer::cleanup);
         Arrays.asList(this.depthAttachments).forEach(Attachment::cleanup);

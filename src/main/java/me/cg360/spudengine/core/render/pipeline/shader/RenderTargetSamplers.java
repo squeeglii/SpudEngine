@@ -77,6 +77,7 @@ public class RenderTargetSamplers {
                 long colour = this.dColourSampler[i].getHandle();
                 long depth = this.dDepthSampler[i].getHandle();
 
+                this.depthOnlyViews[i].cleanup();
                 renderTargetSets.put(colour);
                 renderTargetSets.put(depth);
 

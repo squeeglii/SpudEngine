@@ -64,9 +64,6 @@ public class LayerRenderer extends AbstractRenderer {
         this.buildPipelines(descriptorSetLayouts);
         this.createCommandBuffers(commandPool, numImages);
 
-        // Initialize uniforms which don't change frame-to-frame.
-        this.setConstantUniforms();
-
         this.renderContext = new InternalRenderContext();
     }
 
@@ -135,6 +132,7 @@ public class LayerRenderer extends AbstractRenderer {
 
             this.renderContext.setRenderGoal(RenderGoal.STANDARD_DRAWING);
             this.doRenderPass(cmd, renderPassBeginInfo, this.standardPipeline[0], idx, stack, 0, context -> {
+
                 int limit = this.frameBuffer.getRenderTargetCount();
                 for(int subpass = 0; subpass < limit; subpass++) {
                     this.renderContext.cancelRedraw();
@@ -147,9 +145,11 @@ public class LayerRenderer extends AbstractRenderer {
                     VulkanUtil.setupStandardViewport(cmd, stack, width, height);
 
                     Matrix4f view = this.scene.getMainCamera().getViewMatrix();
+                    Matrix4f projection = this.scene.getProjection().asMatrix();
                     DataTypes.MAT4X4F.copyToBuffer(this.uViewMatrix[idx], view);
+                    DataTypes.MAT4X4F.copyToBuffer(this.uProjectionMatrix[idx], projection);
 
-                    this.shaderIO.setUniform(this.lProjectionMatrix, this.dProjectionMatrix);
+                    this.shaderIO.setUniform(this.lProjectionMatrix, this.dProjectionMatrix, idx);
                     this.shaderIO.setUniform(this.lViewMatrix, this.dViewMatrix, idx);
 
                     do {
@@ -228,7 +228,6 @@ public class LayerRenderer extends AbstractRenderer {
 
     @Override
     public void onResize(SwapChain newSwapChain) {
-        DataTypes.MAT4X4F.copyToBuffer(this.uProjectionMatrix, this.scene.getProjection().asMatrix());
         this.swapChain = newSwapChain;
         this.frameBuffer.onResize(this.swapChain);
     }
@@ -238,7 +237,7 @@ public class LayerRenderer extends AbstractRenderer {
         for(SubRenderProcess process: this.subRenderProcesses)
             process.cleanup();
 
-        this.uProjectionMatrix.cleanup();
+        Arrays.stream(this.uProjectionMatrix).forEach(GeneralBuffer::cleanup);
         Arrays.stream(this.uViewMatrix).forEach(GeneralBuffer::cleanup);
         this.standardSamplers.cleanup();
 

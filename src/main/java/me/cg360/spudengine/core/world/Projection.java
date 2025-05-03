@@ -2,6 +2,7 @@ package me.cg360.spudengine.core.world;
 
 import me.cg360.spudengine.core.EngineProperties;
 import org.joml.Matrix4f;
+import org.tinylog.Logger;
 
 public class Projection {
 
@@ -23,9 +24,11 @@ public class Projection {
         this.width = width;
         this.height = height;
 
+        Logger.info("Width: " + width + " Height: " + height);
+
         float aspectRatio = (float) width / (float) height;
         double fov = Math.PI * (EngineProperties.FOV / 180.0d);
-        this.projectionMatrix.perspective((float) fov, aspectRatio, this.near, this.far, true);
+        this.projectionMatrix.setPerspective((float) fov, aspectRatio, this.near, this.far, true);
     }
 
     public Matrix4f asMatrix() {

@@ -1,6 +1,5 @@
 package me.cg360.spudengine.core.render.impl;
 
-import me.cg360.spudengine.core.EngineProperties;
 import me.cg360.spudengine.core.render.RenderSystem;
 import me.cg360.spudengine.core.render.command.CommandBuffer;
 import me.cg360.spudengine.core.render.command.CommandPool;
@@ -45,8 +44,8 @@ public abstract class AbstractRenderer extends RenderProcess {
     protected DescriptorPool descriptorPool;
 
     protected DescriptorSetLayout lProjectionMatrix;
-    protected UniformDescriptorSet dProjectionMatrix;
-    protected GeneralBuffer uProjectionMatrix;
+    protected UniformDescriptorSet[] dProjectionMatrix;
+    protected GeneralBuffer[] uProjectionMatrix;
 
     protected DescriptorSetLayout lViewMatrix;
     protected UniformDescriptorSet[] dViewMatrix;
@@ -69,10 +68,6 @@ public abstract class AbstractRenderer extends RenderProcess {
     protected abstract void buildPipelines(DescriptorSetLayout[] descriptorSetLayouts);
     protected abstract ShaderProgram buildShaderProgram();
 
-    protected void setConstantUniforms() {
-        DataTypes.MAT4X4F.copyToBuffer(this.uProjectionMatrix, this.scene.getProjection().asMatrix());
-    }
-
     protected final DescriptorSetLayout[] initDescriptorSets() {
         Logger.info("Initializing Descriptor Sets...");
 
@@ -88,7 +83,8 @@ public abstract class AbstractRenderer extends RenderProcess {
     }
 
     protected DescriptorSetLayoutBundle buildUniformLayout(DescriptorSetLayoutBundle bundle) {
-        this.lProjectionMatrix = new UniformDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_GEOMETRY_BIT);
+        this.lProjectionMatrix = new UniformDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_GEOMETRY_BIT)
+                .enablePerFrameWrites(this.swapChain);
         this.lViewMatrix = new UniformDescriptorSetLayout(this.device, 0, VK11.VK_SHADER_STAGE_GEOMETRY_BIT)
                 .enablePerFrameWrites(this.swapChain);
 
@@ -103,8 +99,8 @@ public abstract class AbstractRenderer extends RenderProcess {
     }
 
     protected void buildDescriptorSets() {
-        this.dProjectionMatrix = UniformDescriptorSet.create(this.descriptorPool, this.lProjectionMatrix, DataTypes.MAT4X4F, 0)[0];
-        this.uProjectionMatrix = this.dProjectionMatrix.getBuffer();
+        this.dProjectionMatrix = UniformDescriptorSet.create(this.descriptorPool, this.lProjectionMatrix, DataTypes.MAT4X4F, 0);
+        this.uProjectionMatrix = ShaderIO.collectUniformBuffers(this.dProjectionMatrix);
 
         this.dViewMatrix = UniformDescriptorSet.create(this.descriptorPool, this.lViewMatrix, DataTypes.MAT4X4F, 0);
         this.uViewMatrix = ShaderIO.collectUniformBuffers(this.dViewMatrix);
