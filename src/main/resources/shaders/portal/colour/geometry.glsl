@@ -150,10 +150,10 @@ void main() {
 
        vec3 closestCross = cross(closestUp, closestNormal);
 
-        vec3 diffWide = diffPortal * closestCross / PORTAL_SCALE_X;
-        float lenWide = length(diffWide);
-        vec3 diffTall = (diffPortal * closestUp) / PORTAL_SCALE_Y;
-        float lenTall = length(diffTall);
+        vec3 diffWide = diffPortal * closestCross;
+        float lenWide = length(diffWide)  / PORTAL_SCALE_X;
+        vec3 diffTall = diffPortal * closestUp;
+        float lenTall = length(diffTall) / PORTAL_SCALE_Y;
 
         vec2 scaledDiff = vec2(lenWide, lenTall);
         vec2 rotatedScaledDiff = scaledDiff + vec2(0.5, 0.5);

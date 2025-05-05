@@ -127,7 +127,8 @@ public class PortalSubRenderer implements SubRenderProcess {
             PortalEntity orangePortal =  pTrack.getOrangePortal();
 
             Matrix4f bluePortalTransform = bluePortal.calculateConnectionTransform(orangePortal);
-            Matrix4f orangePortalTransform = orangePortal.calculateConnectionTransform(bluePortal);
+            Matrix4f orangePortalTransform = bluePortalTransform.invert(new Matrix4f());  // from crude testing, this is marginally, but consistently faster. (10-15fps, laptop iGPU)
+            //Matrix4f orangePortalTransform = orangePortal.calculateConnectionTransform(bluePortal);
 
             //TODO: Fix alignment of vec3s in shaders.
             //      Shader handled uniforms in minimum of 16 byte chunks on this device.

@@ -25,6 +25,7 @@ public class EngineProperties {
 
     // Debugging
     public static final boolean USE_DEBUGGING = true;
+    public static final boolean ENABLE_FPS_MONITOR_LAYER = true; // Enables VK_LAYER_LUNARG_monitor
     public static final Color CLEAR_COLOUR = new Color(0.05f, 0.05f, 0.05f, 1.00f);
     public static final Color FULL_ALPHA = new Color(0.00f, 0.00f, 0.00f, 0.00f);
 

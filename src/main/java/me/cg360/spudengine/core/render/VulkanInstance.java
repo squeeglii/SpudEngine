@@ -207,7 +207,8 @@ public class VulkanInstance {
             List<String> requestedLayers = new ArrayList<>();
 
             // Optional Debugging Layers
-            //requestedLayers.add("VK_LAYER_LUNARG_monitor");
+            if(EngineProperties.ENABLE_FPS_MONITOR_LAYER)
+                requestedLayers.add("VK_LAYER_LUNARG_monitor");
 
 
             // Main validation layer
