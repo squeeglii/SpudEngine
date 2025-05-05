@@ -34,7 +34,9 @@ void main() {
 
     // Traditional cutout
     if (col.a IS_CUTOUT_THRESHOLD) {
-        //gl_FragDepth = 0;
+        // TODO: This is a BUG! A proper implementation should use blending, but
+        // all of the current renderers are dumb and don't do that.
+        // Add transparency sorting, and then revisit.
         discard;
     }
 
