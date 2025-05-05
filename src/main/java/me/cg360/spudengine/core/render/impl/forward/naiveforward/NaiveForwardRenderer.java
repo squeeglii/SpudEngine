@@ -93,14 +93,12 @@ public class NaiveForwardRenderer extends AbstractForwardRenderer {
         }
     }
 
-    protected void doRenderPass(VkCommandBuffer cmd, VkRenderPassBeginInfo renderPassBeginInfo, Pipeline pipeline, int frameIndex, MemoryStack stack, Consumer<RenderContext> passActions) {
-        VK11.vkCmdBeginRenderPass(cmd, renderPassBeginInfo, VK11.VK_SUBPASS_CONTENTS_INLINE);
-        this.shaderIO.reset(stack, pipeline.bind(cmd), this.descriptorPool);
-        this.renderContext.setPass(0);
+    @Override
+    protected void doRenderPass(VkCommandBuffer cmd, VkRenderPassBeginInfo renderPassBeginInfo, Pipeline pipeline, int frameIndex, int passNum, MemoryStack stack, Consumer<RenderContext> passActions) {
+        this.renderContext.setPass(passNum);
         this.renderContext.setCurrentPipeline(pipeline);
         this.renderContext.setFrameIndex(frameIndex);
-        passActions.accept(this.renderContext);
-        VK11.vkCmdEndRenderPass(cmd);
+        super.doRenderPass(cmd, renderPassBeginInfo, pipeline, frameIndex, passNum, stack, passActions);
     }
 
     @Override
@@ -134,7 +132,7 @@ public class NaiveForwardRenderer extends AbstractForwardRenderer {
                     ? this.wireframePipeline
                     : this.standardPipeline;
 
-            this.doRenderPass(cmd, renderPassBeginInfo, selectedPipeline, idx, stack, context -> {
+            this.doRenderPass(cmd, renderPassBeginInfo, selectedPipeline, idx, 0, stack, context -> {
                 // Setup view
                 VulkanUtil.setupStandardViewport(cmd, stack, width, height);
 

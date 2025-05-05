@@ -142,7 +142,7 @@ public class LayerRenderer extends AbstractRenderer {
                     : this.standardPipeline[0];
 
             this.renderContext.setRenderGoal(RenderGoal.STANDARD_DRAWING);
-            this.doRenderPass(cmd, renderPassBeginInfo, initialPipeline, idx, stack, 0, context -> {
+            this.doRenderPass(cmd, renderPassBeginInfo, initialPipeline, idx, 0, stack, context -> {
 
                 int limit = this.frameBuffer.getRenderTargetCount();
                 for(int subpass = 0; subpass < limit; subpass++) {
@@ -208,14 +208,12 @@ public class LayerRenderer extends AbstractRenderer {
         return clearValues;
     }
 
-    protected void doRenderPass(VkCommandBuffer cmd, VkRenderPassBeginInfo renderPassBeginInfo, Pipeline pipeline, int frameIndex, MemoryStack stack, int pass, Consumer<RenderContext> passActions) {
-        VK11.vkCmdBeginRenderPass(cmd, renderPassBeginInfo, VK11.VK_SUBPASS_CONTENTS_INLINE);
-        this.shaderIO.reset(stack, pipeline.bind(cmd), this.descriptorPool);
-        this.renderContext.setPass(pass);
+    @Override
+    protected void doRenderPass(VkCommandBuffer cmd, VkRenderPassBeginInfo renderPassBeginInfo, Pipeline pipeline, int frameIndex, int passNum, MemoryStack stack, Consumer<RenderContext> passActions) {
+        this.renderContext.setPass(passNum);
         this.renderContext.setCurrentPipeline(pipeline);
         this.renderContext.setFrameIndex(frameIndex);
-        passActions.accept(this.renderContext);
-        VK11.vkCmdEndRenderPass(cmd);
+        super.doRenderPass(cmd, renderPassBeginInfo, pipeline, frameIndex, passNum, stack, passActions);
     }
 
     @Override

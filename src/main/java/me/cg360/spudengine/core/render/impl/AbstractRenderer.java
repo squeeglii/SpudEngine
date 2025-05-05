@@ -4,6 +4,7 @@ import me.cg360.spudengine.core.render.RenderSystem;
 import me.cg360.spudengine.core.render.command.CommandBuffer;
 import me.cg360.spudengine.core.render.command.CommandPool;
 import me.cg360.spudengine.core.render.command.CommandQueue;
+import me.cg360.spudengine.core.render.context.RenderContext;
 import me.cg360.spudengine.core.render.data.DataTypes;
 import me.cg360.spudengine.core.render.data.buffer.GeneralBuffer;
 import me.cg360.spudengine.core.render.geometry.model.BufferedMesh;
@@ -31,6 +32,7 @@ import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 import org.tinylog.Logger;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 public abstract class AbstractRenderer extends RenderProcess {
 
@@ -67,6 +69,13 @@ public abstract class AbstractRenderer extends RenderProcess {
 
     protected abstract void buildPipelines(DescriptorSetLayout[] descriptorSetLayouts);
     protected abstract ShaderProgram buildShaderProgram();
+
+    protected void doRenderPass(VkCommandBuffer cmd, VkRenderPassBeginInfo renderPassBeginInfo, Pipeline pipeline, int frameIndex, int passNum, MemoryStack stack, Consumer<RenderContext> passActions) {
+        VK11.vkCmdBeginRenderPass(cmd, renderPassBeginInfo, VK11.VK_SUBPASS_CONTENTS_INLINE);
+        this.shaderIO.reset(stack, pipeline.bind(cmd), this.descriptorPool);
+        passActions.accept(this.getCurrentContext());
+        VK11.vkCmdEndRenderPass(cmd);
+    }
 
     protected final DescriptorSetLayout[] initDescriptorSets() {
         Logger.info("Initializing Descriptor Sets...");

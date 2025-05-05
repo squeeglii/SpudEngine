@@ -229,7 +229,7 @@ public class WormholeDemo extends GameComponent {
                     PortalEntity orangePortal = new PortalEntity(
                             PortalType.ORANGE,
                             new Vector3f(-2f, 0f, -3.99f),
-                            Vectors.toRadians(0, 180, 45)
+                            Vectors.toRadians(0, 180, 0)
                     );
 
                     this.scene().addEntity(orangePortal);

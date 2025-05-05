@@ -268,6 +268,7 @@ public class ComposeRenderer extends RenderProcess {
     protected void doRenderPass(VkCommandBuffer cmd, VkRenderPassBeginInfo renderPassBeginInfo, Pipeline pipeline, int frameIndex, MemoryStack stack, Consumer<RenderContext> passActions) {
         VK11.vkCmdBeginRenderPass(cmd, renderPassBeginInfo, VK11.VK_SUBPASS_CONTENTS_INLINE);
         this.shaderIO.reset(stack, pipeline.bind(cmd), this.descriptorPool);
+        this.renderContext.setRenderGoal(RenderGoal.COMPOSING);
         this.renderContext.setPass(0);
         this.renderContext.setCurrentPipeline(pipeline);
         this.renderContext.setFrameIndex(frameIndex);

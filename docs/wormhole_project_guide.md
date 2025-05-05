@@ -1,4 +1,11 @@
 
+## Running
+
+If running in an IDE like intellij, you can use the usual run configuration.
+
+If running outside of an IDE, the assets need to be unpacked and shipped external to the jar. This
+can be achieved with the `gradle copyAssets` task, saving them to the `run/assets/` folder.
+
 
 ## Controls
 
