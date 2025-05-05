@@ -44,6 +44,7 @@ public class LayerRenderer extends AbstractRenderer {
 
     protected PipelineCache pipelineCache;
     protected Pipeline[] standardPipeline; // split by subpass.
+    protected Pipeline[] wireframePipeline; // split by subpass.
 
     private final InternalRenderContext renderContext;
 
@@ -101,9 +102,15 @@ public class LayerRenderer extends AbstractRenderer {
         long renderPass = this.frameBuffer.getRenderPass().getHandle();
         int renderTargetCount = this.frameBuffer.getRenderTargetCount();
         this.standardPipeline = new Pipeline[renderTargetCount];
+        this.wireframePipeline = new Pipeline[renderTargetCount];
 
         for(int i = 0; i < renderTargetCount; i++)
             this.standardPipeline[i] = builder.build(this.pipelineCache, "standard-layer", renderPass, i, this.shaderProgram, 1);
+
+        builder.setUsingWireframe(true);
+
+        for(int i = 0; i < renderTargetCount; i++)
+            this.wireframePipeline[i] = builder.build(this.pipelineCache, "wireframe-layer", renderPass, i, this.shaderProgram, 1);
     }
 
     @Override
@@ -130,8 +137,12 @@ public class LayerRenderer extends AbstractRenderer {
                     .renderArea(a -> a.extent().set(width, height))
                     .framebuffer(frameBuffer.getHandle());
 
+            Pipeline initialPipeline = renderSystem.useWireframe
+                    ? this.wireframePipeline[0]
+                    : this.standardPipeline[0];
+
             this.renderContext.setRenderGoal(RenderGoal.STANDARD_DRAWING);
-            this.doRenderPass(cmd, renderPassBeginInfo, this.standardPipeline[0], idx, stack, 0, context -> {
+            this.doRenderPass(cmd, renderPassBeginInfo, initialPipeline, idx, stack, 0, context -> {
 
                 int limit = this.frameBuffer.getRenderTargetCount();
                 for(int subpass = 0; subpass < limit; subpass++) {
@@ -139,7 +150,11 @@ public class LayerRenderer extends AbstractRenderer {
                     this.shaderIO.reset(stack, context.currentPipeline(), this.descriptorPool);
 
                     this.renderContext.setSubpass(subpass);
-                    this.renderContext.setCurrentPipeline(this.standardPipeline[subpass]);
+
+                    Pipeline newPipeline = renderSystem.useWireframe
+                            ? this.wireframePipeline[subpass]
+                            : this.standardPipeline[subpass];
+                    this.renderContext.setCurrentPipeline(newPipeline);
                     this.renderContext.currentPipeline().bind(cmd);
 
                     VulkanUtil.setupStandardViewport(cmd, stack, width, height);
@@ -156,7 +171,7 @@ public class LayerRenderer extends AbstractRenderer {
                         for (SubRenderProcess process : this.subRenderProcesses)
                             process.renderPreMesh(context, this.shaderIO, this.standardSamplers, cmd);
 
-                        this.drawAllSceneModels(cmd, renderSystem, this.renderContext.currentPipeline(), idx);
+                        this.drawAllSceneModels(cmd, renderSystem, newPipeline, idx);
                     } while(this.renderContext.hasRequestedRedraw());
 
                     if(subpass + 1 < limit)
@@ -244,6 +259,7 @@ public class LayerRenderer extends AbstractRenderer {
         this.descriptorPool.cleanup(); // descriptor sets cleaned up here.
 
         VulkanUtil.cleanupAll(this.standardPipeline);
+        VulkanUtil.cleanupAll(this.wireframePipeline);
 
         this.shaderProgram.cleanup();
 

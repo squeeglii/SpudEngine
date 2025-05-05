@@ -111,6 +111,8 @@ public class GeneratedAssets {
     public static final Material PORTAL_CUTOUT = new Material("generated/portal/cutout", Material.WHITE);
     public static final Material PORTAL_INCOMPLETE = new Material("generated/portal/incomplete", Material.WHITE);
 
+    public static final Material UV_DEBUG = new Material("debug/uv_square.png", Material.WHITE);
+
     public static List<Model> getAllModels() {
         return List.of(PLAYER_MODEL, BLUE_PORTAL_MODEL, ORANGE_PORTAL_MODEL);
     }

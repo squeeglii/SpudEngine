@@ -6,6 +6,8 @@ public class GameProperties {
 
     public static final SelectedRenderer RENDER_PROCESS = SelectedRenderer.LAYERED_COMPOSE;
 
+    public static boolean DEBUG_PORTAL_UVs = true;
+
     // Must be +1 what's in the shader for multi-pass support.
     // -- easier than updating all the maths.
     public static final int MAX_PORTAL_DEPTH = 7;

@@ -160,7 +160,6 @@ void main() {
         //todo: ^ maths here is broken somewhere. Portals snapped to 90 degrees look fine.
         //        portals at other rotations gain sharp edges.
 
-        // if debugging uvs, clamp values to UV range of 0-1
         generatedOverlayCoords[i] = rotatedScaledDiff; // origin 0.5 0.5;
 
         //generatedOverlayCoords[i].x = clamp(0, generatedOverlayCoords[i].x, 1);

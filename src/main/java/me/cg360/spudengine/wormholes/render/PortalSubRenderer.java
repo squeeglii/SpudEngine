@@ -161,7 +161,10 @@ public class PortalSubRenderer implements SubRenderProcess {
                 PortalTransformHelper.setAsMissingToBuffer(this.uOrangePortal[renderContext.frameIndex()]);
             }
 
-            samplers.setOverlayMaterial(GeneratedAssets.PORTAL_INCOMPLETE);
+            samplers.setOverlayMaterial(GameProperties.DEBUG_PORTAL_UVs
+                    ? GeneratedAssets.UV_DEBUG
+                    : GeneratedAssets.PORTAL_INCOMPLETE
+            );
         }
 
         shaderIO.setUniform(this.lBluePortal, this.dBluePortal, renderContext.frameIndex());
