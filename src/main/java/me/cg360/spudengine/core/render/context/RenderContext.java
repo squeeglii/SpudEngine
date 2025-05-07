@@ -1,16 +1,21 @@
 package me.cg360.spudengine.core.render.context;
 
+import me.cg360.spudengine.core.render.image.SwapChain;
 import me.cg360.spudengine.core.render.pipeline.Pipeline;
+import org.lwjgl.vulkan.VkExtent2D;
 
 public class RenderContext {
+
+    protected int screenWidth;
+    protected int screenHeight;
 
     protected RenderGoal renderGoal;
     protected Pipeline currentPipeline;
     protected int pass;
     protected int subpass;
     protected int frameIndex;
-    protected int redrawIteration;
 
+    protected int redrawIteration;
     protected boolean requestRedraw = false;
 
     public RenderContext() {
@@ -26,6 +31,17 @@ public class RenderContext {
         this.currentPipeline = null;
 
         this.requestRedraw = false;
+    }
+
+    public void refreshResolution(SwapChain swapChain) {
+        if(swapChain != null) {
+            VkExtent2D extent2D = swapChain.getSwapChainExtent();
+            this.screenWidth = extent2D.width();
+            this.screenHeight = extent2D.height();
+        } else {
+            this.screenWidth = -1;
+            this.screenHeight = -1;
+        }
     }
 
 
@@ -47,6 +63,14 @@ public class RenderContext {
 
     public int frameIndex() {
         return this.frameIndex;
+    }
+
+    public int screenWidth() {
+        return this.screenWidth;
+    }
+
+    public int screenHeight() {
+        return this.screenHeight;
     }
 
     public int redrawIteration() {

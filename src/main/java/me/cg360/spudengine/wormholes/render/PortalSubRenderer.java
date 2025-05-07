@@ -205,7 +205,7 @@ public class PortalSubRenderer implements SubRenderProcess {
                 } else {
                     if(redrawStep == 0) {
                         shaderIO.setUniform(this.lPortalTypeMask, this.dPortalTypeMask[BLUE_PORTAL_TYPE]);
-                        handleBlueLayer(cmd, pTrack);
+                        handleBlueLayer(cmd, renderContext, pTrack);
                         renderContext.requestRedraw();
 
                         //TODO: bounds2d tests don't seem to be working so it isn;t culling. Fix those
@@ -213,7 +213,7 @@ public class PortalSubRenderer implements SubRenderProcess {
 
                     } else {
                         shaderIO.setUniform(this.lPortalTypeMask, this.dPortalTypeMask[ORANGE_PORTAL_TYPE]);
-                        handleOrangeLayer(cmd, pTrack);
+                        handleOrangeLayer(cmd, renderContext, pTrack);
                     }
                 }
             }
@@ -221,7 +221,7 @@ public class PortalSubRenderer implements SubRenderProcess {
 
     }
 
-    private static void handleBlueLayer(VkCommandBuffer cmd, PortalTracker pTrack) {
+    private static void handleBlueLayer(VkCommandBuffer cmd, RenderContext context, PortalTracker pTrack) {
         if(!pTrack.hasBluePortal()) return;
 
         Bounds3D portalBounds = pTrack.getBluePortal().getScreenBounds(pTrack.getEngine().getScene());
@@ -229,15 +229,15 @@ public class PortalSubRenderer implements SubRenderProcess {
         try (MemoryStack stack = MemoryStack.stackPush()) {
             boolean shouldDraw = Bounds3D.SCREEN_BOUNDS.intersects(portalBounds);
 
-            if(!shouldDraw) {
-                cullDraw(cmd, stack);
+            if(shouldDraw) {
+                resetScissor(cmd, context, stack);
             } else {
-                noCull(cmd, stack);
+                cullDraw(cmd, stack);
             }
         }
     }
 
-    private static void handleOrangeLayer(VkCommandBuffer cmd, PortalTracker pTrack) {
+    private static void handleOrangeLayer(VkCommandBuffer cmd, RenderContext context, PortalTracker pTrack) {
         if(!pTrack.hasOrangePortal()) return;
 
         Bounds3D portalBounds = pTrack.getOrangePortal().getScreenBounds(pTrack.getEngine().getScene());
@@ -246,12 +246,49 @@ public class PortalSubRenderer implements SubRenderProcess {
 
             boolean shouldDraw = Bounds3D.SCREEN_BOUNDS.intersects(portalBounds);
 
-            if(!shouldDraw) {
-                cullDraw(cmd, stack);
+            if(shouldDraw) {
+                resetScissor(cmd, context, stack);
             } else {
-                noCull(cmd, stack);
+                cullDraw(cmd, stack);
             }
         }
+    }
+
+    // This doesn't work. The scissoring catches up, and may just be the wrong approach
+    // as it doesn't work on recursive portals.
+    // Here might be time for the stencil buffer.
+    private static void scissorDraw(VkCommandBuffer cmd, MemoryStack stack, RenderContext context, Bounds3D portalBounds) {
+        int offsetX = (int) (portalBounds.minX() * context.screenWidth());
+        int offsetY = (int) (portalBounds.minY() * context.screenHeight());
+
+        int clampOffsetX = Math.clamp(offsetX, 0, context.screenWidth());
+        int clampOffsetY = Math.clamp(offsetY, 0, context.screenHeight());
+
+        int width = (int) (portalBounds.maxX() * context.screenWidth()) - clampOffsetX;
+        int height = (int) (portalBounds.maxY() * context.screenHeight()) - clampOffsetY;
+
+        // Bounds are in range 0-1 for screen.
+        // Transform to scissor coords.
+
+        VkRect2D.Buffer scissor = VkRect2D.calloc(1, stack)
+                .extent(it -> it
+                        .width(Math.clamp(width, 0, context.screenWidth()))
+                        .height(Math.clamp(height, 0, context.screenHeight())))
+                .offset(it -> it
+                        .x(clampOffsetX)
+                        .y(clampOffsetY));
+        VK11.vkCmdSetScissor(cmd, 0, scissor);
+    }
+
+    private static void resetScissor(VkCommandBuffer cmd, RenderContext context, MemoryStack stack) {
+        VkRect2D.Buffer scissor = VkRect2D.calloc(1, stack)
+                .extent(it -> it
+                        .width(context.screenWidth())
+                        .height(context.screenHeight()))
+                .offset(it -> it
+                        .x(0)
+                        .y(0));
+        VK11.vkCmdSetScissor(cmd, 0, scissor);
     }
 
     private static void cullDraw(VkCommandBuffer cmd, MemoryStack stack) {
@@ -259,17 +296,6 @@ public class PortalSubRenderer implements SubRenderProcess {
                 .extent(it -> it
                         .width(0)
                         .height(0))
-                .offset(it -> it
-                        .x(0)
-                        .y(0));
-        VK11.vkCmdSetScissor(cmd, 0, scissor);
-    }
-
-    private static void noCull(VkCommandBuffer cmd, MemoryStack stack) {
-        VkRect2D.Buffer scissor = VkRect2D.calloc(1, stack)
-                .extent(it -> it
-                        .width(100000)
-                        .height(100000))
                 .offset(it -> it
                         .x(0)
                         .y(0));

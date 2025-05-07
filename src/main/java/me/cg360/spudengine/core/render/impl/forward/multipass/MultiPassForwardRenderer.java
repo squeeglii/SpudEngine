@@ -46,6 +46,7 @@ public class MultiPassForwardRenderer extends AbstractForwardRenderer {
         super(swapChain, commandPool, pipelineCache, scene, passCount, subRenderProcesses);
 
         this.renderContext = new InternalRenderContext();
+        this.renderContext.refreshResolution(this.swapChain);
     }
 
     @Override
@@ -127,8 +128,6 @@ public class MultiPassForwardRenderer extends AbstractForwardRenderer {
 
     @Override
     public void draw(RenderSystem renderSystem) {
-        this.renderContext.reset();
-
         try (MemoryStack stack = MemoryStack.stackPush()) {
             VkExtent2D swapChainExtent = this.swapChain.getSwapChainExtent();
             int width = swapChainExtent.width();

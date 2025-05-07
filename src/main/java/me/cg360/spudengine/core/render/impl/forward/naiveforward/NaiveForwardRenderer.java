@@ -44,6 +44,7 @@ public class NaiveForwardRenderer extends AbstractForwardRenderer {
         super(swapChain, commandPool, pipelineCache, scene, 1, subRenderProcesses);
 
         this.renderContext = new InternalRenderContext();
+        this.renderContext.refreshResolution(this.swapChain);
     }
 
     @Override

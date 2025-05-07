@@ -86,6 +86,7 @@ public class ComposeRenderer extends RenderProcess {
         this.createCommandBuffers(commandPool, numImages);
 
         this.renderContext = new InternalRenderContext();
+        this.renderContext.refreshResolution(this.swapChain);
 
         for (int i = 0; i < numImages; i++)
             this.preRecordDraw(i);
@@ -239,6 +240,7 @@ public class ComposeRenderer extends RenderProcess {
     public void onResize(SwapChain newSwapChain) {
         this.swapChain = newSwapChain;
         this.frameBuffer.onResize(this.swapChain);
+        this.renderContext.refreshResolution(this.swapChain);
 
         int numImages = this.swapChain.getImageViews().length;
         for (int i = 0; i < numImages; i++)

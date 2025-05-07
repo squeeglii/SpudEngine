@@ -66,6 +66,7 @@ public class LayerRenderer extends AbstractRenderer {
         this.createCommandBuffers(commandPool, numImages);
 
         this.renderContext = new InternalRenderContext();
+        this.renderContext.refreshResolution(this.swapChain);
     }
 
     protected void createFrameBuffer(int renderTargetCount) {
@@ -115,9 +116,9 @@ public class LayerRenderer extends AbstractRenderer {
 
     @Override
     public void draw(RenderSystem renderSystem) {
-        this.renderContext.reset();
-
         try (MemoryStack stack = MemoryStack.stackPush()) {
+            this.renderContext.reset();
+
             VkExtent2D swapChainExtent = this.swapChain.getSwapChainExtent();
             int width = swapChainExtent.width();
             int height = swapChainExtent.height();
@@ -243,6 +244,7 @@ public class LayerRenderer extends AbstractRenderer {
     public void onResize(SwapChain newSwapChain) {
         this.swapChain = newSwapChain;
         this.frameBuffer.onResize(this.swapChain);
+        this.renderContext.refreshResolution(this.swapChain);
     }
 
     @Override

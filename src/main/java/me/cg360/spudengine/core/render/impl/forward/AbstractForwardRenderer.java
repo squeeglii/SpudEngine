@@ -116,6 +116,7 @@ public abstract class AbstractForwardRenderer extends AbstractRenderer {
         Arrays.asList(this.depthAttachments).forEach(Attachment::cleanup);
         this.createDepthImages();
         this.createFrameBuffers();
+        this.getCurrentContext().refreshResolution(this.swapChain);
     }
 
     @Override
