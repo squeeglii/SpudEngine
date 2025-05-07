@@ -140,6 +140,27 @@ public class WormholeDemo extends GameComponent {
                 this.scene().getMainCamera().setPosition(0, 2, 0);
                 this.scene().getMainCamera().setRotation(0, 0);
             }
+
+            case GLFW.GLFW_KEY_P -> {
+                this.scene().getMainCamera().setPosition(-6, 0.64f, -1.44f);
+                this.scene().getMainCamera().setRotation(0.11f, 3.16f);
+            }
+
+            case GLFW.GLFW_KEY_J -> {
+                this.scene().getMainCamera().setPosition(-7.5f, 1.08f, -1.76f);
+                this.scene().getMainCamera().setRotation(0f, 1.5f);
+            }
+
+            case GLFW.GLFW_KEY_K -> {
+                this.scene().getMainCamera().setPosition(2.15f, 5.14f, 4.31f);
+                this.scene().getMainCamera().setRotation(0.42f, -6.52f);
+            }
+
+            case GLFW.GLFW_KEY_L -> {
+                this.scene().getMainCamera().setPosition(2.18f, 5.22f, 4.24f);
+                this.scene().getMainCamera().setRotation(0.02f, -9.72f);
+            }
+
         }
     }
 
@@ -189,6 +210,21 @@ public class WormholeDemo extends GameComponent {
                 }
             }
 
+            case GLFW.GLFW_KEY_7 -> {
+                if(this.getPortalTracker().hasBluePortal()) {
+                    this.getPortalTracker().removeBluePortal();
+
+                } else {
+                    PortalEntity bluePortal = new PortalEntity(
+                            PortalType.BLUE,
+                            new Vector3f(0, -0.75f, -3f),
+                            Vectors.toRadians(90, 0, 0)
+                    );
+
+                    this.scene().addEntity(bluePortal);
+                }
+            }
+
             // Orange Portals --------------------------------------------------
 
             case GLFW.GLFW_KEY_1 -> {
@@ -230,6 +266,21 @@ public class WormholeDemo extends GameComponent {
                             PortalType.ORANGE,
                             new Vector3f(-2f, 0f, -3.99f),
                             Vectors.toRadians(0, 180, 0)
+                    );
+
+                    this.scene().addEntity(orangePortal);
+                }
+            }
+
+            case GLFW.GLFW_KEY_4 -> {
+                if(this.getPortalTracker().hasOrangePortal()) {
+                    this.getPortalTracker().removeOrangePortal();
+
+                } else {
+                    PortalEntity orangePortal = new PortalEntity(
+                            PortalType.ORANGE,
+                            new Vector3f(0, 4.0f, -3f),
+                            Vectors.toRadians(90, 180, 0)
                     );
 
                     this.scene().addEntity(orangePortal);
