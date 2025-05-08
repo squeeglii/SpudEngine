@@ -161,6 +161,11 @@ public class WormholeDemo extends GameComponent {
                 this.scene().getMainCamera().setRotation(0.02f, -9.72f);
             }
 
+            case GLFW.GLFW_KEY_B -> {
+                this.scene().getMainCamera().setPosition(-2.88f, 1.36f, -1.59f);
+                this.scene().getMainCamera().setRotation(-0.06f, -3.89f);
+            }
+
         }
     }
 

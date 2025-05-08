@@ -60,3 +60,4 @@ For the sake of fair testing, there are a few pre-saved camera angles:
 | j   | Lower corridor, containing both portal targets (2 & 0). |
 | k   | Upper Balcony, facing main room.                        |
 | l   | Upper balcony, facing wall away from room.              |
+| b   | Corner of main room, facing balcony & pit.              |
