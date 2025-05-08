@@ -38,8 +38,8 @@ You can have at-most 1 blue and 1 orange portal at a time.
 | 2   |        | Lower corridor                                                  |
 | 3   |        | Main Room, at ground level to the left of the small plinth      |
 | 4   |        | Main Room, ceiling above small plinth.                          |
-| 5   |        | N/A                                                             |
-| 6   | Blue   | N/A                                                             |
+| 5   |        | -                                                               |
+| 6   | Blue   | -                                                               |
 | 7   |        | Main Room, floor on small plinth.                               |
 | 8   |        | Main Room, at ground level next to the lower corridor entrance. |
 | 9   |        | Main room, under balcony                                        |

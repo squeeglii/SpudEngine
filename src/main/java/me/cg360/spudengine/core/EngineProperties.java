@@ -27,7 +27,7 @@ public class EngineProperties {
     public static final boolean USE_DEBUGGING = true;
     public static final boolean ENABLE_FPS_MONITOR_LAYER = true; // Enables VK_LAYER_LUNARG_monitor
     public static final boolean ENABLE_INTERNAL_FPS_MONITOR = true;
-    public static final long FRAME_CAPTURE_INTERVAL_MS = 10 * 1000;
+    public static final long FRAME_CAPTURE_INTERVAL_MS = 5 * 1000;
     public static final Color CLEAR_COLOUR = new Color(0.05f, 0.05f, 0.05f, 1.00f);
     public static final Color FULL_ALPHA = new Color(0.00f, 0.00f, 0.00f, 0.00f);
 
@@ -40,7 +40,7 @@ public class EngineProperties {
     public static final String PREFERRED_DEVICE_NAME = null;
     public static final int STARTING_WIDTH = 1600;
     public static final int STARTING_HEIGHT = 900;
-    public static final int SWAP_CHAIN_IMAGES = 3;
+    public static final int SWAP_CHAIN_IMAGES = 3; // 3 = triple buffering.
     public static final boolean VSYNC = false;
     public static final double FOV = 80.0f;
     public static final float NEAR_PLANE = 0.1f;
