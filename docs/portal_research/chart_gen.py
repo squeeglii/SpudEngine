@@ -10,8 +10,17 @@ from sys import argv
 
 defaultPath = "data.csv"
 device_colours = {
-    "Laptop": "tab:blue",
-    "Desktop": "tab:red"
+    "Laptop": "tab:purple",
+    "Desktop": "tab:orange"
+}
+reformatted_titles = {
+    "0": "Summary (w/o stress test)",
+    "1": "Test Case #1: Typical Environment",
+    "2": "Test Case #2: Tight Space",
+    "3": "Test Case #3: Tight Recursive Space",
+    "4": "Test Case #4: Background Recursion",
+    "5": "Test Case #5: The Clean Room",
+    "6": "Test Case #6: Stress Test"
 }
 
 class InvalidEntryError(Exception):
@@ -78,6 +87,27 @@ class Entry(object):
     def __str__(self):
         return f"Entry ({len(self.samples)}x samples) - [ {self.test_case} | {self.device} | {self.renderer} ]"
 
+def filter_only_starting_with(data: list[Entry], staring_with: str) -> list[Entry]:
+    filtered_data = [ ]
+
+    for entry in data:
+        if not entry.test_case.lower().startswith(staring_with.lower()):
+            continue
+
+        filtered_data.append(entry)
+
+    return filtered_data
+
+def filter_remove_starting_with(data: list[Entry], staring_with: str) -> list[Entry]:
+    filtered_data = [ ]
+
+    for entry in data:
+        if entry.test_case.lower().startswith(staring_with.lower()):
+            continue
+
+        filtered_data.append(entry)
+
+    return filtered_data
 
 def parse_path_from_args():
     if len(argv) < 3:
@@ -118,28 +148,60 @@ def process(path, start_row):
 
             last_entry.add_sample(sample)
 
+    if last_entry is not None:
+        processed_data.append(last_entry)
+
     return processed_data
 
-def plot_test_case(data: list[Entry], test_case: str):
-
-    # Filter to ONLY this test case.
-    relevant_data = [ ]
+def create_summary(processed_data: list[Entry]):
     device_types = [ ]
     renderer_types = [ ]
 
-    for entry in data:
-        if not entry.test_case.lower().startswith(test_case.lower()):
-            continue
-
-        relevant_data.append(entry)
-
+    for entry in processed_data:
         if entry.device not in device_types:
             device_types.append(entry.device)
 
         if entry.renderer not in renderer_types:
             renderer_types.append(entry.renderer)
 
-    print("Filtered to: ", test_case)
+    new_entries: dict[str, Entry] = { }
+
+    for renderer in renderer_types:
+        for device in device_types:
+            new_id = renderer + "-" + device
+            new_entries[new_id] = Entry("0 - Summary", device, renderer)
+
+    for entry in processed_data:
+        new_id = entry.renderer + "-" + entry.device
+
+        for sample in entry.samples:
+            new_entries[new_id].add_sample(sample)
+
+    # Processed data needs to be sent batched in renderer groups.
+    # with a consistent device order.
+
+    # i.e,      laptop naive, desktop naive, laptop multipass, desktop multipass...
+    return new_entries.values()
+
+# The data that needs to go in is order specific.
+def plot_test_case_frame_intervals(processed_data: list[Entry], test_case_filter: str):
+
+    # Filter to ONLY this test case.
+    relevant_data = filter_only_starting_with(processed_data, test_case_filter)
+
+    device_types = [ ]
+    renderer_types = [ ]
+
+    for entry in relevant_data:
+        if entry.device not in device_types:
+            device_types.append(entry.device)
+
+        if entry.renderer not in renderer_types:
+            renderer_types.append(entry.renderer)
+
+    print()
+    print("Plotting data...")
+    print("Filtered to: ", test_case_filter)
     print("Device Types: ", device_types)
     print("Renderer Types: ", renderer_types)
 
@@ -150,7 +212,6 @@ def plot_test_case(data: list[Entry], test_case: str):
     if entry_count != device_count * renderer_count:
         raise InvalidDatasetError(f"Weirdly formatted dataset! devices ({device_count}) * renderers ({renderer_count}) != filtered data amount ({entry_count})")
 
-    print("Plotting data...")
     fig, ax = plt.subplots()
 
     bar_width = 0.4
@@ -158,7 +219,6 @@ def plot_test_case(data: list[Entry], test_case: str):
 
     group_width = ((bar_width + bar_gap) * len(device_types)) - bar_gap
     group_gap = 1
-
 
     x_label_positions = []
     x_labels = []
@@ -172,12 +232,6 @@ def plot_test_case(data: list[Entry], test_case: str):
         for barNum, device in enumerate(device_types):
             bar_positions.append(group_start + (0.5 * bar_width) + (barNum * (bar_width + bar_gap)))
 
-    ## 0-0.4 0.5 - 0.9
-
-    print(x_label_positions)
-    print(bar_positions)
-    print(group_width)
-
     y = np.zeros(len(relevant_data))
     interval_min = np.zeros(len(relevant_data))
     interval_max = np.zeros(len(relevant_data))
@@ -185,7 +239,6 @@ def plot_test_case(data: list[Entry], test_case: str):
     bar_colours = []
 
     for i, entry in enumerate(relevant_data):
-        print("entry: ", entry.get_sample_min(), entry.get_sample_max(), entry.get_sample_avg())
         y[i] = entry.get_sample_avg()
         interval_min[i] = entry.get_sample_min()
         interval_max[i] = entry.get_sample_max()
@@ -199,15 +252,107 @@ def plot_test_case(data: list[Entry], test_case: str):
     ax.yaxis.grid(which='major', color="#cccccc", linewidth=1.0, zorder=0)
     ax.yaxis.grid(which='minor', color="#eeeeee", linewidth=0.5, zorder=0)
     ax.yaxis.minorticks_on()
+    ax.set_ylabel("Frame Interval (ms)")
 
     ax.set_xticks(x_label_positions)
     ax.set_xticklabels(x_labels)
 
     ax.bar(bar_positions, y, width=bar_width, label=labels, color=bar_colours, zorder=10)
     ax.errorbar(bar_positions, y, yerr=interval_range, fmt="x", color="#000000", capsize=6, capthick=1, zorder=20)
+    ax.legend(device_types, title="Device Types")
 
-    ax.set_title(f"Test Case {test_case}")
-    ax.legend(device_colours, title="Device Types")
+    fig.suptitle("Frame Timing (lower is better)")
+
+    if test_case_filter in reformatted_titles:
+        ax.set_title(reformatted_titles[test_case_filter], style='italic')
+    else:
+        ax.set_title(f"Test Case {test_case_filter}", style='italic')
+
+    print("Plotted!")
+    plt.show()
+
+def plot_test_case_framerates(processed_data: list[Entry], test_case_filter: str):
+
+    # Filter to ONLY this test case.
+    relevant_data = filter_only_starting_with(processed_data, test_case_filter)
+    device_types = [ ]
+    renderer_types = [ ]
+
+    for entry in relevant_data:
+        if entry.device not in device_types:
+            device_types.append(entry.device)
+
+        if entry.renderer not in renderer_types:
+            renderer_types.append(entry.renderer)
+
+    print()
+    print("Plotting data...")
+    print("Filtered to: ", test_case_filter)
+    print("Device Types: ", device_types)
+    print("Renderer Types: ", renderer_types)
+
+    entry_count = len(relevant_data)
+    device_count = len(device_types)
+    renderer_count = len(renderer_types)
+
+    if entry_count != device_count * renderer_count:
+        raise InvalidDatasetError(f"Weirdly formatted dataset! devices ({device_count}) * renderers ({renderer_count}) != filtered data amount ({entry_count})")
+
+    fig, ax = plt.subplots()
+
+    bar_width = 0.4
+    bar_gap = 0.1
+
+    group_width = ((bar_width + bar_gap) * len(device_types)) - bar_gap
+    group_gap = 1
+
+    x_label_positions = []
+    x_labels = []
+    bar_positions = [ ]
+
+    for group_id, renderer in enumerate(renderer_types):
+        group_start = group_id * (group_width + group_gap)
+        x_label_positions.append(group_start + (group_width/2))
+        x_labels.append(renderer + "\n Renderer")
+
+        for barNum, device in enumerate(device_types):
+            bar_positions.append(group_start + (0.5 * bar_width) + (barNum * (bar_width + bar_gap)))
+
+    y = np.zeros(len(relevant_data))
+    interval_min = np.zeros(len(relevant_data))
+    interval_max = np.zeros(len(relevant_data))
+    labels = []
+    bar_colours = []
+
+    for i, entry in enumerate(relevant_data):
+        y[i] = 1000 / entry.get_sample_avg()
+        interval_min[i] = entry.get_sample_min()
+        interval_max[i] = entry.get_sample_max()
+        labels.append(entry.device)
+        bar_colours.append(device_colours[entry.device])
+
+    interval_range = [y - interval_min, interval_max - y]
+
+    ax.yaxis.set_major_locator(tickers.MultipleLocator(15))
+    ax.yaxis.set_minor_locator(tickers.MultipleLocator(5))
+    ax.yaxis.grid(which='major', color="#cccccc", linewidth=1.0, zorder=0)
+    ax.yaxis.grid(which='minor', color="#eeeeee", linewidth=0.5, zorder=0)
+    ax.yaxis.minorticks_on()
+    ax.set_ylabel("Framerate (frames/s)")
+
+    ax.set_xticks(x_label_positions)
+    ax.set_xticklabels(x_labels)
+
+    ax.bar(bar_positions, y, width=bar_width, label=labels, color=bar_colours, zorder=10)
+    #ax.errorbar(bar_positions, y, yerr=interval_range, fmt="x", color="#000000", capsize=6, capthick=1, zorder=20)
+    ax.legend(device_types, title="Device Types")
+
+    fig.suptitle("Framerates (higher is better)")
+
+    if test_case_filter in reformatted_titles:
+        ax.set_title(reformatted_titles[test_case_filter], style='italic')
+    else:
+        ax.set_title(f"Test Case {test_case_filter}", style='italic')
 
     print("Plotted!")
     plt.show()
@@ -216,7 +361,18 @@ def main():
     run_config = parse_path_from_args()
     processed_data = process(run_config[0], run_config[1])
 
-    plot_test_case(processed_data, "1")
+    plot_test_case_frame_intervals(processed_data, "1")
+    plot_test_case_frame_intervals(processed_data, "2")
+    plot_test_case_frame_intervals(processed_data, "3")
+    plot_test_case_frame_intervals(processed_data, "4")
+    plot_test_case_frame_intervals(processed_data, "5")
+    plot_test_case_frame_intervals(processed_data, "6")
+
+    data_without_stress = filter_remove_starting_with(processed_data, "6")
+    summary = create_summary(data_without_stress)
+
+    plot_test_case_frame_intervals(summary, "0")
+    plot_test_case_framerates(summary, "0")
 
 
 if __name__ == "__main__":
