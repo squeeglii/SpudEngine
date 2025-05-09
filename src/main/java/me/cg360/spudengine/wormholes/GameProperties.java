@@ -4,7 +4,7 @@ public class GameProperties {
 
     public static boolean forceRenderSolidPortals = false;
 
-    public static final SelectedRenderer RENDER_PROCESS = SelectedRenderer.NAIVE_FORWARD    ;
+    public static final SelectedRenderer RENDER_PROCESS = SelectedRenderer.LAYERED_COMPOSE;
 
     public static boolean DEBUG_PORTAL_UVs = false;
 

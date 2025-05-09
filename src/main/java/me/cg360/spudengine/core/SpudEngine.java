@@ -21,6 +21,7 @@ public class SpudEngine {
 
     private final Queue<Long> frameDeltas;
     private long lastFrameCaptureInstant = 0;
+    private int captureId = 0;
     private long ticksAlive = 0;
 
     private boolean isRunning = false;
@@ -87,7 +88,7 @@ public class SpudEngine {
             if(EngineProperties.ENABLE_INTERNAL_FPS_MONITOR) {
                 this.frameDeltas.add(now - prevInstant);
                 if (this.lastFrameCaptureInstant + EngineProperties.FRAME_CAPTURE_INTERVAL_MS < now) {
-                    this.evaluateFramerate();
+                    this.evaluateFramerate(this.captureId++);
                     this.frameDeltas.clear();
 
                     this.lastFrameCaptureInstant = now;
@@ -150,7 +151,7 @@ public class SpudEngine {
         this.gameInstance.passInputEvent(window, key, action, modifiers);
     }
 
-    private void evaluateFramerate() {
+    private void evaluateFramerate(int identifier) {
         if(!EngineProperties.ENABLE_INTERNAL_FPS_MONITOR)
             throw new IllegalStateException("Tried to evaluate framerate while internal fps monitoring was disabled");
 
@@ -169,8 +170,8 @@ public class SpudEngine {
 
         double framerate = 1 / avgFrametimeSeconds;
 
-        Logger.info("= Framerate Report ({0.00} seconds): \n| FPS: {0.0} \n| Frame Times: {0.000}ms avg, {}ms min, {}ms max",
-                EngineProperties.FRAME_CAPTURE_INTERVAL_MS / 1000.0d,
+        Logger.info("= Framerate Report #{} ({0.00} seconds period): \n| FPS: {0.0} \n| Frame Times: {0.000}ms AVG,   {}ms MIN,   {}ms MAX",
+                identifier, EngineProperties.FRAME_CAPTURE_INTERVAL_MS / 1000.0d,
                 framerate,
                 avgFrametimeMillis, shortestDelta, longestDelta);
     }
