@@ -30,8 +30,7 @@ public class PortalTransformHelper extends TypeHelper {
     public static void copyToBuffer(GeneralBuffer buffer, PortalEntity entity, Matrix4f connectionTransform) {
         Vector3f pos = entity.getPosition();
         Vector3f up = entity.getUp();
-        Quaternionf localRot = entity.getRotation();
-        Vector3f normal = new Vector3f(0, 0, 1).rotate(localRot);
+        Vector3f normal = entity.getNormal();
 
         long mappedMemory = buffer.map();
         ByteBuffer out = MemoryUtil.memByteBuffer(mappedMemory, (int) buffer.getRequestedSize());
@@ -47,8 +46,7 @@ public class PortalTransformHelper extends TypeHelper {
     public static void copyIncompleteToBuffer(GeneralBuffer buffer, PortalEntity entity) {
         Vector3f pos = entity.getPosition();
         Vector3f up = entity.getUp();
-        Quaternionf localRot = entity.getRotation();
-        Vector3f normal = new Vector3f(0, 0, 1).rotate(localRot);
+        Vector3f normal = entity.getNormal();
 
         long mappedMemory = buffer.map();
         ByteBuffer out = MemoryUtil.memByteBuffer(mappedMemory, (int) buffer.getRequestedSize());

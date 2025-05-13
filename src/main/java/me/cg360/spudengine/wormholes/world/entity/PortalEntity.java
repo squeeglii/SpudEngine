@@ -24,8 +24,8 @@ public class PortalEntity extends SimpleEntity {
     // this loosely depends on this.rotation.
     // If portals can be moved (which is a colossal task)
     // make sure this gets updated.
-    private Vector3f up;
-    private Vector3f normal;
+    private final Vector3f up;
+    private final Vector3f normal;
 
     public PortalEntity(PortalType type, Vector3f position, Vector3f rotation) {
         super(UUID.randomUUID(), type.modelId());
@@ -33,9 +33,10 @@ public class PortalEntity extends SimpleEntity {
         this.portalType = type;
         this.position = position.add(0, 1, 0); // Spawn portal at bottom.
         this.up = new Vector3f(0, 1, 0);
-        this.normal = new Vector3f(0, 1, 0);
+        this.normal = new Vector3f(0, 0, 1);
 
         this.rotation.rotateXYZ(rotation.x(), rotation.y(), rotation.z());
+        this.normal.rotate(this.rotation);
         this.up.rotate(this.rotation);
 
         this.updateTransform();
@@ -92,6 +93,10 @@ public class PortalEntity extends SimpleEntity {
         mat.translateLocal(this.position);
 
         return mat;
+    }
+
+    public Vector3f getNormal() {
+        return this.normal;
     }
 
     public Vector3f getUp() {
