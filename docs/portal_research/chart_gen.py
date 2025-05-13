@@ -25,12 +25,14 @@ reformatted_titles = {
 
 class InvalidEntryError(Exception):
 
-    def __init__(self, text):
+    def __init__(self, text, *args: object):
+        super().__init__(*args)
         self.add_note(text)
 
 class InvalidDatasetError(Exception):
 
-    def __init__(self, text):
+    def __init__(self, text, *args: object):
+        super().__init__(*args)
         self.add_note(text)
 
 class Sample(object):
@@ -183,14 +185,18 @@ def create_summary(processed_data: list[Entry]):
     # i.e,      laptop naive, desktop naive, laptop multipass, desktop multipass...
     return new_entries.values()
 
+# -----------------------------------------------------------
+
 # The data that needs to go in is order specific.
-def plot_test_case_frame_intervals(processed_data: list[Entry], test_case_filter: str):
+def plot_test_case_frame_intervals(processed_data: list[Entry], test_case_filter: str, aim_for_limit: int = 26):
 
     # Filter to ONLY this test case.
     relevant_data = filter_only_starting_with(processed_data, test_case_filter)
 
     device_types = [ ]
     renderer_types = [ ]
+
+    limit = aim_for_limit
 
     for entry in relevant_data:
         if entry.device not in device_types:
@@ -199,11 +205,16 @@ def plot_test_case_frame_intervals(processed_data: list[Entry], test_case_filter
         if entry.renderer not in renderer_types:
             renderer_types.append(entry.renderer)
 
+        if entry.get_sample_max() > limit:
+            print(entry.get_sample_max())
+            limit = entry.get_sample_max() + 2
+
     print()
     print("Plotting data...")
     print("Filtered to: ", test_case_filter)
     print("Device Types: ", device_types)
     print("Renderer Types: ", renderer_types)
+    print("Limit: ", limit)
 
     entry_count = len(relevant_data)
     device_count = len(device_types)
@@ -253,6 +264,8 @@ def plot_test_case_frame_intervals(processed_data: list[Entry], test_case_filter
     ax.yaxis.grid(which='minor', color="#eeeeee", linewidth=0.5, zorder=0)
     ax.yaxis.minorticks_on()
     ax.set_ylabel("Frame Interval (ms)")
+    ax.set_autoscaley_on(False)
+    ax.set_ybound(0, limit)
 
     ax.set_xticks(x_label_positions)
     ax.set_xticklabels(x_labels)
@@ -319,22 +332,16 @@ def plot_test_case_framerates(processed_data: list[Entry], test_case_filter: str
             bar_positions.append(group_start + (0.5 * bar_width) + (barNum * (bar_width + bar_gap)))
 
     y = np.zeros(len(relevant_data))
-    interval_min = np.zeros(len(relevant_data))
-    interval_max = np.zeros(len(relevant_data))
     labels = []
     bar_colours = []
 
     for i, entry in enumerate(relevant_data):
         y[i] = 1000 / entry.get_sample_avg()
-        interval_min[i] = entry.get_sample_min()
-        interval_max[i] = entry.get_sample_max()
         labels.append(entry.device)
         bar_colours.append(device_colours[entry.device])
 
-    interval_range = [y - interval_min, interval_max - y]
-
-    ax.yaxis.set_major_locator(tickers.MultipleLocator(15))
-    ax.yaxis.set_minor_locator(tickers.MultipleLocator(5))
+    ax.yaxis.set_major_locator(tickers.MultipleLocator(120))
+    ax.yaxis.set_minor_locator(tickers.MultipleLocator(30))
     ax.yaxis.grid(which='major', color="#cccccc", linewidth=1.0, zorder=0)
     ax.yaxis.grid(which='minor', color="#eeeeee", linewidth=0.5, zorder=0)
     ax.yaxis.minorticks_on()
@@ -344,7 +351,6 @@ def plot_test_case_framerates(processed_data: list[Entry], test_case_filter: str
     ax.set_xticklabels(x_labels)
 
     ax.bar(bar_positions, y, width=bar_width, label=labels, color=bar_colours, zorder=10)
-    #ax.errorbar(bar_positions, y, yerr=interval_range, fmt="x", color="#000000", capsize=6, capthick=1, zorder=20)
     ax.legend(device_types, title="Device Types")
 
     fig.suptitle("Framerates (higher is better)")
